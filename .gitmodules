@@ -1,0 +1,7 @@
+[submodule "libraries/correspondence-discrete-optim"]
+	path = libraries/correspondence-discrete-optim
+	url = https://github.com/sontung/correspondence-discrete-optim.git
+
+[submodule "libraries/OpenSfM"]
+	path = libraries/OpenSfM
+	url = https://github.com/mapillary/OpenSfM
