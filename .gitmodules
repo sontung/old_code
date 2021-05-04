@@ -7,9 +7,3 @@
 [submodule "segmentation/air-bag-segment"]
 	path = segmentation/air-bag-segment
 	url = git@git.hblab.vn:ai/air-bag-segment.git
-[submodule "libraries/DexiNed"]
-	path = libraries/DexiNed
-	url = git@github.com:xavysp/DexiNed.git
-[submodule "libraries/least-squares-ellipse-fitting"]
-	path = libraries/least-squares-ellipse-fitting
-	url = git@github.com:bdhammel/least-squares-ellipse-fitting.git
