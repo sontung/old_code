@@ -7,3 +7,6 @@
 [submodule "segmentation/air-bag-segment"]
 	path = segmentation/air-bag-segment
 	url = git@git.hblab.vn:ai/air-bag-segment.git
+[submodule "libraries/correspondence-discrete-optim"]
+	path = libraries/correspondence-discrete-optim
+	url = https://github.com/sontung/correspondence-discrete-optim.git
