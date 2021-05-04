@@ -1,3 +1,14 @@
+```
+sudo apt-get install xorg-dev libglu1-mesa-dev
+
+```
+
+```
+python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
+pip install kornia
+```
+
+
 ### Ceres
 ```
 mkdir ceres-bin

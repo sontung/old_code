@@ -4,3 +4,4 @@ data_test/
 .idea/
 libraries/ceres-bin/
 libraries/ceres-solver-2.0.0/
+*.pyc
