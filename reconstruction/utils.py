@@ -8,6 +8,18 @@ import numpy as np
 from icecream import ic
 
 
+def compute_zncc(x, y, x2, y2, f, g, window_size):
+    f = f[x-window_size: x+window_size+1, y-window_size: y+window_size+1]
+    g = g[x2-window_size: x2+window_size+1, y2-window_size: y2+window_size+1]
+    f_ = [np.mean(f[:, :, c]) for c in range(3)]
+    g_ = [np.mean(g[:, :, c]) for c in range(3)]
+    du1 = np.multiply(f-f_, g-g_)
+    du2 = np.multiply(f-f_, f-f_)
+    du3 = np.multiply(g-g_, g-g_)
+    s2 = np.sum(du1) / (np.sqrt(np.sum(du2)) * np.sqrt(np.sum(du3)) + 0.00001)
+    return s2
+
+
 def dump_into_tracks_osfm():
     pairs = read_correspondence_from_dump("data_heavy/corr-exact.txt")
     ims = ["opencv_frame_0.png", "opencv_frame_1.png"]

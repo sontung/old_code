@@ -1,6 +1,13 @@
+### Running 
+```
+extract frames (preprocess)
+ear segment (segmentation)
+edge_detection (preprocess)
+prepare_pixels_set (preprocess)
+```
+
 ```
 sudo apt-get install xorg-dev libglu1-mesa-dev
-
 ```
 
 ```

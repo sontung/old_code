@@ -5,6 +5,7 @@ from os import listdir
 from os.path import isfile, join
 from sklearn.cluster import KMeans
 from sklearn.utils import shuffle
+from sklearn.datasets import load_sample_image
 from time import time
 
 
@@ -15,6 +16,7 @@ def extract_frame():
     mypath = "../data_heavy/run"
     videos = [join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))]
     print("Extracting frames from", videos)
+    counts = []
     for c, v in enumerate(videos):
         cap = cv2.VideoCapture(v)
         count = 0
@@ -25,15 +27,24 @@ def extract_frame():
                 count += 1
                 if count % 3 == 0:
                     cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, count), frame)
+                    counts.append(count)
                 if count > 100:
                     break
+    counts = set(counts)
+    with open(join("../data_heavy/frames", "info.txt"), "w") as text_file:
+        for c in counts:
+            print(c, file=text_file)
 
 
 def k_means_smoothing(rgb):
+    """
+    perform k means segmentation to smooth
+    """
     n_colors = 2
 
     # Load the Summer Palace photo
     china = rgb
+    # china = load_sample_image('flower.jpg')
 
     # Convert to floats instead of the default 8 bits integer coding. Dividing by
     # 255 is important so that plt.imshow behaves works well on float data (need to
@@ -41,7 +52,7 @@ def k_means_smoothing(rgb):
     china = np.array(china, dtype=np.float64) / 255
 
     # Load Image and transform to a 2D numpy array.
-    w, h, d = original_shape = tuple(china.shape)
+    w, h, d = tuple(china.shape)
     assert d == 3
     image_array = np.reshape(china, (w * h, d))
 
@@ -51,9 +62,8 @@ def k_means_smoothing(rgb):
     # Get labels for all points
     labels = kmeans.predict(image_array)
 
-    def recreate_image(codebook, labels, w, h):
+    def recreate_image(labels, w, h, codebook, d):
         """Recreate the (compressed) image from the code book & labels"""
-        d = codebook.shape[1]
         image = np.zeros((w, h, d))
         label_idx = 0
         for i in range(w):
@@ -62,8 +72,18 @@ def k_means_smoothing(rgb):
                 label_idx += 1
         return image.astype(np.uint8)
 
-    return recreate_image(kmeans.cluster_centers_, labels, w, h)
+    res = recreate_image(labels, w, h, {0: np.array([0.5, 0.6, 0.7]),
+                                        1: np.array([0.1, 0.2, 0.3])},
+                         kmeans.cluster_centers_.shape[1])
+    return res
+    # from edge_detection import process
+    # res = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+    # edge1, edge2 = process(res)
+    # cv2.imshow("test", np.hstack([edge1, edge2, res]))
+    # cv2.waitKey()
+    # cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
     extract_frame()
+    # k_means_smoothing(None)
