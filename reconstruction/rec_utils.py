@@ -9,6 +9,9 @@ from icecream import ic
 
 
 def compute_zncc(x, y, x2, y2, f, g, f_, g_, window_size, using_global_mean=True):
+    """
+    zncc score for a pair of image patches (fast)
+    """
     f = f[x-window_size: x+window_size+1, y-window_size: y+window_size+1]
     g = g[x2-window_size: x2+window_size+1, y2-window_size: y2+window_size+1]
     if not using_global_mean:
@@ -25,12 +28,12 @@ def compute_zncc(x, y, x2, y2, f, g, f_, g_, window_size, using_global_mean=True
     return s2, f, g
 
 
-def dump_into_tracks_osfm():
-    pairs = read_correspondence_from_dump("data_heavy/corr-exact.txt")
-    ims = ["opencv_frame_0.png", "opencv_frame_1.png"]
-    mats = [cv2.imread("data_heavy/sfm_data/images/%s" % im) for im in ims]
-    out = {im: [] for im in ims}
-    csv_dir = "data_heavy/sfm_data/tracks3.csv"
+def dump_into_tracks_osfm(corr_dir, im_names, mats, csv_dir):
+    """
+    convert correspondences into opensfm format
+    """
+    pairs = read_correspondence_from_dump(corr_dir)
+    out = {im: [] for im in im_names}
     w, h, _ = mats[0].shape
     size = max(w, h)
     for track_id, (x1, y1, x2, y2) in enumerate(pairs):
@@ -44,8 +47,8 @@ def dump_into_tracks_osfm():
         x2 = (x2 + 0.5 - w / 2.0) / size
         y2 = (y2 + 0.5 - h / 2.0) / size
 
-        out[ims[0]].append((ims[0], track_id, track_id, y1, x1, 1, r1, g1, b1, -1, -1))
-        out[ims[1]].append((ims[1], track_id, track_id, y2, x2, 1, r2, g2, b2, -1, -1))
+        out[im_names[0]].append((im_names[0], track_id, track_id, y1, x1, 1, r1, g1, b1, -1, -1))
+        out[im_names[1]].append((im_names[1], track_id, track_id, y2, x2, 1, r2, g2, b2, -1, -1))
     sys.stdout = open(csv_dir, "w")
     print("OPENSFM_TRACKS_VERSION_v2")
     for k in out:

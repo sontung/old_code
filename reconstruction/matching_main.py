@@ -4,8 +4,12 @@ import cv2
 from tqdm import tqdm
 import imageio
 import numpy as np
-from utils import compute_zncc
+from rec_utils import compute_zncc
 from pathlib import Path
+
+sys.path.append("../libraries/correspondence-discrete-optim")
+from exact_algo import solve_simple as affine_solver
+from exact_algo import final_process as affine_solver_postprocess
 
 
 def match_zncc(im1, im2, pixels1, pixels2, name):
@@ -67,6 +71,7 @@ def consistency_check(match1, match2):
 def main():
     sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]
+    all_pixel_dir = "../data_heavy/frames_ear_coord_only"
     refined_pixel_dir = "../data_heavy/refined_pixels"
     images_dir = "../data_heavy/frames_ear_only_nonblack_bg"
     for idx in lines:
@@ -91,6 +96,22 @@ def main():
             cv2.circle(im3, (y2+im1_d.shape[1], x2), 5, color, -1)
             cv2.line(im3, (y, x), (y2+im1_d.shape[1], x2), color)
         cv2.imwrite("../data_heavy/matching_debugs/%s.png" % idx, im3)
+
+        # affine solver
+        sparse_corr = [(x, y, final_corr[(x, y)][0], final_corr[(x, y)][1], 0.6) for (x, y) in final_corr]
+
+        with open("%s/0-%s.png" % (all_pixel_dir, idx), "rb") as fp:
+            left_pixels_all = pickle.load(fp)
+        with open("%s/1-%s.png" % (all_pixel_dir, idx), "rb") as fp:
+            right_pixels_all = pickle.load(fp)
+
+        y_full, x_full = map(np.array, [left_pixels_all, right_pixels_all])
+        y_trans = affine_solver(sparse_corr, x_full, y_full)
+        corr = affine_solver_postprocess(y_full, y_trans, x_full, left_image, right_image, "dense-%s" % idx)
+
+        with open("../data_heavy/matching_solutions/dense-corr-%s.txt" % idx, "w") as f:
+            for x, y, x_corr, y_corr in corr:
+                print(x, y, x_corr, y_corr, file=f)
 
 
 if __name__ == '__main__':
