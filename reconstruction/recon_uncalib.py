@@ -81,28 +81,25 @@ for identifier in tqdm(lines, desc="Performing triangulation"):
         xs2.append(x_world)
         ys2.append(y_world)
 
-    xs = []
-    ys = []
-    x_mean = np.mean(xs2)
-    y_mean = np.mean(ys2)
+    xs2 = np.array(xs2)
+    ys2 = np.array(ys2)
+    xs2 -= np.mean(xs2)
+    ys2 -= np.mean(ys2)
+
     with open("%s/point_cloud-%s.txt" % (saved_pc_dir, identifier), "w") as a_file:
-        for (x1, y1, x2, y2) in pairs:
-            x_world, y_world, _, z_world = solver(full_proj2, full_proj1, y1, x1, y2, x2)
-            x_world -= x_mean
-            y_world -= y_mean
+        for ind, (x1, y1, x2, y2) in enumerate(pairs):
+            x_world, y_world = xs2[ind], ys2[ind]
             x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
             color = img2[x2, y2]/255
             colors.append(color)
-            print(x_world-np.mean(xs2), y_world-np.mean(ys2), z_world, color[2], color[1], color[0], file=a_file)
+            print(x_world-np.mean(xs2), y_world-np.mean(ys2), 1.0, color[2], color[1], color[0], file=a_file)
+    x_total.append(np.mean(xs2))
+    y_total.append(np.mean(ys2))
 
-            xs.append(x_world)
-            ys.append(y_world)
-    x_total.append(np.mean(xs))
-    y_total.append(np.mean(ys))
     # pcd = o3d.io.read_point_cloud("%s/point_cloud-%s.txt" % (saved_pc_dir, identifier), "xyzrgb")
     # o3d.visualization.draw_geometries([pcd])
     # break
 print(x_total)
 print(y_total)
-plt.plot(x_total, y_total)
+plt.plot(x_total, y_total, "bo")
 plt.show()
