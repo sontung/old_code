@@ -1,7 +1,7 @@
 from os import listdir
 from os.path import isfile, join
 from edge_detection import process as edge_process_func
-from utils import k_means_smoothing as smoothing_func
+from pp_utils import k_means_smoothing as smoothing_func
 from tqdm import tqdm
 import cv2
 import pickle
@@ -62,6 +62,34 @@ def prepare_pixels_set():
             pickle.dump(refined_pixel_list, fp)
 
 
+def simple_preprocess():
+    """
+    convert black background to non-black
+    """
+    mypath = "../data_heavy/frames_ear_only"
+    frames = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+    saving_dir = "../data_heavy/frames_ear_only_nonblack_bg"
+    pixels_path = "../data_heavy/frames_ear_coord_only"
+
+    for im_name in tqdm(frames, desc="Convert to non-black background"):
+        img = cv2.imread(join(mypath, im_name))
+        with open(join(pixels_path, im_name), "rb") as fp:
+            pixels_list = pickle.load(fp)
+
+        im_filled = np.zeros_like(img)
+
+        for p in pixels_list:
+            i, j = p
+            im_filled[i, j] = 255
+
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                if im_filled[i, j, 0] == 0:
+                    img[i, j] = (128, 128, 255)
+        cv2.imwrite("%s/%s" % (saving_dir, im_name), img)
+
+
 if __name__ == '__main__':
     # edge_detection()
-    prepare_pixels_set()
+    # prepare_pixels_set()
+    simple_preprocess()

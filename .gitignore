@@ -6,3 +6,5 @@ libraries/ceres-bin/
 libraries/ceres-solver-2.0.0/
 *.pyc
 */__pycache__/
+*/debugs/
+reconstruction/saved/*

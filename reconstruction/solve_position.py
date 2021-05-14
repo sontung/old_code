@@ -97,8 +97,8 @@ def compute_rotation():
 
         if prev_pos is not None:
             move = rot_deg_overall - prev_pos
-            # trajectories.append(move)
-            trajectories.append(rot_deg_overall)
+            trajectories.append(-move)
+            # trajectories.append(-rot_deg_overall)
 
         prev_pos = rot_deg_overall
 
@@ -110,11 +110,9 @@ def compute_rotation():
         # cv2.destroyAllWindows()
         # break
     new_list = []
-    print(trajectories)
     for i in reversed(trajectories):
         new_list.append(i*-1)
     trajectories.extend(new_list)
-    print(trajectories)
     return trajectories
 
 
@@ -134,30 +132,34 @@ def visualize():
 
     global pcd, trajectory, counter, rotated_trajectory, degg, parameters
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
+    pcd.compute_vertex_normals()
+
     trajectory = compute_translation()
     rotated_trajectory = compute_rotation()
     assert len(rotated_trajectory) == len(trajectory)
     counter = 0
 
     degg = 10
-    parameters = o3d.io.read_pinhole_camera_parameters("ScreenCamera_2021-05-11-15-20-43.json")
+    parameters = o3d.io.read_pinhole_camera_parameters("cam_pos.json")
 
     def rotate_view(vis):
         global pcd, trajectory, counter, rotated_trajectory, degg, parameters
-        pcd.translate(trajectory[counter % len(trajectory)])
-
+        pcd.translate(trajectory[counter % len(trajectory)]/5)
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
                                              degrees=True).as_matrix()
 
         pcd.rotate(rot_mat, pcd.get_center())
+        # print(trajectory[counter % len(trajectory)], rotated_trajectory[counter % len(trajectory)])
         vis.update_geometry(pcd)
         counter += 1
         if counter > len(trajectory):
             counter = 0
+            sys.exit()
         time.sleep(0.5)
 
         ctr = vis.get_view_control()
         ctr.convert_from_pinhole_camera_parameters(parameters)
+        vis.capture_screen_image("../data_heavy/saved/%s.png" % counter)
 
         return False
 

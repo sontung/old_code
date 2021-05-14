@@ -7,6 +7,7 @@ from sklearn.cluster import KMeans
 from sklearn.utils import shuffle
 from sklearn.datasets import load_sample_image
 from time import time
+from pathlib import Path
 
 
 def extract_frame():
@@ -26,6 +27,8 @@ def extract_frame():
             if ret:
                 count += 1
                 if count % 3 == 0:
+                    Path("../data_heavy/sfm_data/%d/images" % count).mkdir(parents=True, exist_ok=True)
+                    cv2.imwrite("../data_heavy/sfm_data/%d/images/%d-%d.png" % (count, c, count), frame)
                     cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, count), frame)
                     counts.append(count)
                 if count > 100:

@@ -4,6 +4,8 @@ extract frames (preprocess)
 ear segment (segmentation)
 edge_detection (preprocess)
 prepare_pixels_set (preprocess)
+matching_main (reconstruction)
+recon_uncalib (reconstruction)
 ```
 
 ```
