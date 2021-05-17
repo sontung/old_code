@@ -1,12 +1,12 @@
 {
 	"Configuration": 
 	{
-		"pause": true,
+		"pause": false,
 		"particleRadius": 0.025,
 		"numberOfStepsPerRenderUpdate": 5,
 		"renderWalls": 4,
 		"simulationMethod": 4,
-		"gravitation": [0, -9.81, 0],
+		"gravitation": [0, -7.81, 0],
 		"timeStepSize": 0.005,
 		"cflMethod": 1, 
 		"cflFactor": 1,
@@ -15,7 +15,7 @@
 		"maxError": 0.05,
 		"maxIterationsV": 100,
 		"maxErrorV": 0.1,		
-		"stiffness": 50000,
+		"stiffness": 0.005,
 		"exponent": 7,
 		"velocityUpdateMethod": 0,
 		"enableDivergenceSolver": true,
@@ -25,19 +25,17 @@
 	"Materials": [
 		{
 			"id": "Fluid",
-			"density0": 10000,
-			"surfaceTension": 0.2,
-			"surfaceTensionMethod": 0,
-			"viscosity": 0.01,
+			"density0": 1.225,
+			"viscosity": 1.81,
 			"viscosityMethod": 1,
 			"dragMethod": 1,
-			"drag": 0.5,
+			"drag": 0.05,
 			"maxEmitterParticles": 10000000
 		}
 	],
 	"RigidBodies": [
 		{
-			"geometryFile": "../model/airbag.obj",
+			"geometryFile": "sphere.obj",
 			"translation": [0.2,0.3,0.0],
 			"rotationAxis": [1, 0.5, 0],
 			"rotationAngle": 0,
@@ -56,7 +54,7 @@
 			"translation": [0.9,0.3,0.0],
 			"rotationAxis": [0, 1, 0],
 			"rotationAngle": 3.1415926535897932384626433832795,
-			"velocity": 5,
+			"velocity": 50,
 			"type": 1,
 			"emitEndTime": 1000
 		}

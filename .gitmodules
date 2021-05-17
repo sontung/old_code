@@ -10,3 +10,6 @@
 [submodule "libraries/correspondence-discrete-optim"]
 	path = libraries/correspondence-discrete-optim
 	url = https://github.com/sontung/correspondence-discrete-optim.git
+[submodule "libraries/SPlisHSPlasH"]
+	path = libraries/SPlisHSPlasH
+	url = git@github.com:InteractiveComputerGraphics/SPlisHSPlasH.git
