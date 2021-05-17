@@ -20,7 +20,9 @@
 		"velocityUpdateMethod": 0,
 		"enableDivergenceSolver": true,
 		"particleAttributes": "density;velocity",
-		"boundaryHandlingMethod": 2
+		"boundaryHandlingMethod": 2,
+		"enableVTKExport": true,
+		"enablePartioExport": true
 	},
 	"Materials": [
 		{
