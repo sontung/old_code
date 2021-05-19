@@ -1,12 +1,12 @@
 {
 	"Configuration": 
 	{
-		"pause": true,
+		"pause": false,
 		"particleRadius": 0.025,
 		"numberOfStepsPerRenderUpdate": 5,
 		"renderWalls": 4,
 		"simulationMethod": 4,
-		"gravitation": [0, -9.81, 0],
+		"gravitation": [0.05, -0.01, 0],
 		"timeStepSize": 0.005,
 		"cflMethod": 1, 
 		"cflFactor": 1,
@@ -21,15 +21,15 @@
 		"enableDivergenceSolver": true,
 		"particleAttributes": "density;velocity",
 		"boundaryHandlingMethod": 2,
-		"enableVTKExport": false,
+		"enableVTKExport": true,
 		"enablePartioExport": false
 	},
 	"Materials": [
 		{
 			"id": "Fluid",
 			"density0": 1.225,
-			"viscosity": 1.81,
-			"viscosityMethod": 0,
+			"viscosity": 0.181,
+			"viscosityMethod": 2,
 			"dragMethod": 1,
 			"drag": 0.0,
 			"maxEmitterParticles": 10000
@@ -37,7 +37,7 @@
 	],
 	"RigidBodies": [
 		{
-			"geometryFile": "repaired_mesh.obj",
+			"geometryFile": "airbag_poisson.obj",
 			"translation": [0.6,0.3,0.0],
 			"rotationAxis": [0, 1, 0],
 			"rotationAngle": 1.57,
@@ -52,11 +52,11 @@
 	],
 	"Emitters": [
 		{
-			"width": 5,
+			"width": 10,
 			"translation": [1.0,0.3,0.0],
 			"rotationAxis": [0, 1, 0],
 			"rotationAngle": 3.1415926535897932384626433832795,
-			"velocity": 100,
+			"velocity": 1,
 			"type": 1,
 			"emitEndTime": 1000
 		}
