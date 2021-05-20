@@ -2,19 +2,19 @@
 	"Configuration": 
 	{
 		"pause": false,
-		"particleRadius": 0.025,
+		"particleRadius": 0.05,
 		"numberOfStepsPerRenderUpdate": 5,
 		"renderWalls": 4,
 		"simulationMethod": 4,
-		"gravitation": [0.05, -0.01, 0],
+		"gravitation": [0, -9.81, 0],
 		"timeStepSize": 0.005,
-		"cflMethod": 1, 
+		"cflMethod": 1,
 		"cflFactor": 1,
 		"cflMaxTimeStepSize": 0.005,
 		"maxIterations": 1000,
 		"maxError": 0.05,
 		"maxIterationsV": 100,
-		"maxErrorV": 0.1,		
+		"maxErrorV": 0.1,
 		"stiffness": 0.005,
 		"exponent": 7,
 		"velocityUpdateMethod": 0,
@@ -27,12 +27,12 @@
 	"Materials": [
 		{
 			"id": "Fluid",
-			"density0": 1.225,
-			"viscosity": 0.181,
-			"viscosityMethod": 2,
+			"density0": 1.184,
+			"viscosity": 0.5,
+			"viscosityMethod": 5,
 			"dragMethod": 1,
 			"drag": 0.0,
-			"maxEmitterParticles": 10000
+			"maxEmitterParticles": 20000
 		}
 	],
 	"RigidBodies": [
@@ -45,18 +45,18 @@
 			"color": [0.1, 0.4, 0.6, 0.0],
 			"isDynamic": false,
 			"isWall": true,
-			"mapInvert": true, 
+			"mapInvert": true,
 			"mapThickness": 0.0,
 			"mapResolution": [40,30,15]
 		}
 	],
 	"Emitters": [
 		{
-			"width": 10,
+			"width": 5,
 			"translation": [1.0,0.3,0.0],
 			"rotationAxis": [0, 1, 0],
 			"rotationAngle": 3.1415926535897932384626433832795,
-			"velocity": 1,
+			"velocity": 10,
 			"type": 1,
 			"emitEndTime": 1000
 		}
