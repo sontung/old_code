@@ -2,10 +2,12 @@
 ```
 extract frames (preprocess)
 ear segment (segmentation)
+simple_preprocess (preprocess)
 edge_detection (preprocess)
 prepare_pixels_set (preprocess)
 matching_main (reconstruction)
 recon_uncalib (reconstruction)
+solve_position (reconstruction)
 ```
 
 ```
@@ -53,3 +55,19 @@ sudo make install
 cd libraries/OpenSfM
 python setup.py build
 ```
+
+
+
+| folder name  | responsible command  | meaning |
+|---|---|---|
+|  ear_segment |  segmentation/ear_segment.py | pretrained weights for ear model |
+|  matching_debugs |   |
+| frames  |  preprocess/pp_utils.extract_frame | raw frames extracted from videos |
+| matching_solutions  |  reconstruction/matching_main.main | matching pairs between frames |
+| sfm_data  |   |
+| frames_ear_coord_only  |  segmentation/ear_segment.py | stores the coordinates of pixels within the ears |
+| point_cloud_solutions  |   |
+| frames_ear_only  |  segmentation/ear_segment.py  | images with only the ears 
+| frames_ear_only_nonblack_bg  |  preprocess/main.simple_preprocess  | convert black background to non-black (128, 128, 255)
+| refined_pixels  | preprocess/main.prepare_pixels_set  | pixels on the edges (lines and elliptic boundaries)
+| frames_ear_only_with_edges  | preprocess/main.prepare_pixels_set  | frames with only the edges of the ears

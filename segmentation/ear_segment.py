@@ -42,7 +42,7 @@ class EAR:
 
 if __name__ == "__main__":
     mypath = "../data_heavy/frames"
-    frames = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+    frames = [f for f in listdir(mypath) if isfile(join(mypath, f)) if ".txt" not in f]
     saved_dir = "../data_heavy/frames_ear_only"
     saved_dir2 = "../data_heavy/frames_ear_coord_only"
 
@@ -55,13 +55,13 @@ if __name__ == "__main__":
         # cv2.imshow("test", combine_image)
         # cv2.waitKey()
         # cv2.destroyAllWindows()
+        # pixels = []
+        # for i in range(image.shape[0]):
+        #     for j in range(image.shape[1]):
+        #         if mask_pre[i, j] > 0:
+        #             pixels.append((i, j))
 
-        pixels = []
-        for i in range(image.shape[0]):
-            for j in range(image.shape[1]):
-                if mask_pre[i, j] > 0:
-                    pixels.append((i, j))
-
+        pixels = np.argwhere(mask_pre > 0)
         with open(join(saved_dir2, im_name), "wb") as fp:
             pickle.dump(pixels, fp)
 

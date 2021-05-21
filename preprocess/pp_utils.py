@@ -31,8 +31,9 @@ def extract_frame():
                     cv2.imwrite("../data_heavy/sfm_data/%d/images/%d-%d.png" % (count, c, count), frame)
                     cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, count), frame)
                     counts.append(count)
-                if count > 100:
-                    break
+            else:
+                break
+
     counts = set(counts)
     with open(join("../data_heavy/frames", "info.txt"), "w") as text_file:
         for c in counts:

@@ -1,6 +1,6 @@
 import cv2 as cv
 import argparse
-from utils import k_means_smoothing as smoothing_func
+from pp_utils import k_means_smoothing as smoothing_func
 
 from os import listdir
 from os.path import isfile, join
