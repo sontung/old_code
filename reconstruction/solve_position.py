@@ -6,54 +6,63 @@ import cv2
 import kmeans1d
 import time
 from scipy.spatial.transform import Rotation as rot_mat_compute
+from pykalman import KalmanFilter
+from matplotlib import pyplot as plt
 
 
-def compute_translation():
+def compute_translation(reverse_for_vis=True):
     """
     translation of the head
     """
     sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]
     all_pixel_dir = "../data_heavy/frames_ear_coord_only"
-    refined_pixel_dir = "../data_heavy/refined_pixels"
-    images_dir = "../data_heavy/frames_ear_only_nonblack_bg"
 
     trajectories = []
+    x_traj = []
+    y_traj = []
     prev_pos = None
     for idx in lines:
         with open("%s/1-%s.png" % (all_pixel_dir, idx), "rb") as fp:
             right_pixels_all = pickle.load(fp)
-        mean = np.mean(np.array(right_pixels_all), axis=0)
-        if prev_pos is not None:
-            trans = np.zeros((3, 1))
-            move = mean - prev_pos
-            trans[2] = -move[1]
-            trans[1] = move[0]
-            trajectories.append(trans)
-        prev_pos = mean
-    new_list = []
-    for i in reversed(trajectories):
-        new_list.append(i*-1)
-    trajectories.extend(new_list)
-    return trajectories
+        if len(right_pixels_all) == 0:
+            mean = [None, None]
+        else:
+            mean = np.mean(np.array(right_pixels_all), axis=0)
+        x_traj.append(mean[0])
+        y_traj.append(mean[1])
+    return x_traj, y_traj
+
+    #     if prev_pos is not None:
+    #         trans = np.zeros((3, 1))
+    #         move = mean - prev_pos
+    #         trans[2] = -move[1]
+    #         trans[1] = move[0]
+    #         trajectories.append(trans)
+    #     prev_pos = mean
+    # if reverse_for_vis:
+    #     new_list = []
+    #     for i in reversed(trajectories):
+    #         new_list.append(i*-1)
+    #     trajectories.extend(new_list)
+    # return trajectories
 
 
 def compute_rotation():
     sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]
-    all_pixel_dir = "../data_heavy/frames_ear_coord_only"
     refined_pixel_dir = "../data_heavy/refined_pixels"
     images_dir = "../data_heavy/frames_ear_only_nonblack_bg"
-
+    line_images_dir = "../data_heavy/hough_lines"
     trajectories = []
     prev_pos = None
     neighbors = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+    all_angles = []
 
     for idx in lines:
         with open("%s/1-%s.png" % (refined_pixel_dir, idx), "rb") as fp:
             right_pixels_edges = pickle.load(fp)
         img = cv2.imread("%s/1-%s.png" % (images_dir, idx))
-        # img = np.zeros_like(img)
         for x, y in right_pixels_edges:
 
             boundary = False
@@ -82,6 +91,9 @@ def compute_rotation():
 
         lines = cv2.HoughLinesP(edges, rho, theta, threshold, np.array([]),
                                 min_line_length, max_line_gap)
+        if lines is None:
+            all_angles.append(None)
+            continue
 
         angles = []
         angles_true = []
@@ -93,27 +105,61 @@ def compute_rotation():
                 angles_true.append(rot_deg)
         clusters, centroids = kmeans1d.cluster(angles, 2)
         rot_deg_overall = np.mean([angles_true[i] for i in range(len(clusters)) if clusters[i] == 0])
-        print(sorted(angles_true), rot_deg_overall)
+        all_angles.append(rot_deg_overall)
+        cv2.imwrite("%s/1-%s.png" % (line_images_dir, idx), line_image)
+        print(rot_deg_overall, angles, "%s/1-%s.png" % (images_dir, idx))
 
-        if prev_pos is not None:
-            move = rot_deg_overall - prev_pos
-            trajectories.append(-move)
-            # trajectories.append(-rot_deg_overall)
+    return all_angles
 
-        prev_pos = rot_deg_overall
+    #     if prev_pos is not None:
+    #         move = rot_deg_overall - prev_pos
+    #         trajectories.append(-move)
+    #     prev_pos = rot_deg_overall
+    #
+    # new_list = []
+    # for i in reversed(trajectories):
+    #     new_list.append(i*-1)
+    # trajectories.extend(new_list)
+    # return trajectories
 
-        # new_img = cv2.addWeighted(img, 0.8, line_image, 1, 0)
-        # new_img = np.vstack([new_img, line_image])
-        # new_img = cv2.resize(new_img, (new_img.shape[1]//4, new_img.shape[0]//4))
-        # cv2.imshow("test", new_img)
-        # cv2.waitKey()
-        # cv2.destroyAllWindows()
-        # break
-    new_list = []
-    for i in reversed(trajectories):
-        new_list.append(i*-1)
-    trajectories.extend(new_list)
-    return trajectories
+
+def kalman_tracking(measurement):
+    MarkedMeasure = np.ma.masked_less(measurement, -1000)
+    print(MarkedMeasure)
+    Transition_Matrix = [[1, 0, 1, 0],
+                         [0, 1, 0, 1],
+                         [0, 0, 1, 0],
+                         [0, 0, 0, 1]]
+    Observation_Matrix = [[1, 0, 0, 0],
+                          [0, 1, 0, 0]]
+    xinit = MarkedMeasure[0, 0]
+    yinit = MarkedMeasure[0, 1]
+    vxinit = MarkedMeasure[1, 0] - MarkedMeasure[0, 0]
+    vyinit = MarkedMeasure[1, 1] - MarkedMeasure[0, 1]
+    initstate = [xinit, yinit, vxinit, vyinit]
+    initcovariance = 1.0e-3 * np.eye(4)
+    transistionCov = 1.0e-4 * np.eye(4)
+    observationCov = 1.0e-1 * np.eye(2)
+    kf = KalmanFilter(transition_matrices=Transition_Matrix,
+                      observation_matrices=Observation_Matrix,
+                      initial_state_mean=initstate,
+                      initial_state_covariance=initcovariance,
+                      transition_covariance=transistionCov,
+                      observation_covariance=observationCov)
+    # kf = KalmanFilter()
+    kf.em(MarkedMeasure, n_iter=5)
+    (filtered_state_means, filtered_state_covariances) = kf.filter(MarkedMeasure)
+    (smoothed_state_means, smoothed_state_covariances) = kf.smooth(MarkedMeasure)
+    print(MarkedMeasure.shape, filtered_state_means.shape, smoothed_state_means.shape)
+    plt.axis([-100, 100, -200, 100])
+    plt.plot(MarkedMeasure[:, 0], MarkedMeasure[:, 1], 'xr', label='measured')
+    plt.plot(filtered_state_means[:, 0], filtered_state_means[:, 1], 'ob',
+             label='kalman filtered')
+    # plt.plot(smoothed_state_means[:, 0], smoothed_state_means[:, 1], 'or',
+    #          label='kalman smoothed')
+    plt.legend(loc=2)
+    plt.title("Constant Velocity Kalman Filter")
+    plt.show()
 
 
 def visualize():
@@ -136,7 +182,10 @@ def visualize():
 
     trajectory = compute_translation()
     rotated_trajectory = compute_rotation()
-    assert len(rotated_trajectory) == len(trajectory)
+    sys.exit()
+    for i in range(len(rotated_trajectory)):
+        print(trajectory[0][i], trajectory[1][i], rotated_trajectory[i])
+    assert len(rotated_trajectory) == len(trajectory[0]), "%d %d" % (len(rotated_trajectory), len(trajectory))
     counter = 0
 
     degg = 10
@@ -167,6 +216,32 @@ def visualize():
                                                               rotate_view)
 
 
+def interpolate(mapping, x):
+    top = min([du for du in mapping if du >= x])
+    bot = max([du for du in mapping if du <= x])
+    y0 = mapping[bot]
+    y2 = mapping[top]
+    return y0+(y2-y0)*(x-bot)/(top-bot)
+
+
 if __name__ == '__main__':
-    # compute_rotation()
     visualize()
+    # from scipy import interpolate
+    #
+    # trajectory = compute_translation(reverse_for_vis=False)
+    # trajectory = np.hstack(trajectory)
+    # trajectory = np.delete(trajectory, 0, 0)
+    # trajectory = np.transpose(trajectory)
+    # print(trajectory[:, 0].shape)
+    #
+    # x2y = {du1: trajectory[du1, 0] for du1 in range(trajectory[:, 0].shape[0])}
+    #
+    # x_points = list(range(trajectory[:, 0].shape[0]))
+    # y_points = trajectory[:, 0]
+    # tck = interpolate.splrep(x_points, y_points, k=3)
+    #
+    # values = [interpolate.splev(du, tck) for du in np.linspace(0, 31, 1000)]
+    # plt.plot(x_points, y_points, "ob")
+    # plt.plot(np.linspace(0, 31, 1000), values)
+    # plt.show()
+
