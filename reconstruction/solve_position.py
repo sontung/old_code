@@ -7,6 +7,7 @@ import kmeans1d
 import time
 from scipy.spatial.transform import Rotation as rot_mat_compute
 from pykalman import KalmanFilter
+from scipy import interpolate
 from matplotlib import pyplot as plt
 
 
@@ -103,11 +104,21 @@ def compute_rotation():
                 rot_deg = np.rad2deg(np.arctan2(y2-y1, x2-x1))
                 angles.append(abs(rot_deg))
                 angles_true.append(rot_deg)
+        #         print(x2, x1, y2, y1)
+        #         cv2.imshow("test", line_image)
+        #         cv2.waitKey()
+        #         cv2.destroyAllWindows()
+        #
+        # cv2.imshow("test", img)
+        # cv2.waitKey()
+        # cv2.destroyAllWindows()
+
         clusters, centroids = kmeans1d.cluster(angles, 2)
         rot_deg_overall = np.mean([angles_true[i] for i in range(len(clusters)) if clusters[i] == 0])
         all_angles.append(rot_deg_overall)
         cv2.imwrite("%s/1-%s.png" % (line_images_dir, idx), line_image)
-        print(rot_deg_overall, angles, "%s/1-%s.png" % (images_dir, idx))
+        # print(rot_deg_overall, angles, "%s/1-%s.png" % (images_dir, idx))
+        # print()
 
     return all_angles
 
@@ -121,45 +132,6 @@ def compute_rotation():
     #     new_list.append(i*-1)
     # trajectories.extend(new_list)
     # return trajectories
-
-
-def kalman_tracking(measurement):
-    MarkedMeasure = np.ma.masked_less(measurement, -1000)
-    print(MarkedMeasure)
-    Transition_Matrix = [[1, 0, 1, 0],
-                         [0, 1, 0, 1],
-                         [0, 0, 1, 0],
-                         [0, 0, 0, 1]]
-    Observation_Matrix = [[1, 0, 0, 0],
-                          [0, 1, 0, 0]]
-    xinit = MarkedMeasure[0, 0]
-    yinit = MarkedMeasure[0, 1]
-    vxinit = MarkedMeasure[1, 0] - MarkedMeasure[0, 0]
-    vyinit = MarkedMeasure[1, 1] - MarkedMeasure[0, 1]
-    initstate = [xinit, yinit, vxinit, vyinit]
-    initcovariance = 1.0e-3 * np.eye(4)
-    transistionCov = 1.0e-4 * np.eye(4)
-    observationCov = 1.0e-1 * np.eye(2)
-    kf = KalmanFilter(transition_matrices=Transition_Matrix,
-                      observation_matrices=Observation_Matrix,
-                      initial_state_mean=initstate,
-                      initial_state_covariance=initcovariance,
-                      transition_covariance=transistionCov,
-                      observation_covariance=observationCov)
-    # kf = KalmanFilter()
-    kf.em(MarkedMeasure, n_iter=5)
-    (filtered_state_means, filtered_state_covariances) = kf.filter(MarkedMeasure)
-    (smoothed_state_means, smoothed_state_covariances) = kf.smooth(MarkedMeasure)
-    print(MarkedMeasure.shape, filtered_state_means.shape, smoothed_state_means.shape)
-    plt.axis([-100, 100, -200, 100])
-    plt.plot(MarkedMeasure[:, 0], MarkedMeasure[:, 1], 'xr', label='measured')
-    plt.plot(filtered_state_means[:, 0], filtered_state_means[:, 1], 'ob',
-             label='kalman filtered')
-    # plt.plot(smoothed_state_means[:, 0], smoothed_state_means[:, 1], 'or',
-    #          label='kalman smoothed')
-    plt.legend(loc=2)
-    plt.title("Constant Velocity Kalman Filter")
-    plt.show()
 
 
 def visualize():
@@ -182,9 +154,22 @@ def visualize():
 
     trajectory = compute_translation()
     rotated_trajectory = compute_rotation()
-    sys.exit()
+    control_points = [[], [], []]
+    control_points_time = [[], [], []]
+
     for i in range(len(rotated_trajectory)):
-        print(trajectory[0][i], trajectory[1][i], rotated_trajectory[i])
+        for idx, computation in enumerate([trajectory[0][i], trajectory[1][i], rotated_trajectory[i]]):
+            if computation is not None:
+                control_points[idx].append(computation)
+                control_points_time[idx].append(i)
+    for i in range(3):
+        plt.subplot("31%d" % i)
+        tck = interpolate.splrep(control_points_time[i], control_points[i], k=3)
+        values = [interpolate.splev(du, tck) for du in np.linspace(0, len(rotated_trajectory), 1000)]
+        plt.plot(control_points_time[i], control_points[i], "ob")
+        plt.plot(np.linspace(0, len(rotated_trajectory), 1000), values)
+    plt.show()
+
     assert len(rotated_trajectory) == len(trajectory[0]), "%d %d" % (len(rotated_trajectory), len(trajectory))
     counter = 0
 
@@ -214,14 +199,6 @@ def visualize():
 
     o3d.visualization.draw_geometries_with_animation_callback([pcd],
                                                               rotate_view)
-
-
-def interpolate(mapping, x):
-    top = min([du for du in mapping if du >= x])
-    bot = max([du for du in mapping if du <= x])
-    y0 = mapping[bot]
-    y2 = mapping[top]
-    return y0+(y2-y0)*(x-bot)/(top-bot)
 
 
 if __name__ == '__main__':
