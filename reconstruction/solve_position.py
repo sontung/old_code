@@ -11,6 +11,20 @@ from scipy import interpolate
 from matplotlib import pyplot as plt
 
 
+def b_spline_smooth(_trajectory):
+    control_points = []
+    control_points_time = []
+
+    for idx, computation in enumerate(_trajectory):
+        if computation is not None:
+            control_points.append(computation)
+            control_points_time.append(idx)
+
+    tck = interpolate.splrep(control_points_time, control_points, k=3)
+    values = [interpolate.splev(du, tck) for du in np.linspace(0, len(_trajectory), len(_trajectory))]
+    return values
+
+
 def compute_translation(reverse_for_vis=True):
     """
     translation of the head
@@ -32,21 +46,24 @@ def compute_translation(reverse_for_vis=True):
             mean = np.mean(np.array(right_pixels_all), axis=0)
         x_traj.append(mean[0])
         y_traj.append(mean[1])
-    return x_traj, y_traj
 
-    #     if prev_pos is not None:
-    #         trans = np.zeros((3, 1))
-    #         move = mean - prev_pos
-    #         trans[2] = -move[1]
-    #         trans[1] = move[0]
-    #         trajectories.append(trans)
-    #     prev_pos = mean
-    # if reverse_for_vis:
-    #     new_list = []
-    #     for i in reversed(trajectories):
-    #         new_list.append(i*-1)
-    #     trajectories.extend(new_list)
-    # return trajectories
+    # b spline interpolation
+    x_traj, y_traj = map(b_spline_smooth, (x_traj, y_traj))
+    for idx in range(len(x_traj)):
+        mean = np.array([x_traj[idx], y_traj[idx]])
+        if prev_pos is not None:
+            trans = np.zeros((3, 1))
+            move = mean - prev_pos
+            trans[2] = -move[1]
+            trans[1] = move[0]
+            trajectories.append(trans)
+        prev_pos = mean
+    if reverse_for_vis:
+        new_list = []
+        for i in reversed(trajectories):
+            new_list.append(i*-1)
+        trajectories.extend(new_list)
+    return trajectories
 
 
 def compute_rotation():
@@ -84,7 +101,7 @@ def compute_rotation():
         theta = np.pi / 180  # angular resolution in radians of the Hough grid
         threshold = 15  # minimum number of votes (intersections in Hough grid cell)
         min_line_length = 50  # minimum number of pixels making up a line
-        max_line_gap = 20  # maximum gap in pixels between connectable line segments
+        max_line_gap = 30  # maximum gap in pixels between connectable line segments
         line_image = np.copy(img) * 0  # creating a blank to draw lines on
 
         edges = cv2.cvtColor(temp, cv2.COLOR_BGR2GRAY)
@@ -116,61 +133,32 @@ def compute_rotation():
         clusters, centroids = kmeans1d.cluster(angles, 2)
         rot_deg_overall = np.mean([angles_true[i] for i in range(len(clusters)) if clusters[i] == 0])
         all_angles.append(rot_deg_overall)
-        cv2.imwrite("%s/1-%s.png" % (line_images_dir, idx), line_image)
-        # print(rot_deg_overall, angles, "%s/1-%s.png" % (images_dir, idx))
-        # print()
+    #     cv2.imwrite("%s/1-%s.png" % (line_images_dir, idx), line_image)
+    #     print(rot_deg_overall, angles, "%s/1-%s.png" % (images_dir, idx))
+    # sys.exit()
 
-    return all_angles
+    all_angles = b_spline_smooth(all_angles)
+    for rot_deg_overall in all_angles:
+        if prev_pos is not None:
+            move = rot_deg_overall - prev_pos
+            trajectories.append(-move)
+        prev_pos = rot_deg_overall
 
-    #     if prev_pos is not None:
-    #         move = rot_deg_overall - prev_pos
-    #         trajectories.append(-move)
-    #     prev_pos = rot_deg_overall
-    #
-    # new_list = []
-    # for i in reversed(trajectories):
-    #     new_list.append(i*-1)
-    # trajectories.extend(new_list)
-    # return trajectories
+    new_list = []
+    for i in reversed(trajectories):
+        new_list.append(i*-1)
+    trajectories.extend(new_list)
+    return trajectories
 
 
 def visualize():
-    # o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
-    # source_raw = o3d.io.read_triangle_mesh("../data/max-planck.obj")
-    #
-    # vis = o3d.visualization.Visualizer()
-    # vis.create_window()
-    # vis.add_geometry(source_raw)
-    # for i in range(len(trajectories)):
-    #     source_raw.translate(trajectories[i])
-    #     vis.update_geometry(source_raw)
-    #     vis.poll_events()
-    #     vis.update_renderer()
-    # vis.destroy_window()
-
     global pcd, trajectory, counter, rotated_trajectory, degg, parameters
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
 
     trajectory = compute_translation()
     rotated_trajectory = compute_rotation()
-    control_points = [[], [], []]
-    control_points_time = [[], [], []]
 
-    for i in range(len(rotated_trajectory)):
-        for idx, computation in enumerate([trajectory[0][i], trajectory[1][i], rotated_trajectory[i]]):
-            if computation is not None:
-                control_points[idx].append(computation)
-                control_points_time[idx].append(i)
-    for i in range(3):
-        plt.subplot("31%d" % i)
-        tck = interpolate.splrep(control_points_time[i], control_points[i], k=3)
-        values = [interpolate.splev(du, tck) for du in np.linspace(0, len(rotated_trajectory), 1000)]
-        plt.plot(control_points_time[i], control_points[i], "ob")
-        plt.plot(np.linspace(0, len(rotated_trajectory), 1000), values)
-    plt.show()
-
-    assert len(rotated_trajectory) == len(trajectory[0]), "%d %d" % (len(rotated_trajectory), len(trajectory))
     counter = 0
 
     degg = 10
@@ -197,8 +185,7 @@ def visualize():
 
         return False
 
-    o3d.visualization.draw_geometries_with_animation_callback([pcd],
-                                                              rotate_view)
+    o3d.visualization.draw_geometries_with_animation_callback([pcd], rotate_view)
 
 
 if __name__ == '__main__':
