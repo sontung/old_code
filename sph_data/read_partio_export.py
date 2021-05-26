@@ -24,7 +24,7 @@ def write_pointcloud(pcd, save_file):
     return
 
 
-def read_vtk_file(directory='../data_heavy/sph_solutions/vtk/', save_dir='/media/hblab/01D5F2DD5173DEA0/Anhntn1/libgeom/pointcloud'):
+def read_vtk_file(directory='../data_heavy/sph_solutions/vtk/', save_dir='/media/hblab/01D5F2DD5173DEA0/Anhntn1/libgeom/vtk_pointcloud'):
     vtk_files = glob.glob(directory + '*.vtk')
     vtk_files = sorted(vtk_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
     for file in vtk_files:
@@ -81,7 +81,7 @@ def read_vtk_file_with_vis(directory='../data_heavy/sph_solutions/vtk/', save_im
 
 
 if __name__ == "__main__":
-    read_vtk_file_with_vis()
+    read_vtk_file()
 # data = meshio.read("../data_heavy/sph_solutions/vtk/ParticleData_Fluid_26.vtk")
 # print(data.points)
 
