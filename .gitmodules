@@ -13,3 +13,6 @@
 [submodule "libraries/SPlisHSPlasH"]
 	path = libraries/SPlisHSPlasH
 	url = git@github.com:InteractiveComputerGraphics/SPlisHSPlasH.git
+[submodule "libraries/libgeom"]
+	path = libraries/libgeom
+	url = git@github.com:sontung/libgeom.git
