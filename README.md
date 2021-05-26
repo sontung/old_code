@@ -10,11 +10,18 @@ recon_uncalib (reconstruction)
 solve_position (reconstruction)
 ```
 
+### running order
 ```
-sudo apt-get install xorg-dev libglu1-mesa-dev
+extract frames (preprocess)
+ear segment (segmentation)
+edge_detection() (preprocess)
+prepare_pixels_set() (preprocess)
+simple_preprocess() (preprocess)
+solve_position (reconstruction)
 ```
 
 ```
+sudo apt-get install xorg-dev libglu1-mesa-dev
 python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
 pip install kornia
 ```

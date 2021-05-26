@@ -14,14 +14,25 @@ from matplotlib import pyplot as plt
 def b_spline_smooth(_trajectory):
     control_points = []
     control_points_time = []
-
+    not_there = []
     for idx, computation in enumerate(_trajectory):
         if computation is not None:
             control_points.append(computation)
             control_points_time.append(idx)
-
+        else:
+            not_there.append(idx)
+    plt.plot(control_points_time, control_points, "ob")
     tck = interpolate.splrep(control_points_time, control_points, k=3)
     values = [interpolate.splev(du, tck) for du in np.linspace(0, len(_trajectory), len(_trajectory))]
+    plt.plot(not_there, [interpolate.splev(du, tck) for du in not_there], "or")
+
+    plt.plot(np.linspace(0, len(_trajectory), 1000),
+             [interpolate.splev(du, tck) for du in np.linspace(0, len(_trajectory), 1000)], "y")
+    plt.xlabel("time")
+    plt.ylabel("position")
+    plt.legend(["available points", "missing points", "interpolated curve"], prop={'size': 15})
+    plt.savefig('/home/sontung/Downloads/Figure_1.png', dpi=300)
+    plt.show()
     return values
 
 
