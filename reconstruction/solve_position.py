@@ -174,7 +174,8 @@ def visualize():
 
     degg = 10
     parameters = o3d.io.read_pinhole_camera_parameters("cam_pos.json")
-
+    ctr.convert_from_pinhole_camera_parameters(parameters)
+    
     def rotate_view(vis):
         global pcd, trajectory, counter, rotated_trajectory, degg, parameters
         pcd.translate(trajectory[counter % len(trajectory)]/5)
