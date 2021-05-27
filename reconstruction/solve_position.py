@@ -32,7 +32,7 @@ def b_spline_smooth(_trajectory):
     plt.ylabel("position")
     plt.legend(["available points", "missing points", "interpolated curve"], prop={'size': 15})
     plt.savefig('/home/sontung/Downloads/Figure_1.png', dpi=300)
-    plt.show()
+    # plt.show()
     return values
 
 
@@ -174,8 +174,8 @@ def visualize():
 
     degg = 10
     parameters = o3d.io.read_pinhole_camera_parameters("cam_pos.json")
-    ctr.convert_from_pinhole_camera_parameters(parameters)
-    
+    # ctr.convert_from_pinhole_camera_parameters(parameters)
+
     def rotate_view(vis):
         global pcd, trajectory, counter, rotated_trajectory, degg, parameters
         pcd.translate(trajectory[counter % len(trajectory)]/5)
@@ -197,7 +197,7 @@ def visualize():
 
         return False
 
-    o3d.visualization.draw_geometries_with_animation_callback([pcd], rotate_view)
+    # o3d.visualization.draw_geometries_with_animation_callback([pcd], rotate_view)
 
 
 if __name__ == '__main__':
@@ -220,4 +220,3 @@ if __name__ == '__main__':
     # plt.plot(x_points, y_points, "ob")
     # plt.plot(np.linspace(0, 31, 1000), values)
     # plt.show()
-
