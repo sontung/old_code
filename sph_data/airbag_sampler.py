@@ -1,108 +1,163 @@
 import os
 import numpy as np
-import open3d as o3d
+import open3d
 
 
-class AirBagPointCloud:
+def convert_array_to_pointclouds(points, normals=None):
+    if normals:
+        pcd = open3d.geometry.PointCloud(points=open3d.utility.Vector3dVector(points),
+                                         normals=open3d.utility.Vector3dVector(normals))
+    else:
+        pcd = open3d.geometry.PointCloud(points=open3d.utility.Vector3dVector(points))
 
-    def __init__(self, R_torus=40, r_torus=35, r_sphere=30):
-        self.R_torus = R_torus
-        self.r_torus = r_torus
-        self.r_sphere = r_sphere
+    pcd.paint_uniform_color([0, 0, 0])
+    return pcd
 
-    def sample_airbag(self):
-        points_torus = self.sample_torus()
-        points_sphere = self.sample_sphere()
-        points_1, points_2 = self.take_surface(points_torus, points_sphere)
-        # self.visualize_airbag(points_1, points_2)
-        pcd = self.array_to_point_cloud(np.vstack([points_1, points_2]))
-        print(f'The number of point: {len(pcd.points)}')
-        return pcd
 
-    def sample_torus(self, n_sample=500):
-        angle_range = np.linspace(0, 2*np.pi, endpoint=False, num=n_sample)
+def sample_points_torus(large_radius, small_radius, n_sample=500):
+    angle_range = np.linspace(0, 2 * np.pi, endpoint=False, num=n_sample)
 
-        point_cloud = np.zeros((n_sample*n_sample, 3))
-        cnt = 0
-        for i, theta in enumerate(angle_range):
-            for j, phi in enumerate(angle_range):
-                x = (self.R_torus + self.r_torus * np.cos(theta)) * np.cos(phi)
-                y = (self.R_torus + self.r_torus * np.cos(theta)) * np.sin(phi)
-                z = self.r_torus * np.sin(theta)
+    point_cloud = np.zeros((n_sample * n_sample, 3))
+    cnt = 0
+    for i, theta in enumerate(angle_range):
+        for j, phi in enumerate(angle_range):
+            x = (large_radius + small_radius * np.cos(theta)) * np.cos(phi)
+            y = (large_radius + small_radius * np.cos(theta)) * np.sin(phi)
+            z = small_radius * np.sin(theta)
 
-                point_cloud[cnt] = [x, y, z]
-                cnt += 1
+            point_cloud[cnt] = [x, y, z]
+            cnt += 1
 
-        return point_cloud
+    return point_cloud
 
-    def sample_sphere(self, center=(0, 0, 0), n_sample=500):
-        x0, y0, z0 = center
-        angle_range = np.linspace(0, 2 * np.pi, endpoint=False, num=n_sample)
 
-        point_cloud = np.zeros((n_sample * n_sample, 3))
-        cnt = 0
-        for i, theta in enumerate(np.linspace(0, np.pi, endpoint=False, num=n_sample)):
-            for j, phi in enumerate(np.linspace(0, 2 * np.pi, endpoint=False, num=n_sample)):
-                x = x0 + self.r_sphere * np.sin(theta) * np.cos(phi)
-                y = y0 + self.r_sphere * np.sin(theta) * np.sin(phi)
-                z = z0 + self.r_sphere * np.cos(theta)
+def sample_point_sphere(radius, center=(0, 0, 0), n_sample=300):
+    x0, y0, z0 = center
 
-                point_cloud[cnt] = [x, y, z]
-                cnt += 1
-        return point_cloud
+    point_cloud = np.zeros((n_sample * n_sample, 3))
+    cnt = 0
+    for i, theta in enumerate(np.linspace(0, np.pi, endpoint=True, num=n_sample)):
+        for j, phi in enumerate(np.linspace(0, 2 * np.pi, endpoint=False, num=n_sample)):
+            x = x0 + radius * np.sin(theta) * np.cos(phi)
+            y = y0 + radius * np.sin(theta) * np.sin(phi)
+            z = z0 + radius * np.cos(theta)
 
-    def take_surface(self, pcd_torus, pcd_sphere):
-        t_surface_points = []
-        for point in pcd_torus:
-            x, y, z = point
-            du3 = x * x + y * y + z * z
-            du4 = self.r_sphere * self.r_sphere
-            if du3 >= du4:
-                t_surface_points.append(point)
+            point_cloud[cnt] = [x, y, z]
+            cnt += 1
+    return point_cloud
 
-        s_surface_points = []
-        for point in pcd_sphere:
-            x, y, z = point
-            du1 = np.square(np.sqrt(x * x + y * y) - self.R_torus) + z * z
-            du2 = self.r_torus * self.r_torus
-            if du1 < du2:
-                continue
-            else:
-                s_surface_points.append(point)
-        return np.array(t_surface_points), np.array(s_surface_points)
 
-    @staticmethod
-    def visualize_airbag(points1, points2):
+def create_airbag_pointclouds(large_radius_torus, small_radius_torus, radius_sphere):
+    torus_points = sample_points_torus(large_radius_torus, small_radius_torus)
+    sphere_points = sample_point_sphere(radius_sphere)
 
-        point = np.vstack([points1, points2])
-        fake_color1 = np.zeros(points1.shape)
-        fake_color2 = np.full(points2.shape, 0.6)
-        color = np.vstack([fake_color1, fake_color2])
+    surface_points = []
 
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(point)
-        pcd.colors = o3d.utility.Vector3dVector(color)
+    for i in range(torus_points.shape[0]):
+        x, y, z = torus_points[i]
+        du3 = x * x + y * y + z * z
+        du4 = radius_sphere * radius_sphere
+        if du3 >= du4:
+            surface_points.append(torus_points[i])
 
-        o3d.visualization.draw_geometries([pcd])
-        return
-
-    @staticmethod
-    def array_to_point_cloud(points, color=None, visualize=False):
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(points)
-
-        if color:
-            fake_color = np.full(points.shape, color)
+    for j in range(sphere_points.shape[0]):
+        x, y, z = sphere_points[j]
+        du1 = np.square(np.sqrt(x * x + y * y) - large_radius_torus) + z * z
+        du2 = small_radius_torus * small_radius_torus
+        if du1 < du2:
+            continue
         else:
-            fake_color = np.random.rand(1, 3)
+            surface_points.append(sphere_points[j])
 
-        pcd.colors = o3d.utility.Vector3dVector(fake_color)
+    pcd = convert_array_to_pointclouds(np.array(surface_points))
+    return pcd
 
-        if visualize:
-            o3d.visualization.draw_geometries([pcd])
-        return pcd
+
+def calculate_normal_point_on_torus(phi, theta):
+    tx = -np.sin(phi)
+    ty = np.cos(phi)
+    tz = 0
+    sx = np.cos(phi) * (-np.sin(theta))
+    sy = np.sin(phi) * (-np.sin(theta))
+    sz = np.cos(theta)
+
+    nx = ty * sz - tz * sy
+    ny = tz * sx - tx * sz
+    nz = tx * sy - ty * sx
+
+    length = np.sqrt(nx * nx + ny * ny + nz * nz)
+    nx /= length
+    ny /= length
+    nz /= length
+    return [nx, ny, nz]
+
+
+def sample_points_torus_with_normal(large_radius, small_radius, n_sample=500):
+    angle_range = np.linspace(0, 2 * np.pi, endpoint=False, num=n_sample)
+
+    point_cloud = np.zeros((n_sample * n_sample, 3))
+    normals = np.zeros((n_sample * n_sample, 3))
+    cnt = 0
+    for i, theta in enumerate(angle_range):
+        for j, phi in enumerate(angle_range):
+            x = (large_radius + small_radius * np.cos(theta)) * np.cos(phi)
+            y = (large_radius + small_radius * np.cos(theta)) * np.sin(phi)
+            z = small_radius * np.sin(theta)
+
+            point_cloud[cnt] = [x, y, z]
+            normals[cnt] = calculate_normal_point_on_torus(phi, theta)
+            cnt += 1
+
+    return point_cloud, normals
+
+
+def sample_point_sphere_with_normal(radius, center=(0, 0, 0), n_sample=100):
+    x0, y0, z0 = center
+
+    point_cloud = np.zeros((n_sample * n_sample, 3))
+    normals = np.zeros((n_sample * n_sample, 3))
+    cnt = 0
+    for i, theta in enumerate(np.linspace(0, np.pi, endpoint=True, num=n_sample)):
+        for j, phi in enumerate(np.linspace(0, 2 * np.pi, endpoint=False, num=n_sample)):
+            x = x0 + radius * np.sin(theta) * np.cos(phi)
+            y = y0 + radius * np.sin(theta) * np.sin(phi)
+            z = z0 + radius * np.cos(theta)
+
+            point_cloud[cnt] = [x, y, z]
+            normals[cnt] = [x / radius, y / radius, z / radius]
+            cnt += 1
+    return point_cloud, normals
+
+
+def create_airbag_pointclouds_with_normal(large_radius_torus, small_radius_torus, radius_sphere):
+    torus_points, torus_normals = sample_points_torus_with_normal(large_radius_torus, small_radius_torus)
+    sphere_points, sphere_normals = sample_point_sphere_with_normal(radius_sphere)
+
+    surface_points = []
+    surface_normals = []
+
+    for i in range(torus_points.shape[0]):
+        x, y, z = torus_points[i]
+        du3 = x * x + y * y + z * z
+        du4 = radius_sphere * radius_sphere
+        if du3 >= du4:
+            surface_points.append(torus_points[i])
+            surface_normals.append(torus_normals[i])
+
+    for j in range(sphere_points.shape[0]):
+        x, y, z = sphere_points[j]
+        du1 = np.square(np.sqrt(x * x + y * y) - large_radius_torus) + z * z
+        du2 = small_radius_torus * small_radius_torus
+        if du1 < du2:
+            continue
+        else:
+            surface_points.append(sphere_points[j])
+            surface_normals.append(sphere_normals[j])
+
+    pcd = convert_array_to_pointclouds(np.array(surface_points), np.array(surface_normals))
+    return pcd
 
 
 if __name__ == '__main__':
-    airbag_obj = AirBagPointCloud(45, 35, 40)
-    airbag_obj.sample_airbag()
+    obj_pcd = create_airbag_pointclouds(20, 10, 15)
+    open3d.visualization.draw_geometries([obj_pcd])
