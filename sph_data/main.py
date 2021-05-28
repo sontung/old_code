@@ -1,22 +1,20 @@
 import sys
+sys.path.append("../libraries/libgeom")
 
-import open3d.visualization
 import pysplishsplash as sph
 import os
 import pathlib
-import numpy as np
 import open3d as o3d
+from tqdm import tqdm
 from airbag_sampler import create_airbag_pointclouds
-from libraries.libgeom.lib import surface_reconstruct_marching_cube, remove_inside_mesh
-from libraries.libgeom.utils import read_obj_file_texture_coords
+from lib import surface_reconstruct_marching_cube, remove_inside_mesh, surface_reconstruct_marching_cube_with_vis, loop_subdivision
 import glob
 import meshio
 
 
-def build_shape(radius, pointclouds_file="../data_heavy/airbag.pcd", model_file='airbag.obj'):
+def build_shape(radius=(40, 30, 35), model_file='airbag.obj'):
     large_radius_torus, small_radius_torus, radius_sphere = radius
     pcd = create_airbag_pointclouds(large_radius_torus, small_radius_torus, radius_sphere)
-    o3d.io.write_point_cloud(pointclouds_file, pcd)
 
     vertices, faces = surface_reconstruct_marching_cube(point_cloud=pcd)
     remove_list, face_status, vertices, keep_faces = remove_inside_mesh(vertices, faces)
@@ -27,42 +25,68 @@ def build_shape(radius, pointclouds_file="../data_heavy/airbag.pcd", model_file=
 
 
 def sph_simulation():
+    print("running sph simulation")
     base = sph.Exec.SimulatorBase()
     output_dir = os.path.abspath("../data_heavy/sph_solutions")
 
     root_path = pathlib.Path(__file__).parent.absolute()
     scene_file_path = os.path.join(root_path, 'EmitterModel_option_1.json')
     base.init(sceneFile=scene_file_path, outputDir=output_dir)
-    base.setValueFloat(base.STOP_AT, 25)  # Important to have the dot to denote a float
-    # base.setValueBool(base.VTK_EXPORT, True)
+    base.setValueFloat(base.STOP_AT, 25.0)  # Important to have the dot to denote a float
     base.setValueFloat(base.DATA_EXPORT_FPS, 5)
     gui = sph.GUI.Simulator_GUI_imgui(base)
     base.setGui(gui)
     base.run()
 
 
-def vtk_to_mesh(vtk_folder='../data_heavy/sph_solutions/vtk/'):
+def vtk_to_mesh(vtk_folder='../data_heavy/sph_solutions/vtk/', if_vis=False):
     vtk_files = glob.glob(vtk_folder + '*.vtk')
     vtk_files = sorted(vtk_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
     list_mesh = []
-    for file in vtk_files:
-        # print(file)
+    for file in tqdm(vtk_files, desc="Extracting meshes from vtk files"):
         data = meshio.read(file)
         point_cloud = data.points
-        pcd = open3d.geometry.PointCloud(points=open3d.utility.Vector3dVector(point_cloud))
+        pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(point_cloud))
 
-        v, f = surface_reconstruct_marching_cube(pcd)
-        mesh = open3d.geometry.TriangleMesh(vertices=open3d.utility.Vector3dVector(v),
-                                            triangles=open3d.utility.Vector3iVector(f))
+        v, f = surface_reconstruct_marching_cube(pcd, cube_size=0.15, isovalue=0.14, verbose=False)
+        v, f = loop_subdivision(v, f)
+
+        mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(v),
+                                         triangles=o3d.utility.Vector3iVector(f))
         list_mesh.append(mesh)
+        # surface_reconstruct_marching_cube_with_vis(pcd)
 
+    if if_vis:
+        vis = o3d.visualization.Visualizer()
+
+        vis.create_window()
+        ctr = vis.get_view_control()
+        prev_ang = 0
+        ang = 0
+        ind = 0
+        for mesh in list_mesh:
+            vis.clear_geometries()
+            mesh.compute_vertex_normals()
+            original_mesh_wf = o3d.geometry.LineSet.create_from_triangle_mesh(mesh)
+            original_mesh_wf.paint_uniform_color([0, 0, 0])
+            original_mesh_wf.translate([3, 0, 0])
+            vis.add_geometry(original_mesh_wf)
+            vis.add_geometry(mesh)
+            ctr.rotate(250, 0.0)
+
+            while ang-prev_ang <= 20:
+                ang += 10
+                vis.poll_events()
+                vis.update_renderer()
+            prev_ang = ang
+            vis.capture_screen_image("saved/im%d.png" % ind)
+            ind += 1
     return list_mesh
 
 
 if __name__ == "__main__":
     # sample()
-    radius = (40, 30, 35)
-    build_shape(radius)
-    sph_simulation()
-    output_mesh = vtk_to_mesh()
+    # build_shape()
+    # sph_simulation()
+    output_mesh = vtk_to_mesh(if_vis=True)
 
