@@ -50,6 +50,9 @@ def vtk_to_mesh(vtk_folder='../data_heavy/sph_solutions/vtk/', if_vis=False):
 
         v, f = surface_reconstruct_marching_cube(pcd, cube_size=0.15, isovalue=0.14, verbose=False)
         v, f = loop_subdivision(v, f)
+        mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(v),
+                                         triangles=o3d.utility.Vector3iVector(f))
+        o3d.io.write_triangle_mesh("mc_solutions/%s.obj" % file.split("/")[-1].split(".")[0], mesh)
 
         mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(v),
                                          triangles=o3d.utility.Vector3iVector(f))
