@@ -11,11 +11,10 @@ import open3d as o3d
 from tqdm import tqdm
 from airbag_sampler import create_airbag_pointclouds
 from lib import surface_reconstruct_marching_cube, remove_inside_mesh
-from lib import surface_reconstruct_marching_cube_with_vis, loop_subdivision, mesh_filtering
+from lib import surface_reconstruct_marching_cube_with_vis, mesh_filtering
 import glob
 import meshio
 import time
-from collections import Counter
 
 
 def build_shape(radius=(40, 30, 35), model_file='airbag.obj'):
@@ -53,8 +52,7 @@ def vtk_to_mesh(vtk_folder='../data_heavy/sph_solutions/vtk/', if_vis=False):
         pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(point_cloud))
 
         v, f = surface_reconstruct_marching_cube(pcd, cube_size=0.15, isovalue=0.14, verbose=False)
-        _, _, v, f = remove_inside_mesh(v, f, verbose=False)
-        f = mesh_filtering(v, f)
+        f = mesh_filtering(v, f, if_vis=False, verbose=True)
 
         mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(v),
                                          triangles=o3d.utility.Vector3iVector(f))
@@ -63,7 +61,6 @@ def vtk_to_mesh(vtk_folder='../data_heavy/sph_solutions/vtk/', if_vis=False):
         mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(v),
                                          triangles=o3d.utility.Vector3iVector(f))
         list_mesh.append(mesh)
-        # surface_reconstruct_marching_cube_with_vis(pcd)
 
     if if_vis:
         vis = o3d.visualization.Visualizer()
@@ -95,7 +92,7 @@ def vtk_to_mesh(vtk_folder='../data_heavy/sph_solutions/vtk/', if_vis=False):
 
 if __name__ == "__main__":
     start = time.time()
-    # build_shape()
-    # sph_simulation()
+    build_shape()
+    sph_simulation()
     output_mesh = vtk_to_mesh(if_vis=False)
     print("SPH simulation done in %f" % (time.time()-start))
