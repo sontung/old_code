@@ -12,29 +12,30 @@
 
 #include <iostream>
 
-Eigen::MatrixXd V,U;
-Eigen::MatrixXi F;
-Eigen::SparseMatrix<double> L;
-igl::opengl::glfw::Viewer viewer;
+using namespace Eigen;
+using namespace std;
 
-int main(int argc, char *argv[])
+MatrixXd U, V;
+MatrixXi F;
+SparseMatrix<double> L;
+
+void surface_smoothing(MatrixXd &originalV, MatrixXi &originalF, MatrixXd &outV, MatrixXi &outF)
 {
-  using namespace Eigen;
-  using namespace std;
+  igl::opengl::glfw::Viewer viewer;
 
-  // Load a mesh in OFF format
-  igl::readOBJ("/home/sontung/work/3d-air-bag-p2/sph_data/mc_solutions/ParticleData_Fluid_100.obj", V, F);
+  U = originalV;
+  F = originalF;
 
   // Compute Laplace-Beltrami operator: #V by #V
-  igl::cotmatrix(V,F,L);
+  igl::cotmatrix(originalV,originalF,L);
 
   // Alternative construction of same Laplacian
   SparseMatrix<double> G,K;
   // Gradient/Divergence
-  igl::grad(V,F,G);
+  igl::grad(originalV,originalF,G);
   // Diagonal per-triangle "mass matrix"
   VectorXd dblA;
-  igl::doublearea(V,F,dblA);
+  igl::doublearea(originalV,originalF,dblA);
   // Place areas along diagonal #dim times
   const auto & T = 1.*(dblA.replicate(3,1)*0.5).asDiagonal();
   // Laplacian K built as discrete divergence of gradient or equivalently
@@ -89,16 +90,16 @@ int main(int argc, char *argv[])
 
   // Use original normals as pseudo-colors
   MatrixXd N;
-  igl::per_vertex_normals(V,F,N);
+  igl::per_vertex_normals(originalV,originalF,N);
   MatrixXd C = N.rowwise().normalized().array()*0.5+0.5;
 
   // Initialize smoothing with base mesh
-  U = V;
-  viewer.data().set_mesh(U, F);
+  U = originalV;
+  viewer.data().set_mesh(U, originalF);
   viewer.data().set_colors(C);
   viewer.callback_key_down = key_down;
 
   cout<<"Press [space] to smooth."<<endl;;
   cout<<"Press [r] to reset."<<endl;;
-  return viewer.launch();
+  viewer.launch();
 }

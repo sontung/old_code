@@ -1,34 +1,41 @@
+#include "main_fairing.cpp"
+#include "main_smoothing.cpp"
+
+#include <igl/readOBJ.h>
 #include <igl/opengl/glfw/Viewer.h>
+
+#include <iostream>
+
+Eigen::MatrixXd V1, V2;
+Eigen::MatrixXi F1, F2;
+igl::opengl::glfw::Viewer viewer;
+
+const auto &key_down = [](igl::opengl::glfw::Viewer &viewer,unsigned char key,int mod)->bool
+  {
+    switch(key)
+    {
+      case 'r':
+      case 'R':
+        break;
+      default:
+        return false;
+    }
+    // Send new positions, update normals, recenter
+    viewer.data().set_vertices(V2);
+    viewer.data().compute_normals();
+    viewer.core().align_camera_center(V2,F2);
+    return true;
+  };
+
 
 int main(int argc, char *argv[])
 {
-  // Inline mesh of a cube
-  const Eigen::MatrixXd V= (Eigen::MatrixXd(8,3)<<
-    0.0,0.0,0.0,
-    0.0,0.0,1.0,
-    0.0,1.0,0.0,
-    0.0,1.0,1.0,
-    1.0,0.0,0.0,
-    1.0,0.0,1.0,
-    1.0,1.0,0.0,
-    1.0,1.0,1.0).finished();
-  const Eigen::MatrixXi F = (Eigen::MatrixXi(12,3)<<
-    1,7,5,
-    1,3,7,
-    1,4,3,
-    1,2,4,
-    3,8,7,
-    3,4,8,
-    5,7,8,
-    5,8,6,
-    1,5,6,
-    1,6,2,
-    2,6,8,
-    2,8,4).finished().array()-1;
+  using namespace Eigen;
+  using namespace std;
 
-  // Plot the mesh
-  igl::opengl::glfw::Viewer viewer;
-  viewer.data().set_mesh(V, F);
-  viewer.data().set_face_based(true);
+  igl::readOBJ("/home/sontung/work/3d-air-bag-p2/sph_data/mc_solutions/ParticleData_Fluid_100.obj", V1, F1);
+  surface_fairing(V1, F1, V2, F2);
+  viewer.data().set_mesh(V1, F);
+  viewer.callback_key_down = key_down;
   viewer.launch();
 }
