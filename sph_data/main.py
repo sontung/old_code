@@ -21,7 +21,7 @@ def build_shape(radius=(40, 30, 35), model_file='airbag.obj'):
     large_radius_torus, small_radius_torus, radius_sphere = radius
     pcd = create_airbag_pointclouds(large_radius_torus, small_radius_torus, radius_sphere)
 
-    vertices, faces = surface_reconstruct_marching_cube(point_cloud=pcd)
+    vertices, faces = surface_reconstruct_marching_cube(point_cloud=pcd, cube_size=0.75, isovalue=0.7)
     remove_list, face_status, vertices, keep_faces = remove_inside_mesh(vertices, faces)
 
     kept_mesh = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices),
@@ -94,5 +94,5 @@ if __name__ == "__main__":
     start = time.time()
     build_shape()
     sph_simulation()
-    output_mesh = vtk_to_mesh(if_vis=False)
+    output_mesh = vtk_to_mesh(if_vis=True)
     print("SPH simulation done in %f" % (time.time()-start))
