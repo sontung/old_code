@@ -37,7 +37,7 @@
 	],
 	"RigidBodies": [
 		{
-			"geometryFile": "airbag_poisson.obj",
+			"geometryFile": "airbag.obj",
 			"translation": [0.6,0.3,0.0],
 			"rotationAxis": [0, 1, 0],
 			"rotationAngle": 1.57,
