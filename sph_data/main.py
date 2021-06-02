@@ -94,5 +94,5 @@ if __name__ == "__main__":
     start = time.time()
     build_shape()
     sph_simulation()
-    output_mesh = vtk_to_mesh(if_vis=True)
+    output_mesh = vtk_to_mesh(if_vis=False)
     print("SPH simulation done in %f" % (time.time()-start))
