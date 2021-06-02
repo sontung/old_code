@@ -14,3 +14,4 @@ sph_data/image_gif
 */saved/*
 *.gif
 sph_data/libigl-example-project/build/
+segmentation/output/
