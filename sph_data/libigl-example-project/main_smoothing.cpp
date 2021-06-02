@@ -15,44 +15,10 @@
 using namespace Eigen;
 using namespace std;
 
-MatrixXd U, V;
-MatrixXi F;
 SparseMatrix<double> L;
 
-void surface_smoothing(MatrixXd &originalV, MatrixXi &originalF, MatrixXd &outV, MatrixXi &outF)
-{
-  igl::opengl::glfw::Viewer viewer;
-
-  U = originalV;
-  F = originalF;
-
-  // Compute Laplace-Beltrami operator: #V by #V
-  igl::cotmatrix(originalV,originalF,L);
-
-  // Alternative construction of same Laplacian
-  SparseMatrix<double> G,K;
-  // Gradient/Divergence
-  igl::grad(originalV,originalF,G);
-  // Diagonal per-triangle "mass matrix"
-  VectorXd dblA;
-  igl::doublearea(originalV,originalF,dblA);
-  // Place areas along diagonal #dim times
-  const auto & T = 1.*(dblA.replicate(3,1)*0.5).asDiagonal();
-  // Laplacian K built as discrete divergence of gradient or equivalently
-  // discrete Dirichelet energy Hessian
-  K = -G.transpose() * T * G;
-  cout<<"|K-L|: "<<(K-L).norm()<<endl;
-
-  const auto &key_down = [](igl::opengl::glfw::Viewer &viewer,unsigned char key,int mod)->bool
+void smooth(MatrixXd &U, MatrixXi &F)
   {
-    switch(key)
-    {
-      case 'r':
-      case 'R':
-        U = V;
-        break;
-      case ' ':
-      {
         // Recompute just mass matrix on each step
         SparseMatrix<double> M;
         igl::massmatrix(U,F,igl::MASSMATRIX_TYPE_BARYCENTRIC,M);
@@ -75,31 +41,45 @@ void surface_smoothing(MatrixXd &originalV, MatrixXi &originalF, MatrixXd &outV,
         U.rowwise() -= centroid;
         // Normalize to unit surface area (important for numerics)
         U.array() /= sqrt(area);
-        break;
-      }
-      default:
-        return false;
-    }
-    // Send new positions, update normals, recenter
-    viewer.data().set_vertices(U);
-    viewer.data().compute_normals();
-    viewer.core().align_camera_center(U,F);
-    return true;
   };
 
 
-  // Use original normals as pseudo-colors
-  MatrixXd N;
-  igl::per_vertex_normals(originalV,originalF,N);
-  MatrixXd C = N.rowwise().normalized().array()*0.5+0.5;
+void surface_smoothing(MatrixXd originalV, MatrixXi originalF, int loop, MatrixXd &outV, MatrixXi &outF)
+{
+    MatrixXd temV;
+    MatrixXi temF;
+    temV = originalV;
+    temF = originalF;
 
-  // Initialize smoothing with base mesh
-  U = originalV;
-  viewer.data().set_mesh(U, originalF);
-  viewer.data().set_colors(C);
-  viewer.callback_key_down = key_down;
+    // Compute Laplace-Beltrami operator: #V by #V
+    igl::cotmatrix(originalV,originalF,L);
 
-  cout<<"Press [space] to smooth."<<endl;;
-  cout<<"Press [r] to reset."<<endl;;
-  viewer.launch();
+    // Alternative construction of same Laplacian
+    SparseMatrix<double> G,K;
+    // Gradient/Divergence
+    igl::grad(originalV,originalF,G);
+    // Diagonal per-triangle "mass matrix"
+    VectorXd dblA;
+    igl::doublearea(originalV,originalF,dblA);
+    // Place areas along diagonal #dim times
+    const auto & T = 1.*(dblA.replicate(3,1)*0.5).asDiagonal();
+    // Laplacian K built as discrete divergence of gradient or equivalently
+    // discrete Dirichelet energy Hessian
+    K = -G.transpose() * T * G;
+    cout<<"|K-L|: "<<(K-L).norm()<<endl;
+
+
+    // Use original normals as pseudo-colors
+    MatrixXd N;
+    igl::per_vertex_normals(originalV,originalF,N);
+    MatrixXd C = N.rowwise().normalized().array()*0.5+0.5;
+
+    // Initialize smoothing with base mesh
+    for (int i=0; i<loop; i++)
+    {
+    smooth(temV, temF);
+    }
+
+    outV = temV;
+    outF = temF;
 }

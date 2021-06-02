@@ -13,51 +13,27 @@
 
 #include <iostream>
 
-Eigen::MatrixXd V, newV;
-Eigen::MatrixXi F, newF;
-Eigen::SparseMatrix<double> L;
-igl::opengl::glfw::Viewer viewer;
+using namespace Eigen;
 
-int main(int argc, char *argv[])
+void up_sample(MatrixXd originV, MatrixXi originF, int iter, MatrixXd &outV, MatrixXi &outF)
 {
-  using namespace Eigen;
-  using namespace std;
 
-  // Load a mesh in OFF format
-  igl::readOBJ("/home/sontung/work/3d-air-bag-p2/sph_data/mc_solutions/ParticleData_Fluid_10.obj", V, F);
-
-  const auto &key_down = [](igl::opengl::glfw::Viewer &viewer,unsigned char key,int mod)->bool
-  {
-    switch(key)
+    if (iter <= 0)
     {
-      case 'r':
-      case 'R':
-        newV = V;
-        newF = F;
-        break;
-      case ' ':
-      {
-        igl::loop(newV, newF, newV, newF);
-        break;
-      }
-      default:
-        return false;
+        outV = originV;
+        outF = originF;
     }
-    // Send new positions, update normals, recenter
-    viewer.data().set_vertices(newV);
-    viewer.data().compute_normals();
-    viewer.core().align_camera_center(newV, newF);
-    return true;
-  };
+    else
+    {
+        MatrixXd newV;
+        MatrixXi newF;
+        newV = originV; newF = originF;
 
+        for (int i; i< iter; i++)
+        {
+            igl::loop(newV, newF, newV, newF);
+        }
 
-  // Initialize smoothing with base mesh
-  newV = V;
-  newF = F;
-  viewer.data().set_mesh(newV, newF);
-  viewer.callback_key_down = key_down;
-
-  cout<<"Press [space] to smooth."<<endl;;
-  cout<<"Press [r] to reset."<<endl;;
-  return viewer.launch();
-}
+        outV = newV; outF = newF;
+    }
+};

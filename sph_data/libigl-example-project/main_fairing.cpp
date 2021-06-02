@@ -27,6 +27,8 @@ void surface_fairing(MatrixXd &originalV, MatrixXi &originalF, MatrixXd &outV, M
 
   if (originalLoop.size() == 0) {
     std::cout << "Mesh has no hole!" << std::endl;
+    outV = originalV;
+    outF = originalF;
     return;
   }
 
