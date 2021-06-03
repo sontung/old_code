@@ -22,10 +22,14 @@ def build_shape(radius=(40, 30, 35), model_file='airbag.obj'):
     pcd = create_airbag_pointclouds(large_radius_torus, small_radius_torus, radius_sphere)
 
     vertices, faces = surface_reconstruct_marching_cube(point_cloud=pcd, cube_size=0.75, isovalue=0.7)
-    remove_list, face_status, vertices, keep_faces = remove_inside_mesh(vertices, faces)
+    remove_list, face_status, kept_vertices, kept_faces = remove_inside_mesh(vertices, faces)
 
-    kept_mesh = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices),
-                                          o3d.utility.Vector3iVector(keep_faces))
+    kept_mesh = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(kept_vertices),
+                                          o3d.utility.Vector3iVector(kept_faces))
+    lineset = o3d.geometry.LineSet.create_from_triangle_mesh(kept_mesh)
+    lineset.paint_uniform_color([0, 0, 0])
+
+    o3d.visualization.draw_geometries([lineset])
     o3d.io.write_triangle_mesh(model_file, kept_mesh)
 
 
@@ -52,14 +56,13 @@ def vtk_to_mesh(vtk_folder='../data_heavy/sph_solutions/vtk/', if_vis=False):
         pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(point_cloud))
 
         v, f = surface_reconstruct_marching_cube(pcd, cube_size=0.15, isovalue=0.14, verbose=False)
-        f = mesh_filtering(v, f, if_vis=False, verbose=True)
+        nv, nf, _, _ = mesh_filtering(v, f, if_vis=False, verbose=True)
 
-        mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(v),
-                                         triangles=o3d.utility.Vector3iVector(f))
+        mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(nv),
+                                         triangles=o3d.utility.Vector3iVector(nf))
+
         o3d.io.write_triangle_mesh("mc_solutions/%s.obj" % file.split("/")[-1].split(".")[0], mesh)
 
-        mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(v),
-                                         triangles=o3d.utility.Vector3iVector(f))
         list_mesh.append(mesh)
 
     if if_vis:
@@ -92,7 +95,9 @@ def vtk_to_mesh(vtk_folder='../data_heavy/sph_solutions/vtk/', if_vis=False):
 
 if __name__ == "__main__":
     start = time.time()
+    os.makedirs("mc_solutions", exist_ok=True)
+    os.makedirs("mc_solutions_smoothed", exist_ok=True)
     build_shape()
-    sph_simulation()
-    output_mesh = vtk_to_mesh(if_vis=False)
+    # sph_simulation()
+    # output_mesh = vtk_to_mesh(if_vis=False)
     print("SPH simulation done in %f" % (time.time()-start))

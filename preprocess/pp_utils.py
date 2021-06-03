@@ -1,6 +1,8 @@
+import os
+
 import cv2
 import numpy as np
-
+import os
 from os import listdir
 from os.path import isfile, join
 from sklearn.cluster import KMeans
@@ -15,9 +17,11 @@ def extract_frame():
     extract frames from videos stored in ../data_heavy/run
     """
     mypath = "../data_heavy/run"
-    videos = [join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))]
+    videos = sorted([join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))])
     print("Extracting frames from", videos)
     counts = []
+    os.makedirs("../data_heavy/frames", exist_ok=True)
+
     for c, v in enumerate(videos):
         cap = cv2.VideoCapture(v)
         count = 0
@@ -27,8 +31,8 @@ def extract_frame():
             if ret:
                 count += 1
                 if count % 3 == 0:
-                    Path("../data_heavy/sfm_data/%d/images" % count).mkdir(parents=True, exist_ok=True)
-                    cv2.imwrite("../data_heavy/sfm_data/%d/images/%d-%d.png" % (count, c, count), frame)
+                    # Path("../data_heavy/sfm_data/%d/images" % count).mkdir(parents=True, exist_ok=True)
+                    # cv2.imwrite("../data_heavy/sfm_data/%d/images/%d-%d.png" % (count, c, count), frame)
                     cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, count), frame)
                     counts.append(count)
             else:

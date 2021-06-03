@@ -1,3 +1,4 @@
+import os
 import pickle
 import sys
 import numpy as np
@@ -6,7 +7,6 @@ import cv2
 import kmeans1d
 import time
 from scipy.spatial.transform import Rotation as rot_mat_compute
-from pykalman import KalmanFilter
 from scipy import interpolate
 from matplotlib import pyplot as plt
 
@@ -163,6 +163,7 @@ def compute_rotation():
 
 
 def visualize():
+    os.makedirs("../data_heavy/saved/", exist_ok=True)
     global pcd, trajectory, counter, rotated_trajectory, degg, parameters
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
