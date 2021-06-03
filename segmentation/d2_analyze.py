@@ -114,6 +114,7 @@ def do_test(cfg, model):
             print_csv_format(results_i)
     if len(results) == 1:
         results = list(results.values())[0]
+
     return results
 
 
