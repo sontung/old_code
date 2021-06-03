@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import pickle
-
+import os
 from tqdm import tqdm
 from detectron2 import model_zoo
 from detectron2.config import get_cfg
@@ -11,7 +11,7 @@ from os.path import isfile, join
 
 
 class EAR:
-    def __init__(self, checkpoint_dir="../data_heavy/ear_segment/ear.pth", threshold=0.5):
+    def __init__(self, checkpoint_dir="../data_heavy/ear.pth", threshold=0.5):
         cfg = get_cfg()
         cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1
@@ -45,6 +45,8 @@ if __name__ == "__main__":
     frames = [f for f in listdir(mypath) if isfile(join(mypath, f)) if ".txt" not in f]
     saved_dir = "../data_heavy/frames_ear_only"
     saved_dir2 = "../data_heavy/frames_ear_coord_only"
+    os.makedirs(saved_dir, exist_ok=True)
+    os.makedirs(saved_dir2, exist_ok=True)
 
     model = EAR()
     for im_name in tqdm(frames, desc="Extracting mask segment"):

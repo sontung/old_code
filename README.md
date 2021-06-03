@@ -1,3 +1,16 @@
+# PUT VIDEOS INTO RUN FOLDER OF DATA_HEAVY, AND LABEL 1 FOR DRV VIDEO
+
+### dependencies
+```
+pip install open3d
+pip install scikit-learn
+pip install kornia
+pip install pysplishsplash
+pip install microdict
+pip install meshio
+pip install pykdtree
+```
+
 ### Running 
 ```
 extract frames (preprocess)
@@ -23,7 +36,6 @@ solve_position (reconstruction)
 ```
 sudo apt-get install xorg-dev libglu1-mesa-dev
 python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
-pip install kornia
 ```
 
 
@@ -50,7 +62,7 @@ unzip opencv_contrib.zip
 # Create build directory and switch into it
 mkdir -p build && cd build
 # Configure
-cmake -DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib-master/modules ../opencv-master
+cmake -DOPENCV_ENABLE_NONFREE=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib-master/modules ../opencv-master -DPYTHON_DEFAULT_EXECUTABLE=$(which python) 
 # Build
 cmake --build .
 sudo make install

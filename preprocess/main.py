@@ -1,3 +1,4 @@
+import os
 from os import listdir
 from os.path import isfile, join
 from edge_detection import process as edge_process_func
@@ -14,6 +15,8 @@ def edge_detection():
     frames = [f for f in listdir(mypath) if isfile(join(mypath, f))]
     edge_saving_dir = "../data_heavy/frames_ear_only_with_edges"
     pixels_path = "../data_heavy/frames_ear_coord_only"
+    os.makedirs(edge_saving_dir, exist_ok=True)
+    os.makedirs(pixels_path, exist_ok=True)
 
     for im_name in tqdm(frames, desc="Extracting edges"):
 
@@ -41,6 +44,7 @@ def prepare_pixels_set():
     saved_dir = "../data_heavy/refined_pixels"
     names = [f for f in listdir(pixels_path) if isfile(join(pixels_path, f))]
     neighbors = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+    os.makedirs(saved_dir, exist_ok=True)
 
     for im_name in tqdm(names, desc="Extracting refined pixel list for matching"):
         edge_im = cv2.imread(join(edges_path, im_name), 0)
@@ -82,6 +86,7 @@ def simple_preprocess():
     frames = [f for f in listdir(mypath) if isfile(join(mypath, f))]
     saving_dir = "../data_heavy/frames_ear_only_nonblack_bg"
     pixels_path = "../data_heavy/frames_ear_coord_only"
+    os.makedirs(saving_dir, exist_ok=True)
 
     for im_name in tqdm(frames, desc="Convert to non-black background"):
         img = cv2.imread(join(mypath, im_name))
