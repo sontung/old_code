@@ -22,10 +22,23 @@ void smooth(MatrixXd &U, MatrixXi &F)
         // Recompute just mass matrix on each step
         SparseMatrix<double> M;
         igl::massmatrix(U,F,igl::MASSMATRIX_TYPE_BARYCENTRIC,M);
+
+        // except error
+        if ((M.cols() != L.cols()) && (M.rows() != L.rows()))
+        {
+            return;
+        }
+
         // Solve (M-delta*L) U = M*U
         const auto & S = (M - 0.001*L);
+
         Eigen::SimplicialLLT<Eigen::SparseMatrix<double > > solver(S);
-        assert(solver.info() == Eigen::Success);
+//        assert(solver.info() == Eigen::Success);
+        if (solver.info() != Eigen::Success)
+        {
+            return;
+        }
+
         U = solver.solve(M*U).eval();
         // Compute centroid and subtract (also important for numerics)
         VectorXd dblA;
@@ -44,7 +57,7 @@ void smooth(MatrixXd &U, MatrixXi &F)
   };
 
 
-void surface_smoothing(MatrixXd originalV, MatrixXi originalF, int loop, MatrixXd &outV, MatrixXi &outF)
+void surface_smoothing(MatrixXd originalV, MatrixXi originalF, int iter, MatrixXd &outV, MatrixXi &outF)
 {
     MatrixXd temV;
     MatrixXi temF;
@@ -75,7 +88,7 @@ void surface_smoothing(MatrixXd originalV, MatrixXi originalF, int loop, MatrixX
     MatrixXd C = N.rowwise().normalized().array()*0.5+0.5;
 
     // Initialize smoothing with base mesh
-    for (int i=0; i<loop; i++)
+    for (int i=0; i<iter; i++)
     {
     smooth(temV, temF);
     }

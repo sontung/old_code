@@ -72,11 +72,11 @@ int main(int argc, char *argv[])
       surface_fairing(V1, F1, V2, F2);
       surface_smoothing(V2, F2, 5, V3, F3);
       up_sample(V3, F3, 2, V4, F4);
-//      viewer.data().set_mesh(V4, F4);
+      igl::writeOBJ(out_path,V4,F4);
+
+//      viewer.data().set_mesh(V3, F3);
 //      viewer.callback_key_down = key_down;
 //      viewer.launch();
-
-      igl::writeOBJ(out_path,V4,F4);
   }
 
 }
