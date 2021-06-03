@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 
       igl::readOBJ(in_path, V1, F1);
       surface_fairing(V1, F1, V2, F2);
-      surface_smoothing(V2, F2, 5, V3, F3);
+      surface_smoothing(V2, F2, 2, V3, F3);
       up_sample(V3, F3, 2, V4, F4);
       igl::writeOBJ(out_path,V4,F4);
 

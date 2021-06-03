@@ -22,22 +22,11 @@ void smooth(MatrixXd &U, MatrixXi &F)
         // Recompute just mass matrix on each step
         SparseMatrix<double> M;
         igl::massmatrix(U,F,igl::MASSMATRIX_TYPE_BARYCENTRIC,M);
-
-        // except error
-        if ((M.cols() != L.cols()) && (M.rows() != L.rows()))
-        {
-            return;
-        }
-
         // Solve (M-delta*L) U = M*U
         const auto & S = (M - 0.001*L);
 
         Eigen::SimplicialLLT<Eigen::SparseMatrix<double > > solver(S);
-//        assert(solver.info() == Eigen::Success);
-        if (solver.info() != Eigen::Success)
-        {
-            return;
-        }
+        assert(solver.info() == Eigen::Success);
 
         U = solver.solve(M*U).eval();
         // Compute centroid and subtract (also important for numerics)
