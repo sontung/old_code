@@ -1,3 +1,5 @@
+
+from utils.metrics import Evaluator
 import torch
 from modeling.deeplab import *
 from torch.utils.data import DataLoader, Dataset
@@ -45,7 +47,7 @@ model.load_state_dict(checkpoint['state_dict'])
 
 test_set = TestDataset()
 test_loader = DataLoader(test_set, batch_size=8, shuffle=False)
-
+evaluator = Evaluator(21)
 for bid, sample in enumerate(test_loader):
     image, target = sample['image'], sample['label']
     image = image.cuda()
@@ -58,3 +60,14 @@ for bid, sample in enumerate(test_loader):
         imall = make_grid(image, 8, normalize=False, range=(0, 255))
         imall = imall.permute(1, 2, 0).cpu().numpy().astype(np.uint8)
         Image.fromarray(np.hstack([segall, imall])).save("outputs/s%d.png" % bid)
+        
+        pred = output.data.cpu().numpy()
+        target = target.cpu().numpy()
+        pred = np.argmax(pred, axis=1)
+        evaluator.add_batch(target, pred)
+                                                                                              
+# Fast test during the training
+Acc = evaluator.Pixel_Accuracy()
+Acc_class = evaluator.Pixel_Accuracy_Class()
+mIoU = evaluator.Mean_Intersection_over_Union()
+FWIoU = evaluator.Frequency_Weighted_Intersection_over_Union()
