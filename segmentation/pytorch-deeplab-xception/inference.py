@@ -3,9 +3,12 @@ from modeling.deeplab import *
 from torch.utils.data import DataLoader, Dataset
 from dataloaders.datasets import cityscapes, coco
 from dataloaders import custom_transforms as tr
+from torchvision.utils import make_grid
 from torchvision import transforms
+from dataloaders.utils import decode_seg_map_sequence
 from PIL import Image
 import glob
+import numpy as np
 
 
 class TestDataset(Dataset):
@@ -20,7 +23,7 @@ class TestDataset(Dataset):
 
     def __getitem__(self, ind):
         _img = Image.open(self.all_path_files[ind]).convert('RGB')
-        sample = {'image': _img, "label": _img}
+        sample = {'image': _img, "label": _img, "name": self.all_path_files[ind]}
         return self.transform_val(sample)
 
     def transform_val(self, sample):
@@ -43,14 +46,15 @@ model.load_state_dict(checkpoint['state_dict'])
 test_set = TestDataset()
 test_loader = DataLoader(test_set, batch_size=8, shuffle=False)
 
-for sample in test_loader:
+for bid, sample in enumerate(test_loader):
     image, target = sample['image'], sample['label']
     image = image.cuda()
     with torch.no_grad():
-       output = model(image)
-
-
-
-if i % (num_img_tr // 10) == 0:
-    global_step = i + num_img_tr * epoch
-    self.summary.visualize_image(self.writer, self.args.dataset, image, target, output, global_step)
+        output = model(image)
+        seg = decode_seg_map_sequence(torch.max(output, 1)[1].detach().cpu().numpy(), dataset="coco")
+        Image.fromarray(seg[0].permute(1, 2, 0).cpu().numpy().astype(np.uint8)).save("outputs/%d.png" % bid)
+        segall = make_grid(seg, 8, normalize=False, range=(0, 255))
+        segall = segall.permute(1, 2, 0).cpu().numpy().astype(np.uint8)
+        imall = make_grid(image, 8, normalize=False, range=(0, 255))
+        imall = imall.permute(1, 2, 0).cpu().numpy().astype(np.uint8)
+        Image.fromarray(np.hstack([segall, imall])).save("outputs/s%d.png" % bid)
