@@ -10,3 +10,6 @@
 [submodule "libraries/libgeom"]
 	path = libraries/libgeom
 	url = git@github.com:sontung/libgeom.git
+[submodule "libraries/partio"]
+	path = libraries/partio
+	url = git@github.com:wdas/partio.git

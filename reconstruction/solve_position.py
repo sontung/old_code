@@ -175,13 +175,16 @@ def visualize():
 
     degg = 10
     parameters = o3d.io.read_pinhole_camera_parameters("cam_pos.json")
+    
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+    vis.add_geometry(pcd)
 
     def rotate_view(vis):
         global pcd, trajectory, counter, rotated_trajectory, degg, parameters
         pcd.translate(trajectory[counter % len(trajectory)]/5)
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
                                              degrees=True).as_matrix()
-        print(counter)
         pcd.rotate(rot_mat, pcd.get_center())
 
         vis.update_geometry(pcd)
@@ -189,21 +192,18 @@ def visualize():
         if counter > len(trajectory):
             counter = 0
             sys.exit()
-        time.sleep(0.5)
+#        time.sleep(0.5)
+        ctr = vis.get_view_control()
+        ctr.convert_from_pinhole_camera_parameters(parameters)
 
-        # ctr = vis.get_view_control()
-        # ctr.convert_from_pinhole_camera_parameters(parameters)
-        vis.capture_screen_image("../data_heavy/saved/%s.png" % counter, False)
-
+        vis.capture_screen_image("../data_heavy/saved/%s.png" % counter)
+#        param = vis.get_view_control().convert_to_pinhole_camera_parameters()
+#        o3d.io.write_pinhole_camera_parameters("cam_pos.json", param)
         return False
 
-    a_vis = o3d.visualization.Visualizer()
-    a_vis.create_window(visible=False)
-    a_vis.add_geometry(pcd)
-    #a_vis.get_render_option().load_from_json("cam_pos.json")
-    a_vis.register_animation_callback(rotate_view)
-    a_vis.run()
-    a_vis.destroy_window()
+    vis.register_animation_callback(rotate_view)
+    vis.run()
+    vis.destroy_window()
 
 
 if __name__ == '__main__':

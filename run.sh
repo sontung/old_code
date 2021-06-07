@@ -21,4 +21,11 @@ cmake ..
 make
 ./example
 
+cd segmentation/pytorch-deeplab-xception
+python inference.py
+
+cd ../../visualization
+python main
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
