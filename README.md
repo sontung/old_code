@@ -40,6 +40,11 @@ sudo apt-get install xorg-dev libglu1-mesa-dev
 python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
 ```
 
+### partio
+```
+cd libraries/partio
+make -j prefix=./compiled install
+```
 
 ### Ceres
 ```
