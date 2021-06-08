@@ -93,11 +93,58 @@ def vtk_to_mesh(vtk_folder='../data_heavy/sph_solutions/vtk/', if_vis=False):
     return list_mesh
 
 
+def txt_to_mesh(txt_folder='../data_heavy/sph_solutions/new_state/', if_vis=False):
+    txt_files = glob.glob(txt_folder + '*.txt')
+    txt_files = sorted(txt_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
+    list_mesh = []
+    for file in tqdm(txt_files, desc="Extracting meshes from vtk files"):
+        data = o3d.io.read_point_cloud(file, format='xyzrgb')
+        point_cloud = np.asarray(data.points)
+        pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(point_cloud))
+
+        nv, nf = surface_reconstruct_marching_cube(pcd, cube_size=0.15, isovalue=0.14, verbose=False)
+        # nv, nf, _, _ = mesh_filtering(v, f, if_vis=False, verbose=True)
+
+        mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(nv),
+                                         triangles=o3d.utility.Vector3iVector(nf))
+        o3d.io.write_triangle_mesh("mc_solutions/%s.obj" % file.split("/")[-1].split(".")[0], mesh)
+
+        list_mesh.append(mesh)
+
+    if if_vis:
+        vis = o3d.visualization.Visualizer()
+
+        vis.create_window()
+        ctr = vis.get_view_control()
+        prev_ang = 0
+        ang = 0
+        ind = 0
+        for mesh in list_mesh:
+            vis.clear_geometries()
+            mesh.compute_vertex_normals()
+            original_mesh_wf = o3d.geometry.LineSet.create_from_triangle_mesh(mesh)
+            original_mesh_wf.paint_uniform_color([0, 0, 0])
+            original_mesh_wf.translate([3, 0, 0])
+            vis.add_geometry(original_mesh_wf)
+            vis.add_geometry(mesh)
+            ctr.rotate(250, 0.0)
+
+            while ang-prev_ang <= 1000:
+                ang += 10
+                vis.poll_events()
+                vis.update_renderer()
+            prev_ang = ang
+            vis.capture_screen_image("saved/im%d.png" % ind)
+            ind += 1
+    return list_mesh
+
+
 if __name__ == "__main__":
     start = time.time()
     os.makedirs("mc_solutions", exist_ok=True)
     os.makedirs("mc_solutions_smoothed", exist_ok=True)
-    build_shape()
+    # build_shape()
     # sph_simulation()
     # output_mesh = vtk_to_mesh(if_vis=False)
+    txt_to_mesh(if_vis=True)
     print("SPH simulation done in %f" % (time.time()-start))
