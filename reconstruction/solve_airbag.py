@@ -1,4 +1,5 @@
 import os.path
+from tqdm import tqdm
 
 from solve_position import b_spline_smooth
 from scipy import interpolate
@@ -36,7 +37,7 @@ def sample_accordingly3(new_time_step=27):
 
     new_particles_matrix = np.full((max_nb_particles, new_time_step, 3), -100, dtype=float)
     # sampling frame
-    for i in range(max_nb_particles):
+    for i in tqdm(range(max_nb_particles), desc="Sampling new vertices"):
         p = particles_matrix[i]
         null_idx = np.argwhere(p[:, 0] <= -99)[:, 0]
         start_idx = 0
@@ -110,7 +111,7 @@ def sample_accordingly(nb_frames):
 
 def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_state/'):
     os.makedirs("../data_heavy/sph_solutions/new_state/", exist_ok=True)
-    for i in range(particles_matrix.shape[1]):
+    for i in tqdm(range(particles_matrix.shape[1]), desc="Writing new vertices"):
         p_in_time_step = particles_matrix[:, i, :]
         write_file = os.path.join(save_folder, f"new_particles_{i}.txt")
         with open(write_file, 'w') as f:
