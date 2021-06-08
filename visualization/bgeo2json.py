@@ -179,7 +179,8 @@ def main():
     file1, file2 = filenames[0:2]
     ext1 = os.path.splitext(file1)[1]
     ext2 = os.path.splitext(file2)[1]
-
+    sph_states = "data_heavy/sph_solutions/state"
+    for file1 in 
     partio_extensions = ('.bgeo', '.geo', '.bhclassic', '.ptc', '.pdb')
 
     # Validate files
