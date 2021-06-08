@@ -12,6 +12,13 @@ from matplotlib import pyplot as plt
 
 
 def b_spline_smooth(_trajectory):
+    """
+    b spline smoothing for missing values (denoted None)
+    Args:
+        _trajectory:
+
+    Returns:
+    """
     control_points = []
     control_points_time = []
     not_there = []

@@ -26,6 +26,7 @@ import sys
 sys.path.append("../libraries/partio/build/Linux-5.4.0-x86_64-optimize/compiled/lib/python3.8/site-packages")
 import os, sys, json
 import partio
+import glob
 
 def toJson(particleSet):
     """ Converts a particle set to json """
@@ -156,65 +157,19 @@ def main():
     filenames = []
     verbose = False
     compress = False
-    for arg in sys.argv[1:]:
-        if arg in ('-h', '--help'):
-            print(__doc__)
-            return
+    
 
-        if arg in ('-v', '--verbose'):
-            verbose = True
-            continue
-
-        if arg in ('-c', '--compress'):
-            compress = True
-            continue
-
-        filenames.append(arg)
-
-    if len(filenames) != 2:
-        print(__doc__)
-        sys.stderr.write('Incorrect number of arguments.\n')
-        sys.exit(1)
-
-    file1, file2 = filenames[0:2]
-    ext1 = os.path.splitext(file1)[1]
-    ext2 = os.path.splitext(file2)[1]
-    sph_states = "data_heavy/sph_solutions/state"
-    for file1 in 
+    sph_states = "../data_heavy/sph_solutions/state/*.bgeo"
+    all_files = glob.glob(sph_states)
+    print(all_files)
     partio_extensions = ('.bgeo', '.geo', '.bhclassic', '.ptc', '.pdb')
 
-    # Validate files
-    if not os.path.exists(file1):
-        sys.stderr.write('Invalid input file: {}\n'.format(file1))
-        sys.exit(1)
-
-    # Convert from json to partio
-    if ext1 == '.json':
-        if ext2 not in partio_extensions:
-            sys.stderr.write('Unknown partio extension for: {}\n'.format(file2))
-            sys.exit(1)
-
-        with open(file1, 'r') as fp:
-            data = json.load(fp)
-        particleSet = fromJson(data)
-        partio.write(file2, particleSet, compress)
-        sys.exit(0)
-
-    if ext1 not in partio_extensions:
-        sys.stderr.write('Unknown partio extension for: {}\n'.format(file1))
-        sys.exit(1)
-
-    # Convert from partio to json
-    if ext1 in partio_extensions:
+    for file1 in all_files:
         particleSet = partio.read(file1, verbose)
         data = toJson(particleSet)
         with open("%s.json" % file1, 'w') as fp:
             json.dump(data, fp, indent=2, sort_keys=True)
-        sys.exit(0)
 
-    print(__doc__)
-    sys.stderr.write('Unknown file extension(s)')
-    sys.exit(1)
 
 
 if __name__ == '__main__':
