@@ -103,7 +103,7 @@ def txt_to_mesh(txt_folder='../data_heavy/sph_solutions/new_state/', if_vis=Fals
         pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(point_cloud))
 
         nv, nf = surface_reconstruct_marching_cube(pcd, cube_size=0.15, isovalue=0.14, verbose=False)
-        # nv, nf, _, _ = mesh_filtering(v, f, if_vis=False, verbose=True)
+        nv, nf, _, _ = mesh_filtering(nv, nf, if_vis=False, verbose=True)
 
         mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(nv),
                                          triangles=o3d.utility.Vector3iVector(nf))
@@ -140,11 +140,13 @@ def txt_to_mesh(txt_folder='../data_heavy/sph_solutions/new_state/', if_vis=Fals
 
 
 if __name__ == "__main__":
+    from bgeo2json import process_bgeo2json
+
     start = time.time()
     os.makedirs("mc_solutions", exist_ok=True)
     os.makedirs("mc_solutions_smoothed", exist_ok=True)
-    # build_shape()
-    # sph_simulation()
-    # output_mesh = vtk_to_mesh(if_vis=False)
-    txt_to_mesh(if_vis=True)
+    build_shape()
+    sph_simulation()
+    process_bgeo2json()
+    txt_to_mesh(if_vis=False)
     print("SPH simulation done in %f" % (time.time()-start))

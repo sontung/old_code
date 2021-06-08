@@ -7,7 +7,7 @@ import json
 import glob
 
 
-def sample_accordingly3(new_time_step=42):
+def sample_accordingly3(new_time_step=27):
     all_json = glob.glob("../data_heavy/sph_solutions/state/*.json")
     all_json = sorted(all_json, key=lambda du: float(du.split("/")[-1].split("state_")[1].split("_particle")[0]))
     nb_time_step = len(all_json)
@@ -35,23 +35,21 @@ def sample_accordingly3(new_time_step=42):
         particles_matrix[i][:len(pos)] = pos
 
     new_particles_matrix = np.full((max_nb_particles, new_time_step, 3), -100, dtype=float)
-    last_time_step = nb_time_step-1
     # sampling frame
     for i in range(max_nb_particles):
         p = particles_matrix[i]
-        # print(p[:, 0])
-        null_idx = np.argwhere(p[:, 0] == -100)[:, 0]
+        null_idx = np.argwhere(p[:, 0] <= -99)[:, 0]
         start_idx = 0
         if len(null_idx) != 0:
-            start_idx = np.max(null_idx)
+            start_idx = np.max(null_idx)+1
         tck_x = b_spline_smooth(p[start_idx:, 0], return_params=True)
         tck_y = b_spline_smooth(p[start_idx:, 1], return_params=True)
         tck_z = b_spline_smooth(p[start_idx:, 2], return_params=True)
+        last_time_step = p[start_idx+1:, 2].shape[0]-1
 
         x = [interpolate.splev(du, tck_x) for du in np.linspace(0, last_time_step, new_time_step-start_idx, endpoint=True)]
         y = [interpolate.splev(du, tck_y) for du in np.linspace(0, last_time_step, new_time_step-start_idx, endpoint=True)]
         z = [interpolate.splev(du, tck_z) for du in np.linspace(0, last_time_step, new_time_step-start_idx, endpoint=True)]
-        print(len(x), new_particles_matrix.shape, p[start_idx:, 0].shape)
         new_particles_matrix[i, start_idx:, 0] = x
         new_particles_matrix[i, start_idx:, 1] = y
         new_particles_matrix[i, start_idx:, 2] = z
@@ -111,14 +109,14 @@ def sample_accordingly(nb_frames):
 
 
 def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_state/'):
-
+    os.makedirs("../data_heavy/sph_solutions/new_state/", exist_ok=True)
     for i in range(particles_matrix.shape[1]):
         p_in_time_step = particles_matrix[:, i, :]
         write_file = os.path.join(save_folder, f"new_particles_{i}.txt")
         with open(write_file, 'w') as f:
             for p in p_in_time_step:
-                if (p[0] != -100.0) and (p[1] != -100.0) and (p[2] != -100.0):
-                    s = f'%s %s %s %s %s %s\n' % (p[0], p[1], p[2], 0, 0, 0)
+                if (int(p[0]) != -100) and (int(p[1]) != -100) and (int(p[2]) != -100):
+                    s = f'%f %f %f %f %f %f\n' % (p[0], p[1], p[2], 0, 0, 0)
                     f.write(s)
                 else:
                     break

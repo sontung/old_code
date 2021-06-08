@@ -25,7 +25,6 @@ cd segmentation/pytorch-deeplab-xception
 python inference.py
 
 cd ../../visualization
-python main
+python main.py
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 

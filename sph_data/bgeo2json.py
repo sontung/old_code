@@ -150,7 +150,7 @@ def fromJson(data):
 
     return particleSet
 
-def main():
+def process_bgeo2json():
     """ Main """
 
     # Process command-line arguments
@@ -173,4 +173,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    process_bgeo2json()

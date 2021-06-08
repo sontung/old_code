@@ -22,6 +22,7 @@
 		"particleAttributes": "density;velocity",
 		"boundaryHandlingMethod": 2,
 		"enableVTKExport": true,
+        "enableStateExport": true,
 		"enablePartioExport": false
 	},
 	"Materials": [
