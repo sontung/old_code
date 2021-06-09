@@ -184,25 +184,48 @@ def compute_rotation(reverse_for_vis=False):
             new_list.append(i*-1)
         trajectories.extend(new_list)
     return trajectories
-def test():
 
+
+def test():
+    import math as m
+    import glob
+    def Ry(theta):
+        return np.matrix([[m.cos(theta), 0, m.sin(theta)],
+                          [0, 1, 0],
+                          [-m.sin(theta), 0, m.cos(theta)]])
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
-    ab = o3d.io.read_triangle_mesh("/home/sontung/work/3d-air-bag-p2/sph_data/mc_solutions/new_particles_68.obj")
 
-    ab.scale(100.0, ab.get_center())
-    ab.compute_vertex_normals()
-    print(ab.get_surface_area(), pcd.get_surface_area())
+    all_ab_mesh = glob.glob("../sph_data/mc_solutions/*.obj")
+    all_ab_mesh = sorted(all_ab_mesh, key=lambda x: int(x.split("_")[-1].split(".")[0]))
+
+    rotate_matrix = Ry(2 * m.pi / 3)
+
     vis = o3d.visualization.Visualizer()
     vis.create_window()
-    vis.add_geometry(pcd)
-    vis.add_geometry(ab)
-    vis.get_view_control().set_zoom(1.5)
+    ctr = vis.get_view_control()
 
-    vis.get_view_control().rotate(-500, 0)
-    vis.run()
-    vis.destroy_window()
-    sys.exit()
+    for file in all_ab_mesh:
+        ab = o3d.io.read_triangle_mesh(file)
+        ab.scale(100.0, ab.get_center())
+        ab.compute_vertex_normals()
+        ab = ab.translate([0, 0, -500])
+        ab = ab.rotate(rotate_matrix)
+
+        print(ab.get_surface_area(), pcd.get_surface_area())
+
+        vis.clear_geometries()
+        vis.add_geometry(pcd)
+        vis.add_geometry(ab)
+        ctr.set_zoom(1.5)
+        ctr.rotate(-500, 0)
+
+        vis.poll_events()
+        vis.update_renderer()
+        # vis.run()
+        # vis.destroy_window()
+        # sys.exit()
+
 
 def visualize():
     os.makedirs("../data_heavy/saved/", exist_ok=True)
