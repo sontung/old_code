@@ -16,7 +16,7 @@ def extract_frame():
     """
     extract frames from videos stored in ../data_heavy/run
     """
-    mypath = "../data_heavy/run"
+    mypath = "../data_const/run"
     videos = sorted([join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))])
     print("Extracting frames from", videos)
     counts = []

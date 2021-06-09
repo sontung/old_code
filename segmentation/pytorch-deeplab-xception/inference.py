@@ -48,7 +48,7 @@ model = DeepLab(num_classes=21,
                         output_stride=16,
                         sync_bn=None,
                         freeze_bn=True)
-checkpoint = torch.load("../../data_heavy/model_best.pth.tar")
+checkpoint = torch.load("../../data_const/model_best.pth.tar")
 model.cuda()
 model.load_state_dict(checkpoint['state_dict'])
 HAS_LABELS = False

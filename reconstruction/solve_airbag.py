@@ -56,7 +56,6 @@ def sample_accordingly(new_time_step=27):
         new_particles_matrix[i, start_idx:, 1] = y
         new_particles_matrix[i, start_idx:, 2] = z
 
-
         # import matplotlib.pyplot as plt
         # print(x)
         # print(particles_matrix[i, :, 0])
@@ -105,6 +104,7 @@ def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_
 
 if __name__ == "__main__":
     start, nb_frames = compute_ab_frames()
+
     a = sample_accordingly(nb_frames)
     write_to_pcd(a)
 

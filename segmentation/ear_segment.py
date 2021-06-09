@@ -11,7 +11,7 @@ from os.path import isfile, join
 
 
 class EAR:
-    def __init__(self, checkpoint_dir="../data_heavy/ear.pth", threshold=0.5):
+    def __init__(self, checkpoint_dir="../data_const/ear.pth", threshold=0.5):
         cfg = get_cfg()
         cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1

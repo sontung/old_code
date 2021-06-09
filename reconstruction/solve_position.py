@@ -11,6 +11,22 @@ from scipy import interpolate
 from matplotlib import pyplot as plt
 
 
+def compute_ab_frames():
+    sys.stdin = open("../data_heavy/frames/info.txt")
+    lines = [du[:-1] for du in sys.stdin.readlines()]
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {u: int(v) for u, v in [du.split(" ") for du in lines2]}
+    traj = []
+    for frn in lines:
+        akey = "1-%s.png" % frn
+        traj.append(frame2ab[akey])
+    for idx, num in enumerate(traj):
+        if np.all([traj[idx+du] > 1000 for du in range(5)]):
+            return idx, len(traj)-idx-1
+    raise RuntimeError
+
+
 def b_spline_smooth(_trajectory, vis=False, return_params=False):
     """
     b spline smoothing for missing values (denoted None)
@@ -40,13 +56,12 @@ def b_spline_smooth(_trajectory, vis=False, return_params=False):
         plt.ylabel("position")
         plt.legend(["available points", "missing points", "interpolated curve"], prop={'size': 15})
         plt.savefig('/home/sontung/Downloads/Figure_1.png', dpi=300)
-    # plt.show()
     if return_params:
         return tck
     return values
 
 
-def compute_translation(reverse_for_vis=True):
+def compute_translation(reverse_for_vis=False):
     """
     translation of the head
     """
@@ -87,12 +102,11 @@ def compute_translation(reverse_for_vis=True):
     return trajectories
 
 
-def compute_rotation():
+def compute_rotation(reverse_for_vis=False):
     sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]
     refined_pixel_dir = "../data_heavy/refined_pixels"
     images_dir = "../data_heavy/frames_ear_only_nonblack_bg"
-    line_images_dir = "../data_heavy/hough_lines"
     trajectories = []
     prev_pos = None
     neighbors = [(0, 1), (1, 0), (0, -1), (-1, 0)]
@@ -164,25 +178,45 @@ def compute_rotation():
             move = rot_deg_overall - prev_pos
             trajectories.append(-move)
         prev_pos = rot_deg_overall
-
-    new_list = []
-    for i in reversed(trajectories):
-        new_list.append(i*-1)
-    trajectories.extend(new_list)
+    if reverse_for_vis:
+        new_list = []
+        for i in reversed(trajectories):
+            new_list.append(i*-1)
+        trajectories.extend(new_list)
     return trajectories
+def test():
 
+    pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
+    pcd.compute_vertex_normals()
+    ab = o3d.io.read_triangle_mesh("/home/sontung/work/3d-air-bag-p2/sph_data/mc_solutions/new_particles_68.obj")
+
+    ab.scale(100.0, ab.get_center())
+    ab.compute_vertex_normals()
+    print(ab.get_surface_area(), pcd.get_surface_area())
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+    vis.add_geometry(pcd)
+    vis.add_geometry(ab)
+    vis.get_view_control().set_zoom(1.5)
+
+    vis.get_view_control().rotate(-500, 0)
+    vis.run()
+    vis.destroy_window()
+    sys.exit()
 
 def visualize():
     os.makedirs("../data_heavy/saved/", exist_ok=True)
     global pcd, trajectory, counter, rotated_trajectory, parameters, parameters2
+    global ab_counter
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
 
     trajectory = compute_translation()
     rotated_trajectory = compute_rotation()
 
+    start_ab, _ = compute_ab_frames()
     counter = 0
-
+    ab_counter = 0
     vis = o3d.visualization.Visualizer()
     vis.create_window()
     vis.add_geometry(pcd)
@@ -211,6 +245,9 @@ def visualize():
 
     def rotate_view(avis):
         global pcd, trajectory, counter, rotated_trajectory, parameters, parameters2
+        global ab_counter
+        ab_added = False
+        print(ab_counter, counter)
         pcd.translate(trajectory[counter % len(trajectory)]/5)
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
                                              degrees=True).as_matrix()
@@ -218,9 +255,16 @@ def visualize():
 
         avis.update_geometry(pcd)
         counter += 1
-        if counter > len(trajectory):
+        if counter > len(trajectory)-1:
             counter = 0
             sys.exit()
+        if counter >= start_ab:
+            ab_counter += 1
+            ab = o3d.io.read_triangle_mesh("../data/max-planck.obj")
+            ab.compute_vertex_normals()
+            avis.add_geometry(ab)
+            ab_added = True
+            print("added")
         avis.get_view_control().rotate(-500, 0)
         avis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter, do_render=True)
 
@@ -228,6 +272,8 @@ def visualize():
         avis.get_view_control().rotate(-200, 0)
         avis.capture_screen_image("../data_heavy/saved/v2-%s.png" % counter, do_render=True)
         avis.get_view_control().rotate(200, 0)
+        if ab_added:
+            avis.remove_geometry(ab)
 
         return False
 
@@ -237,7 +283,10 @@ def visualize():
 
 
 if __name__ == '__main__':
+    test()
     visualize()
+
+
     # from scipy import interpolate
     #
     # trajectory = compute_translation(reverse_for_vis=False)
