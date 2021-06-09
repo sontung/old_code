@@ -1,16 +1,7 @@
-
-cd preprocess/
-#python pp_utils.py
-
-cd ../segmentation/
-#python ear_segment.py
-
-cd ../preprocess/
-#python main.py
-
-cd ../reconstruction/
-#python solve_position.py
-
+#!/bin/bash
+cd libraries/partio/build/Linux-5.4.0-x86_64-optimize/compiled/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
+cd ../../../../../
 cd ../sph_data/
 python main.py
 
@@ -21,8 +12,24 @@ cmake ..
 make
 ./example
 
+cd preprocess/
+python pp_utils.py
+
+cd ../segmentation/
+python ear_segment.py
+
+cd ../preprocess/
+python main.py
+
 cd segmentation/pytorch-deeplab-xception
 python inference.py
+
+cd ../reconstruction/
+python solve_position.py
+python solve_airbag.py
+
+cd ../sph_data
+python txt2mesh.py
 
 cd ../../visualization
 python main.py

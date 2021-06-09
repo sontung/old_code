@@ -148,5 +148,4 @@ if __name__ == "__main__":
     build_shape()
     sph_simulation()
     process_bgeo2json()
-    txt_to_mesh(if_vis=False)
     print("SPH simulation done in %f" % (time.time()-start))

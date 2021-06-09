@@ -1,3 +1,4 @@
+import sys
 import os.path
 from tqdm import tqdm
 
@@ -8,7 +9,7 @@ import json
 import glob
 
 
-def sample_accordingly3(new_time_step=27):
+def sample_accordingly(new_time_step=27):
     all_json = glob.glob("../data_heavy/sph_solutions/state/*.json")
     all_json = sorted(all_json, key=lambda du: float(du.split("/")[-1].split("state_")[1].split("_particle")[0]))
     nb_time_step = len(all_json)
@@ -70,43 +71,20 @@ def sample_accordingly3(new_time_step=27):
     return new_particles_matrix
 
 
-def sample_accordingly(nb_frames):
-    all_json = glob.glob("../data_heavy/sph_solutions/state/*.json")
-    all_json = sorted(all_json, key=lambda du: float(du.split("/")[-1].split("state_")[1].split("_particle")[0]))
-    nb_time_step = len(all_json)
-    max_nb_particles = -1
-    all_particles_pos = {}
-    for i, file1 in enumerate(all_json):
-        with open(file1, "r") as fp:
-            data = json.load(fp)
-        particle_data = data["particles"]
-
-        nb_particles = len(particle_data)
-        if max_nb_particles < nb_particles:
-            max_nb_particles = nb_particles
-
-        for a_key in particle_data:
-            particle = particle_data[a_key]
-            particle_id = particle["id"][0]
-            if particle_id not in all_particles_pos:
-                all_particles_pos[particle_id] = np.full((nb_time_step, 3), -1, dtype=float)
-                all_particles_pos[particle_id][i] = particle["position"]
-            else:
-                all_particles_pos[particle_id][i] = particle["position"]
-
-    particles_matrix = np.full((max_nb_particles, nb_time_step, 3), -1, dtype=float)
-    for i in range(max_nb_particles):
-        pos = all_particles_pos[i]
-        particles_matrix[i][:len(pos)] = pos
-    sampled_mat = np.zeros((max_nb_particles, nb_frames, 3))
-    step = (nb_time_step-1)/(nb_frames-1)
-    for xyz in range(3):
-        for pid in range(max_nb_particles):
-            f = b_spline_smooth(particles_matrix[pid][:, xyz], return_params=True)
-            for ind in range(nb_frames):
-                sampled_mat[pid][ind][xyz] = interpolate.splev(ind*step, f)
-            
-    return sampled_mat
+def compute_ab_frames():
+    sys.stdin = open("../data_heavy/frames/info.txt")
+    lines = [du[:-1] for du in sys.stdin.readlines()]
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {u: int(v) for u, v in [du.split(" ") for du in lines2]}
+    traj = []
+    for frn in lines:
+        akey = "1-%s.png" % frn
+        traj.append(frame2ab[akey])
+    for idx, num in enumerate(traj):
+        if np.all([traj[idx+du] > 1000 for du in range(5)]):
+            return idx, len(traj)-idx-1
+    raise RuntimeError
 
 
 def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_state/'):
@@ -126,11 +104,7 @@ def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_
 
 
 if __name__ == "__main__":
-    a = sample_accordingly3()
-    # b = sample_accordingly(30)
+    start, nb_frames = compute_ab_frames()
+    a = sample_accordingly(nb_frames)
     write_to_pcd(a)
-    # print(a.shape, b.shape)
-    # print(a[5500])
-    # print(b[5500])
-    # assert a == b
 

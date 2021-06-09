@@ -15,6 +15,7 @@ import numpy as np
 import os
 import cv2
 
+
 class TestDataset(Dataset):
     def __init__(self, img_dir="/home/sontung/work/3d-air-bag-p2/data_heavy/frames"):
         super(TestDataset, self).__init__()
@@ -27,7 +28,6 @@ class TestDataset(Dataset):
 
     def __getitem__(self, ind):
         _img = np.array(Image.open(self.all_path_files[ind]).convert('RGB'))
-        #_img = cv2.resize(np.array(_img), (_img.shape[0]//4, _img.shape[1]//4))
         _img = cv2.resize(np.array(_img), (513, 513))
         _img = Image.fromarray(_img)
         sample = {'image': _img, "label": _img, "name": self.all_path_files[ind]}
@@ -37,10 +37,10 @@ class TestDataset(Dataset):
 
     def transform_val(self, sample):
         composed_transforms = transforms.Compose([
-#            tr.FixScaleCrop(crop_size=513),
             tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             tr.ToTensor()])
         return composed_transforms(sample)
+
 
 Args = namedtuple("Args", ["base_size", "crop_size"])
 model = DeepLab(num_classes=21,
@@ -48,30 +48,36 @@ model = DeepLab(num_classes=21,
                         output_stride=16,
                         sync_bn=None,
                         freeze_bn=True)
-checkpoint = torch.load("run/coco/deeplab-resnet/model_best.pth.tar")
+checkpoint = torch.load("../../data_heavy/model_best.pth.tar")
 model.cuda()
 model.load_state_dict(checkpoint['state_dict'])
 HAS_LABELS = False
 args = Args(513, 513)
 
-val_set = coco.COCOSegmentation(args, split="val")
 test_set = TestDataset()
 if HAS_LABELS:
+    val_set = coco.COCOSegmentation(args, split="val")
     test_loader = DataLoader(val_set, batch_size=8, shuffle=False)
 else:
     test_loader = DataLoader(test_set, batch_size=8, shuffle=False)
 evaluator = Evaluator(21)
 os.makedirs("../../data_heavy/frames_seg_abh/", exist_ok=True)
-for bid, sample in enumerate(test_loader):
-    image, target, im_name = sample['image'], sample['label'], sample["name"]
-    image = image.cuda()
-    target = target.cuda()
-    with torch.no_grad():
-        output = model(image)
-        seg = decode_seg_map_sequence(torch.max(output, 1)[1].detach().cpu().numpy(), dataset="coco")*255
-        for idx in range(seg.shape[0]):
-            imn = im_name[idx].split("/")[-1]
-            Image.fromarray(seg[idx].permute(1, 2, 0).cpu().numpy().astype(np.uint8)).save("../../data_heavy/frames_seg_abh/%s" % imn)
+with open("../../data_heavy/frame2ab.txt", "w") as fp:
+    for bid, sample in enumerate(test_loader):
+        image, target, im_name = sample['image'], sample['label'], sample["name"]
+        image = image.cuda()
+        target = target.cuda()
+        with torch.no_grad():
+            output = model(image)
+            seg = decode_seg_map_sequence(torch.max(output, 1)[1].detach().cpu().numpy(), dataset="coco")*255
+            output = output.cpu()
+            pred2 = torch.max(output, 1)[1]
+            for idx in range(seg.shape[0]):
+                imn = im_name[idx].split("/")[-1]
+                ab_pixels = np.sum((pred2[idx]==15).numpy())
+                print(imn, ab_pixels, file=fp)
+                Image.fromarray(seg[idx].permute(1, 2, 0).cpu().numpy().astype(np.uint8)).save("../../data_heavy/frames_seg_abh/%s" % (imn))
+            
         #segall = make_grid(seg, 8, normalize=False, range=(0, 255))
         #segall = segall.permute(1, 2, 0).cpu().numpy().astype(np.uint8)
         #imall = make_grid(image, 8, normalize=False, range=(0, 255))

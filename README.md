@@ -9,6 +9,7 @@ pip install pysplishsplash
 pip install microdict
 pip install meshio
 pip install pykdtree
+pip install cmake
 ```
 
 ### Running 
@@ -34,14 +35,18 @@ solve_position (reconstruction)
 ```
 
 ```
+sudo apt-get update -y
+sudo apt install swig
+sudo apt-get install -y freeglut3-dev
 sudo apt-get install libssl-dev
-sudo apt-get install freeglut3-dev
 sudo apt-get install xorg-dev libglu1-mesa-dev
 python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
 ```
 
 ### partio
 ```
+cd libraries/partio/build/Linux-5.4.0-x86_64-optimize/compiled/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
 cd libraries/partio
 make -j prefix=./compiled install
 ```
