@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
   vector<string> all_files;
 
   string obj_folder = "../../mc_solutions/";
-  string save_smooth_mesh = "../../mc_smooth/";
+  string save_smooth_mesh = "../../mc_solutions_smoothed/";
 
   all_files = list_all_files(obj_folder);
 

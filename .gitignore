@@ -1,6 +1,6 @@
 *.zip
 data_heavy/
-data_test/
+data_const/
 .idea/
 libraries/ceres-bin/
 libraries/ceres-solver-2.0.0/

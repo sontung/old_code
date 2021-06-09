@@ -17,7 +17,7 @@ import meshio
 import time
 
 
-def build_shape(radius=(40, 30, 35), model_file='airbag.obj'):
+def build_shape(radius=(40, 30, 35), model_file='airbag.obj', if_vis=False):
     large_radius_torus, small_radius_torus, radius_sphere = radius
     pcd = create_airbag_pointclouds(large_radius_torus, small_radius_torus, radius_sphere)
 
@@ -26,10 +26,11 @@ def build_shape(radius=(40, 30, 35), model_file='airbag.obj'):
 
     kept_mesh = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(kept_vertices),
                                           o3d.utility.Vector3iVector(kept_faces))
-    lineset = o3d.geometry.LineSet.create_from_triangle_mesh(kept_mesh)
-    lineset.paint_uniform_color([0, 0, 0])
 
-    o3d.visualization.draw_geometries([lineset])
+    if if_vis:
+        lineset = o3d.geometry.LineSet.create_from_triangle_mesh(kept_mesh)
+        lineset.paint_uniform_color([0, 0, 0])
+        o3d.visualization.draw_geometries([lineset])
     o3d.io.write_triangle_mesh(model_file, kept_mesh)
 
 
@@ -97,7 +98,7 @@ def txt_to_mesh(txt_folder='../data_heavy/sph_solutions/new_state/', if_vis=Fals
     txt_files = glob.glob(txt_folder + '*.txt')
     txt_files = sorted(txt_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
     list_mesh = []
-    for file in tqdm(txt_files, desc="Extracting meshes from vtk files"):
+    for file in tqdm(txt_files, desc="Extracting meshes from txt files"):
         data = o3d.io.read_point_cloud(file, format='xyzrgb')
         point_cloud = np.asarray(data.points)
         pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(point_cloud))
