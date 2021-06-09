@@ -1,4 +1,6 @@
 import os
+import math
+import glob
 import pickle
 import sys
 import numpy as np
@@ -9,6 +11,7 @@ import time
 from scipy.spatial.transform import Rotation as rot_mat_compute
 from scipy import interpolate
 from matplotlib import pyplot as plt
+from tqdm import tqdm
 
 
 def compute_ab_frames():
@@ -85,7 +88,7 @@ def compute_translation(reverse_for_vis=False):
 
     # b spline interpolation
     x_traj, y_traj = map(b_spline_smooth, (x_traj, y_traj))
-    for idx in range(len(x_traj)):
+    for idx in tqdm(range(len(x_traj)), desc="Computing head position"):
         mean = np.array([x_traj[idx], y_traj[idx]])
         if prev_pos is not None:
             trans = np.zeros((3, 1))
@@ -112,7 +115,7 @@ def compute_rotation(reverse_for_vis=False):
     neighbors = [(0, 1), (1, 0), (0, -1), (-1, 0)]
     all_angles = []
 
-    for idx in lines:
+    for idx in tqdm(lines, desc="Computing head rotation"):
         with open("%s/1-%s.png" % (refined_pixel_dir, idx), "rb") as fp:
             right_pixels_edges = pickle.load(fp)
         img = cv2.imread("%s/1-%s.png" % (images_dir, idx))
@@ -187,19 +190,13 @@ def compute_rotation(reverse_for_vis=False):
 
 
 def test():
-    import math as m
-    import glob
-    def Ry(theta):
-        return np.matrix([[m.cos(theta), 0, m.sin(theta)],
-                          [0, 1, 0],
-                          [-m.sin(theta), 0, m.cos(theta)]])
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
 
     all_ab_mesh = glob.glob("../sph_data/mc_solutions/*.obj")
     all_ab_mesh = sorted(all_ab_mesh, key=lambda x: int(x.split("_")[-1].split(".")[0]))
 
-    rotate_matrix = Ry(2 * m.pi / 3)
+    rotate_matrix = Ry(2 * math.pi / 3)
 
     vis = o3d.visualization.Visualizer()
     vis.create_window()
@@ -207,7 +204,7 @@ def test():
 
     for file in all_ab_mesh:
         ab = o3d.io.read_triangle_mesh(file)
-        ab.scale(100.0, ab.get_center())
+        ab.scale(180.0, ab.get_center())
         ab.compute_vertex_normals()
         ab = ab.translate([0, 0, -500])
         ab = ab.rotate(rotate_matrix)
@@ -270,7 +267,6 @@ def visualize():
         global pcd, trajectory, counter, rotated_trajectory, parameters, parameters2
         global ab_counter
         ab_added = False
-        print(ab_counter, counter)
         pcd.translate(trajectory[counter % len(trajectory)]/5)
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
                                              degrees=True).as_matrix()
@@ -281,13 +277,17 @@ def visualize():
         if counter > len(trajectory)-1:
             counter = 0
             sys.exit()
-        if counter >= start_ab:
+        if counter >= start_ab+1:
             ab_counter += 1
-            ab = o3d.io.read_triangle_mesh("../data/max-planck.obj")
+            ab = o3d.io.read_triangle_mesh("../sph_data/mc_solutions/new_particles_%d.obj" % ab_counter)
             ab.compute_vertex_normals()
-            avis.add_geometry(ab)
+            ab.scale(180.0, ab.get_center())
+            ab.compute_vertex_normals()
+            ab.translate([0, 0, -250])
+            ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
+            ab.rotate(rot_mat_compute.from_euler("x", -10, degrees=True).as_matrix())
             ab_added = True
-            print("added")
+            avis.add_geometry(ab)
         avis.get_view_control().rotate(-500, 0)
         avis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter, do_render=True)
 
@@ -306,7 +306,7 @@ def visualize():
 
 
 if __name__ == '__main__':
-    test()
+    # test()
     visualize()
 
 
