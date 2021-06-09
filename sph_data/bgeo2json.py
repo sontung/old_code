@@ -161,7 +161,6 @@ def process_bgeo2json():
 
     sph_states = "../data_heavy/sph_solutions/state/*.bgeo"
     all_files = glob.glob(sph_states)
-    print(all_files)
     partio_extensions = ('.bgeo', '.geo', '.bhclassic', '.ptc', '.pdb')
 
     for file1 in all_files:
