@@ -174,7 +174,7 @@ def compute_rotation():
 
 def visualize():
     os.makedirs("../data_heavy/saved/", exist_ok=True)
-    global pcd, trajectory, counter, rotated_trajectory, degg, parameters
+    global pcd, trajectory, counter, rotated_trajectory, parameters, parameters2
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
 
@@ -183,32 +183,52 @@ def visualize():
 
     counter = 0
 
-    degg = 10
-    parameters = o3d.io.read_pinhole_camera_parameters("cam_pos.json")
-
     vis = o3d.visualization.Visualizer()
     vis.create_window()
     vis.add_geometry(pcd)
+    vis.get_view_control().set_zoom(1.5)
 
-    def rotate_view(vis):
-        global pcd, trajectory, counter, rotated_trajectory, degg, parameters
+    # vis.get_view_control().rotate(-500, 0)
+    # vis.get_view_control().rotate(500, 0)
+    # vis.get_view_control().rotate(-200, 0)
+
+    # global du11
+    # du11 = 1.5
+    # def cb(avis):
+    #     avis.get_view_control().rotate(-500, 0)
+    #     avis.capture_screen_image("../data_heavy/saved/v1.png", do_render=True)
+    #     avis.get_view_control().rotate(500, 0)
+    #
+    #     avis.get_view_control().rotate(-200, 0)
+    #     avis.capture_screen_image("../data_heavy/saved/v2.png", do_render=True)
+    #     avis.get_view_control().rotate(200, 0)
+    #     return False
+    #
+    # vis.register_animation_callback(cb)
+    # vis.run()  # user changes the view and press "q" to terminate
+    # vis.destroy_window()
+    # sys.exit()
+
+    def rotate_view(avis):
+        global pcd, trajectory, counter, rotated_trajectory, parameters, parameters2
         pcd.translate(trajectory[counter % len(trajectory)]/5)
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
                                              degrees=True).as_matrix()
         pcd.rotate(rot_mat, pcd.get_center())
 
-        vis.update_geometry(pcd)
+        avis.update_geometry(pcd)
         counter += 1
         if counter > len(trajectory):
             counter = 0
             sys.exit()
-#        time.sleep(0.5)
-        ctr = vis.get_view_control()
-        ctr.convert_from_pinhole_camera_parameters(parameters)
+        avis.get_view_control().rotate(-500, 0)
+        avis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter, do_render=True)
 
-        vis.capture_screen_image("../data_heavy/saved/%s.png" % counter)
-#        param = vis.get_view_control().convert_to_pinhole_camera_parameters()
-#        o3d.io.write_pinhole_camera_parameters("cam_pos.json", param)
+        avis.get_view_control().rotate(500, 0)
+        avis.get_view_control().rotate(-200, 0)
+        avis.capture_screen_image("../data_heavy/saved/v2-%s.png" % counter, do_render=True)
+        avis.get_view_control().rotate(200, 0)
+
         return False
 
     vis.register_animation_callback(rotate_view)
