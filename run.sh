@@ -8,14 +8,7 @@ python main.py
 
 set -euxo pipefail
 
-cd libigl-example-project/
-mkdir -p build
-cd build/
-cmake ..
-make
-./example
-
-cd ../../../preprocess/
+cd ../preprocess/
 python pp_utils.py
 
 cd ../segmentation/
@@ -33,7 +26,14 @@ python solve_airbag.py
 cd ../sph_data
 python txt2mesh.py
 
-cd ../reconstruction/
+cd libigl-example-project/
+mkdir -p build
+cd build/
+cmake ..
+make
+./example
+
+cd ../../../reconstruction/
 python solve_position.py
 
 cd ../visualization
