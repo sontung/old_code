@@ -10,6 +10,7 @@ libraries/ceres-solver-2.0.0/
 reconstruction/saved/*
 sph_data/Cache
 sph_data/mc_solutions
+sph_data/mc_solutions_smoothed
 sph_data/image_gif
 */saved/*
 *.gif
