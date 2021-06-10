@@ -64,7 +64,6 @@ int main(int argc, char *argv[])
 
   for (auto file: all_files)
   {
-      cout << file << endl;
       string in_path = obj_folder + file;
       string out_path = save_smooth_mesh + file;
 
