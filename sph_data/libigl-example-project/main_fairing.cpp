@@ -26,7 +26,7 @@ void surface_fairing(MatrixXd &originalV, MatrixXi &originalF, MatrixXd &outV, M
   igl::boundary_loop(originalF, originalLoop);
 
   if (originalLoop.size() == 0) {
-    std::cout << "Mesh has no hole!" << std::endl;
+    //std::cout << "Mesh has no hole!" << std::endl;
     outV = originalV;
     outF = originalF;
     return;

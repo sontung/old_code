@@ -68,7 +68,7 @@ void surface_smoothing(MatrixXd originalV, MatrixXi originalF, int iter, MatrixX
     // Laplacian K built as discrete divergence of gradient or equivalently
     // discrete Dirichelet energy Hessian
     K = -G.transpose() * T * G;
-    cout<<"|K-L|: "<<(K-L).norm()<<endl;
+    // cout<<"|K-L|: "<<(K-L).norm()<<endl;
 
 
     // Use original normals as pseudo-colors
