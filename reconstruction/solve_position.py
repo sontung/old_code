@@ -189,41 +189,6 @@ def compute_rotation(reverse_for_vis=False):
     return trajectories
 
 
-def test():
-    pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
-    pcd.compute_vertex_normals()
-
-    all_ab_mesh = glob.glob("../sph_data/mc_solutions/*.obj")
-    all_ab_mesh = sorted(all_ab_mesh, key=lambda x: int(x.split("_")[-1].split(".")[0]))
-
-    rotate_matrix = Ry(2 * math.pi / 3)
-
-    vis = o3d.visualization.Visualizer()
-    vis.create_window()
-    ctr = vis.get_view_control()
-
-    for file in all_ab_mesh:
-        ab = o3d.io.read_triangle_mesh(file)
-        ab.scale(180.0, ab.get_center())
-        ab.compute_vertex_normals()
-        ab = ab.translate([0, 0, -500])
-        ab = ab.rotate(rotate_matrix)
-
-        print(ab.get_surface_area(), pcd.get_surface_area())
-
-        vis.clear_geometries()
-        vis.add_geometry(pcd)
-        vis.add_geometry(ab)
-        ctr.set_zoom(1.5)
-        ctr.rotate(-500, 0)
-
-        vis.poll_events()
-        vis.update_renderer()
-        # vis.run()
-        # vis.destroy_window()
-        # sys.exit()
-
-
 def visualize():
     os.makedirs("../data_heavy/saved/", exist_ok=True)
     global pcd, trajectory, counter, rotated_trajectory, parameters, parameters2
@@ -279,7 +244,7 @@ def visualize():
             sys.exit()
         if counter >= start_ab+1:
             ab_counter += 1
-            ab = o3d.io.read_triangle_mesh("../sph_data/mc_solutions/new_particles_%d.obj" % ab_counter)
+            ab = o3d.io.read_triangle_mesh("../sph_data/mc_solutions_smoothed/new_particles_%d.obj" % ab_counter)
             ab.compute_vertex_normals()
             ab.scale(180.0, ab.get_center())
             ab.compute_vertex_normals()

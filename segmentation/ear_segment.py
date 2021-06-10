@@ -49,7 +49,7 @@ if __name__ == "__main__":
     os.makedirs(saved_dir2, exist_ok=True)
 
     model = EAR()
-    for im_name in tqdm(frames, desc="Extracting mask segment"):
+    for im_name in tqdm(frames, desc="Extracting ear mask segment"):
         image = cv2.imread(join(mypath, im_name))
         mask_pre, combine_image = model.predict(image)
         cv2.imwrite(join(saved_dir, im_name), combine_image)
