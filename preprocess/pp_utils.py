@@ -25,6 +25,7 @@ def extract_frame():
     for c, v in enumerate(videos):
         cap = cv2.VideoCapture(v)
         count = 0
+        counts = []
 
         while True:
             ret, frame = cap.read()
