@@ -17,7 +17,7 @@ import cv2
 
 
 class TestDataset(Dataset):
-    def __init__(self, img_dir="/home/sontung/work/3d-air-bag-p2/data_heavy/frames"):
+    def __init__(self, img_dir="../../data_heavy/frames"):
         super(TestDataset, self).__init__()
         self.img_dir = img_dir
         self.all_path_files = glob.glob(self.img_dir + '/*.png')
