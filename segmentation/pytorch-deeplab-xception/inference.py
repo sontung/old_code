@@ -140,13 +140,16 @@ def main():
                     im2, center2, rot2 = check_contour(new_img_ab, classid2color[15].astype(np.uint8))
                     im_final = merge_2images(im1, im2,
                                              classid2color[14].astype(np.uint8), classid2color[15].astype(np.uint8))
-                    dist = -1
+                    dist_x = -1
+                    dist_y = -1
                     if center2 is not None and center1 is not None:
-                        dist = center2[0]-center1[0]
+                        dist_x = center2[0]-center1[0]
+                        dist_y = center2[1]-center1[1]
 
                     imn = im_name[idx].split("/")[-1]
                     ab_pixels = np.sum((pred2[idx]==15).numpy())
-                    print(imn, ab_pixels, dist, rot1, rot2, file=fp)
+                    head_pixels = np.sum((pred2[idx]==14).numpy())
+                    print(imn, ab_pixels, head_pixels, dist_x, dist_y, rot1, rot2, file=fp)
                     Image.fromarray(im_final).save("../../data_heavy/frames_seg_abh/%s" % imn)
 
 

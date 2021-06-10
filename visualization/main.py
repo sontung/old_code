@@ -17,7 +17,7 @@ recon_dir = "../data_heavy/saved"
 segment_dir = "../data_heavy/frames_seg_abh"
 final_im_size = (513, 513)
 
-for idx_recon, idx_seg in tqdm(enumerate(lines), desc="Writing final visualization"):
+for idx_recon, idx_seg in enumerate(tqdm(lines, desc="Writing final visualization")):
     seg_im = cv2.imread("%s/1-%s.png" % (segment_dir, idx_seg))
     recon_im = cv2.imread("%s/v1-%s.png" % (recon_dir, idx_recon+1))
     recon_im2 = cv2.imread("%s/v2-%s.png" % (recon_dir, idx_recon+1))

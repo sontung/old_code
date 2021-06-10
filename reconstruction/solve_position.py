@@ -9,9 +9,9 @@ import cv2
 import kmeans1d
 import time
 from scipy.spatial.transform import Rotation as rot_mat_compute
-from scipy import interpolate
-from matplotlib import pyplot as plt
+from rec_utils import b_spline_smooth
 from tqdm import tqdm
+from solve_airbag import compute_ab_pose
 
 
 def compute_ab_frames():
@@ -19,7 +19,7 @@ def compute_ab_frames():
     lines = [du[:-1] for du in sys.stdin.readlines()]
     sys.stdin = open("../data_heavy/frame2ab.txt")
     lines2 = [du[:-1] for du in sys.stdin.readlines()]
-    frame2ab = {u: int(v) for u, v in [du.split(" ") for du in lines2]}
+    frame2ab = {u: int(v) for u, v in [du.split(" ")[:2] for du in lines2]}
     traj = []
     for frn in lines:
         akey = "1-%s.png" % frn
@@ -29,39 +29,6 @@ def compute_ab_frames():
             return idx, len(traj)-idx-1
     raise RuntimeError
 
-
-def b_spline_smooth(_trajectory, vis=False, return_params=False):
-    """
-    b spline smoothing for missing values (denoted None)
-    Args:
-        _trajectory:
-
-    Returns:
-    """
-    control_points = []
-    control_points_time = []
-    not_there = []
-    for idx, computation in enumerate(_trajectory):
-        if computation is not None:
-            control_points.append(computation)
-            control_points_time.append(idx)
-        else:
-            not_there.append(idx)
-    tck = interpolate.splrep(control_points_time, control_points, k=3)
-    values = [interpolate.splev(du, tck) for du in np.linspace(0, len(_trajectory), len(_trajectory))]
-    if vis:
-        plt.plot(control_points_time, control_points, "ob")
-        plt.plot(not_there, [interpolate.splev(du, tck) for du in not_there], "or")
-
-        plt.plot(np.linspace(0, len(_trajectory), 1000),
-                 [interpolate.splev(du, tck) for du in np.linspace(0, len(_trajectory), 1000)], "y")
-        plt.xlabel("time")
-        plt.ylabel("position")
-        plt.legend(["available points", "missing points", "interpolated curve"], prop={'size': 15})
-        plt.savefig('/home/sontung/Downloads/Figure_1.png', dpi=300)
-    if return_params:
-        return tck
-    return values
 
 
 def compute_translation(reverse_for_vis=False):
@@ -195,7 +162,16 @@ def visualize():
     global ab_counter
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
+    ab_scale, ab_transx, ab_transy, ab_rot = compute_ab_pose()
 
+    global_scale_ab_list = []
+    for ab_dir in glob.glob("../sph_data/mc_solutions/*"):
+        ab = o3d.io.read_triangle_mesh(ab_dir)
+        scale1 = pcd.get_surface_area() / ab.get_surface_area()
+        global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
+    global_scale_ab = np.mean(global_scale_ab_list)
+
+    print(f"Airbag pose: translation=({ab_transx}, {ab_transy}), rotation={ab_rot}, scale={ab_scale}")
     trajectory = compute_translation()
     rotated_trajectory = compute_rotation()
 
@@ -203,7 +179,7 @@ def visualize():
     counter = 0
     ab_counter = 0
     vis = o3d.visualization.Visualizer()
-    vis.create_window()
+    vis.create_window(visible=True)
     vis.add_geometry(pcd)
     vis.get_view_control().set_zoom(1.5)
 
@@ -244,13 +220,12 @@ def visualize():
             sys.exit()
         if counter >= start_ab+1:
             ab_counter += 1
-            ab = o3d.io.read_triangle_mesh("../sph_data/mc_solutions_smoothed/new_particles_%d.obj" % ab_counter)
+            ab = o3d.io.read_triangle_mesh("../sph_data/mc_solutions/new_particles_%d.obj" % ab_counter)
             ab.compute_vertex_normals()
-            ab.scale(180.0, ab.get_center())
-            ab.compute_vertex_normals()
-            ab.translate([0, 0, -250])
+            ab.scale(global_scale_ab, ab.get_center())
+            ab.translate([0, -ab_transy*2, -ab_transy*2])
             ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
-            ab.rotate(rot_mat_compute.from_euler("x", -10, degrees=True).as_matrix())
+            ab.rotate(rot_mat_compute.from_euler("x", -90+ab_rot, degrees=True).as_matrix())
             ab_added = True
             avis.add_geometry(ab)
         avis.get_view_control().rotate(-500, 0)

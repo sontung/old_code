@@ -2,7 +2,7 @@ import sys
 import os.path
 from tqdm import tqdm
 
-from solve_position import b_spline_smooth
+from rec_utils import b_spline_smooth
 from scipy import interpolate
 import numpy as np
 import json
@@ -75,7 +75,7 @@ def compute_ab_frames():
     lines = [du[:-1] for du in sys.stdin.readlines()]
     sys.stdin = open("../data_heavy/frame2ab.txt")
     lines2 = [du[:-1] for du in sys.stdin.readlines()]
-    frame2ab = {u: int(v) for u, v in [du.split(" ") for du in lines2]}
+    frame2ab = {u: int(v) for u, v in [du.split(" ")[:2] for du in lines2]}
     traj = []
     for frn in lines:
         akey = "1-%s.png" % frn
@@ -102,9 +102,45 @@ def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_
     return
 
 
-if __name__ == "__main__":
-    start, nb_frames = compute_ab_frames()
+def compute_ab_pose():
+    sys.stdin = open("../data_heavy/frames/info.txt")
+    lines = [du[:-1] for du in sys.stdin.readlines()]
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {du.split(" ")[0]: du for du in lines2}
+    dist_all_x = []
+    dist_all_y = []
+    ab_area_all = []
+    head_area_all = []
+    rot_all = []
+    scale_all = []
+    for frn in lines:
+        akey = "1-%s.png" % frn
+        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
+        ab_area, head_area = map(int, [ab_area, head_area])
+        if ab_area > 1000:
+            ab_area_all.append(ab_area)
+        if head_area > 1000:
+            head_area_all.append(head_area)
+        if ab_area > 1000:
+            dist_x, dist_y, rot = map(int, [dist_x, dist_y, rot])
+            dist_all_x.append(dist_x)
+            dist_all_y.append(dist_y)
+            rot_all.append(rot)
+    abam1, ham1 = np.mean(ab_area_all), np.mean(head_area_all)
+    for frn in lines:
+        akey = "1-%s.png" % frn
+        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
+        ab_area, head_area = map(int, [ab_area, head_area])
+        if ab_area > abam1 and head_area > ham1:
+            scale_all.append(head_area / ab_area)
 
+    return np.mean(scale_all), np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all)
+
+
+if __name__ == "__main__":
+    # compute_ab_pose()
+    start, nb_frames = compute_ab_frames()
     a = sample_accordingly(nb_frames)
     write_to_pcd(a)
 
