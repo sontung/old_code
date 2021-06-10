@@ -1,10 +1,14 @@
 from PIL import Image
+from tqdm import tqdm
 import os
 import numpy as np
 import cv2
 import sys
+import shutil
 
-os.makedirs("../data_heavy/final_vis", exist_ok=True)
+save_dir = "../data_const/final_vis" 
+shutil.rmtree(save_dir, ignore_errors=True)
+os.makedirs(save_dir, exist_ok=True)
 sys.stdin = open("../data_heavy/frames/info.txt")
 lines = [du[:-1] for du in sys.stdin.readlines()]
 segment_view = "segment"
@@ -13,7 +17,7 @@ recon_dir = "../data_heavy/saved"
 segment_dir = "../data_heavy/frames_seg_abh"
 final_im_size = (513, 513)
 
-for idx_recon, idx_seg in enumerate(lines):
+for idx_recon, idx_seg in tqdm(enumerate(lines), desc="Writing final visualization"):
     seg_im = cv2.imread("%s/1-%s.png" % (segment_dir, idx_seg))
     recon_im = cv2.imread("%s/v1-%s.png" % (recon_dir, idx_recon+1))
     recon_im2 = cv2.imread("%s/v2-%s.png" % (recon_dir, idx_recon+1))
@@ -34,4 +38,4 @@ for idx_recon, idx_seg in enumerate(lines):
     final_im = np.hstack([blend2, blend])
     final_im2 = np.hstack([recon_im2, recon_im])
     all_im = np.vstack([final_im, final_im2])
-    Image.fromarray(all_im).save("../data_heavy/final_vis/%d.png" % idx_recon)
+    Image.fromarray(all_im).save("%s/%d.png" % (save_dir, idx_recon))
