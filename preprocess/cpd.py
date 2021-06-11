@@ -29,14 +29,24 @@ def main():
                   nonzero_indices[1][i]/ear.shape[1], file=fp)
 
     Y = np.loadtxt('../data/ear.txt')
+    Y2 = np.loadtxt('../data/ear.txt')
+
     X = np.loadtxt('/home/sontung/work/3d-air-bag-p2/data_heavy/transformed/0-237.png.txt')
 
     fig = plt.figure()
     fig.add_axes([0, 0, 1, 1])
     callback = partial(visualize, ax=fig.axes[0])
 
-    reg = AffineRegistration(**{'X': X, 'Y': Y})
-    reg.register(callback)
+    reg = AffineRegistration(**{'X': X, 'Y': Y}, tolerance=0.1)
+    reg.register()
+    Y = reg.transform_point_cloud(Y)
+
+    ax = fig.axes[0]
+    ax.scatter(X[:, 0],  X[:, 1], color='red', label='Target')
+    ax.scatter(Y[:, 0],  Y[:, 1], color='blue', label='Source')
+    ax.scatter(Y2[:, 0],  Y2[:, 1], color='yellow', label='original')
+
+    ax.legend(loc='upper left', fontsize='x-large')
     plt.show()
 
 
