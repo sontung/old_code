@@ -24,7 +24,7 @@ for idx_recon, idx_seg in enumerate(tqdm(lines, desc="Writing final visualizatio
 
     ori_im = cv2.imread("%s/1-%s.png" % ("../data_heavy/frames", idx_seg))
     ori_im2 = cv2.imread("%s/0-%s.png" % ("../data_heavy/frames", idx_seg))
-    if ori_im is None or ori_im2 is None:
+    if np.any([du is None for du in [recon_im, recon_im2, ori_im, ori_im2, seg_im]]):
         break
     seg_im = cv2.resize(seg_im, final_im_size)
     ori_im = cv2.resize(ori_im, final_im_size)

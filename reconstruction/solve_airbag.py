@@ -117,13 +117,13 @@ def compute_ab_pose():
     for frn in lines:
         akey = "1-%s.png" % frn
         _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
-        ab_area, head_area = map(int, [ab_area, head_area])
+        ab_area, head_area = map(float, [ab_area, head_area])
         if ab_area > 1000:
             ab_area_all.append(ab_area)
         if head_area > 1000:
             head_area_all.append(head_area)
         if ab_area > 1000:
-            dist_x, dist_y, rot = map(int, [dist_x, dist_y, rot])
+            dist_x, dist_y, rot = map(float, [dist_x, dist_y, rot])
             dist_all_x.append(dist_x)
             dist_all_y.append(dist_y)
             rot_all.append(rot)
@@ -131,7 +131,7 @@ def compute_ab_pose():
     for frn in lines:
         akey = "1-%s.png" % frn
         _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
-        ab_area, head_area = map(int, [ab_area, head_area])
+        ab_area, head_area = map(float, [ab_area, head_area])
         if ab_area > abam1 and head_area > ham1:
             scale_all.append(head_area / ab_area)
 

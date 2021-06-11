@@ -66,18 +66,26 @@ def check_contour(_image, _color):
         cv2.fillPoly(_new_image, pts=[largest_cnt], color=(192, 128, 128))
         ori_rect = cv2.minAreaRect(largest_cnt)
         center = (int(ori_rect[0][0]), int(ori_rect[0][1]))
-        width = int(ori_rect[1][0])
-        height = int(ori_rect[1][1])
-        angle = int(ori_rect[2])
-
-        if width < height:
-            angle = 90 - angle
-        else:
-            angle = - angle
 
         oriented_rect = cv2.boxPoints(ori_rect)
         oriented_rect = np.int0(oriented_rect)
-        # cv2.drawContours(_new_image, [oriented_rect], 0,  (255, 0, 0), 2)
+
+        ind_by_x = np.argsort(oriented_rect[:, 1])
+        top_points = oriented_rect[ind_by_x[:2]]
+        bot_points = oriented_rect[ind_by_x[2:]]
+        left_top_point = top_points[np.argmax(top_points[:, 0])]
+        left_bot_point = bot_points[np.argmax(bot_points[:, 0])]
+
+        x1, y1 = left_top_point
+        x2, y2 = left_bot_point
+
+        angle = np.rad2deg(np.arctan2(y2-y1, x1-x2))
+        if angle < 0:
+            angle += 180
+        # cv2.drawContours(_image, [oriented_rect], 0,  (255, 0, 0), 2)
+        # cv2.circle(_image, (x1, y1), 3, (255, 255, 255), -1)
+        # cv2.circle(_image, (x2, y2), 3, (255, 255, 255), -1)
+        #
         # cv2.imshow('contour', np.hstack([_image, _new_image]))
         # cv2.waitKey()
         # cv2.destroyAllWindows()
@@ -123,7 +131,6 @@ def main():
                 output = output.cpu()
                 pred2 = torch.max(output, 1)[1]
                 for idx in range(seg.shape[0]):
-                    # print(np.unique(pred2[idx]))
                     img = seg[idx].permute(1, 2, 0).cpu().numpy().astype(np.uint8)
 
                     new_img_ab = np.zeros(img.shape, dtype=np.uint8)
@@ -131,15 +138,15 @@ def main():
 
                     new_img_head[(img == classid2color[14]).all(axis=2)] = classid2color[14]
                     new_img_ab[(img == classid2color[15]).all(axis=2)] = classid2color[15]
+                    im1, center1, rot1 = check_contour(new_img_head, classid2color[14].astype(np.uint8))
+                    im2, center2, rot2 = check_contour(new_img_ab, classid2color[15].astype(np.uint8))
+                    im_final = merge_2images(im1, im2,
+                                             classid2color[14].astype(np.uint8), classid2color[15].astype(np.uint8))
 
                     # cv2.imshow("test", np.hstack([img, new_img_ab, new_img_head]))
                     # cv2.waitKey()
                     # cv2.destroyAllWindows()
 
-                    im1, center1, rot1 = check_contour(new_img_head, classid2color[14].astype(np.uint8))
-                    im2, center2, rot2 = check_contour(new_img_ab, classid2color[15].astype(np.uint8))
-                    im_final = merge_2images(im1, im2,
-                                             classid2color[14].astype(np.uint8), classid2color[15].astype(np.uint8))
                     dist_x = -1
                     dist_y = -1
                     if center2 is not None and center1 is not None:
@@ -152,12 +159,6 @@ def main():
                     print(imn, ab_pixels, head_pixels, dist_x, dist_y, rot1, rot2, file=fp)
                     Image.fromarray(im_final).save("../../data_heavy/frames_seg_abh/%s" % imn)
 
-
-            #segall = make_grid(seg, 8, normalize=False, range=(0, 255))
-            #segall = segall.permute(1, 2, 0).cpu().numpy().astype(np.uint8)
-            #imall = make_grid(image, 8, normalize=False, range=(0, 255))
-            #imall = imall.permute(1, 2, 0).cpu().numpy().astype(np.uint8)
-            #Image.fromarray(np.hstack([segall, imall])).save("outputs/s%d.png" % bid)
             if HAS_LABELS:
                 pred = output.data.cpu().numpy()
                 target = target.cpu().numpy()
