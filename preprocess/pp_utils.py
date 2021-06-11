@@ -49,7 +49,7 @@ def k_means_smoothing(rgb):
     """
     perform k means segmentation to smooth
     """
-    n_colors = 2
+    n_colors = 3
 
     # Load the Summer Palace photo
     china = rgb
@@ -82,7 +82,8 @@ def k_means_smoothing(rgb):
         return image.astype(np.uint8)
 
     res = recreate_image(labels, w, h, {0: np.array([0.5, 0.6, 0.7]),
-                                        1: np.array([0.1, 0.2, 0.3])},
+                                        1: np.array([0.1, 0.2, 0.3]),
+                                        2: np.array([0.4, 0.7, 0.3])},
                          kmeans.cluster_centers_.shape[1])
     return res
     # from edge_detection import process
