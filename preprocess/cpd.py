@@ -3,6 +3,11 @@ import matplotlib.pyplot as plt
 from pycpd import DeformableRegistration, AffineRegistration
 import numpy as np
 import time
+import sys
+from tqdm import tqdm
+import glob
+import cv2
+import os
 
 
 def visualize(iteration, error, X, Y, ax):
@@ -16,39 +21,89 @@ def visualize(iteration, error, X, Y, ax):
     plt.pause(0.001)
 
 
-def main():
-    import cv2
+def normalize(inp, ref):
+    inp[:, 0] = (np.max(ref[:, 0]) - np.min(ref[:, 0]))*(inp[:, 0] - np.min(inp[:, 0]))/(np.max(inp[:, 0]) - np.min(inp[:, 0])) + np.min(ref[:, 0])
+    inp[:, 1] = (np.max(ref[:, 1]) - np.min(ref[:, 1]))*(inp[:, 1] - np.min(inp[:, 1]))/(np.max(inp[:, 1]) - np.min(inp[:, 1])) + np.min(ref[:, 1])
+    return inp
 
+
+def process_cpd_with_vis():
     ear = cv2.imread("/home/sontung/work/3d-air-bag-p2/data/ear.png")
-    # ear = cv2.resize(ear, (ear.shape[1]//4, ear.shape[0]//4))
+    ear = cv2.resize(ear, (ear.shape[1]//4, ear.shape[0]//4))
+    all_files = glob.glob("../data_heavy/transformed/*")
 
     nonzero_indices = np.nonzero(ear)
     with open("../data/ear.txt", "w") as fp:
         for i in range(nonzero_indices[0].shape[0]):
-            print(nonzero_indices[0][i]/ear.shape[0],
-                  nonzero_indices[1][i]/ear.shape[1], file=fp)
+            print(nonzero_indices[0][i],
+                  nonzero_indices[1][i], file=fp)
 
-    Y = np.loadtxt('../data/ear.txt')
-    Y2 = np.loadtxt('../data/ear.txt')
+    y_data = np.loadtxt('../data/ear.txt')
+    y_data2 = np.loadtxt('../data/ear.txt')
 
-    X = np.loadtxt('/home/sontung/work/3d-air-bag-p2/data_heavy/transformed/0-237.png.txt')
+    for file in all_files:
+        x_data = np.loadtxt(file)
 
-    fig = plt.figure()
-    fig.add_axes([0, 0, 1, 1])
-    callback = partial(visualize, ax=fig.axes[0])
+        fig = plt.figure()
+        fig.add_axes([0, 0, 1, 1])
+        callback = partial(visualize, ax=fig.axes[0])
 
-    reg = AffineRegistration(**{'X': X, 'Y': Y}, tolerance=0.1)
-    reg.register()
-    Y = reg.transform_point_cloud(Y)
+        reg = AffineRegistration(**{'X': x_data, 'Y': y_data}, max_iterations=45)
+        reg.register()
+        y_data = reg.transform_point_cloud(y_data)
 
-    ax = fig.axes[0]
-    ax.scatter(X[:, 0],  X[:, 1], color='red', label='Target')
-    ax.scatter(Y[:, 0],  Y[:, 1], color='blue', label='Source')
-    ax.scatter(Y2[:, 0],  Y2[:, 1], color='yellow', label='original')
+        y_data_norm = normalize(y_data, x_data)
+        reg = AffineRegistration(**{'X': x_data, 'Y': y_data_norm}, max_iterations=45)
+        reg.register()
+        y_data_norm = reg.transform_point_cloud(y_data_norm)
 
-    ax.legend(loc='upper left', fontsize='x-large')
-    plt.show()
+        ax = fig.axes[0]
+        ax.scatter(x_data[:, 0],  x_data[:, 1], color='red', label='Target')
+        ax.scatter(y_data[:, 0],  y_data[:, 1], color='blue', label='Source')
+        ax.scatter(y_data_norm[:, 0],  y_data_norm[:, 1], color='yellow', label='Source norm')
+
+        ax.legend(loc='upper left', fontsize='x-large')
+        plt.show()
+
+
+def draw_image(array):
+    res = np.zeros((int(np.max(array[:, 0])+1), int(np.max(array[:, 1]+1)), 3))
+    for i in range(array.shape[0]):
+        u, v = map(int, array[i])
+        res[u, v] = (128, 128, 128)
+    return res
+
+
+def process_cpd(debug=False):
+    ear = cv2.imread("/home/sontung/work/3d-air-bag-p2/data/ear.png")
+    ear = cv2.resize(ear, (ear.shape[1]//4, ear.shape[0]//4))
+    all_files = glob.glob("../data_heavy/edge_pixels/*")
+    transform_path = "../data_heavy/head_rotations"
+    os.makedirs(transform_path, exist_ok=True)
+    debug_path = "../data_heavy/head_rotations_debug"
+    if debug:
+        os.makedirs(debug_path, exist_ok=True)
+
+    nonzero_indices = np.nonzero(ear)
+    with open("../data/ear.txt", "w") as fp:
+        for i in range(nonzero_indices[0].shape[0]):
+            print(nonzero_indices[0][i],
+                  nonzero_indices[1][i], file=fp)
+
+    y_data = np.loadtxt('../data/ear.txt')
+
+    for file in tqdm(all_files, "Extracting rotation using CPD"):
+        x_data = np.loadtxt(file)
+        reg = AffineRegistration(**{'X': x_data, 'Y': y_data}, max_iterations=45)
+        reg.register()
+        y_data_transformed = reg.transform_point_cloud(y_data)
+        imn = file.split("/")[-1]
+        cv2.imwrite(f"{transform_path}/{imn}", draw_image(y_data_transformed))
+
+        if debug:
+            cv2.imwrite(f"{debug_path}/{imn}-res.png", draw_image(y_data_transformed))
+            cv2.imwrite(f"{debug_path}/{imn}-inp.png", draw_image(x_data))
 
 
 if __name__ == '__main__':
-    main()
+    process_cpd(True)

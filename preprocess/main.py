@@ -3,7 +3,6 @@ from os import listdir
 from os.path import isfile, join
 from edge_detection import process as edge_process_func
 from pp_utils import k_means_smoothing as smoothing_func
-from pp_utils import extract_frame
 from tqdm import tqdm
 import cv2
 import pickle
@@ -15,7 +14,7 @@ def edge_detection():
     frames = [f for f in listdir(mypath) if isfile(join(mypath, f))]
     edge_saving_dir = "../data_heavy/frames_ear_only_with_edges"
     pixels_path = "../data_heavy/frames_ear_coord_only"
-    transform_path = "../data_heavy/transformed"
+    transform_path = "../data_heavy/edge_pixels"
     os.makedirs(edge_saving_dir, exist_ok=True)
     os.makedirs(pixels_path, exist_ok=True)
     os.makedirs(transform_path, exist_ok=True)
@@ -37,19 +36,10 @@ def edge_detection():
         res[xmin: xmax, ymin: ymax] = detected_edges
 
         nonzero_indices = np.nonzero(detected_edges)
-        with open("%s/%s.txt" % (transform_path, im_name), "w") as fp:
+        with open("%s/%s" % (transform_path, im_name), "w") as fp:
             for i in range(nonzero_indices[0].shape[0]):
-                print(nonzero_indices[0][i]/detected_edges.shape[0],
-                      nonzero_indices[1][i]/detected_edges.shape[1], file=fp)
-
-        # print(img.shape, src_gray.shape)
-        # cv2.imshow("test", np.hstack([img[:, :, 0], src_gray]))
-        # cv2.imshow("test2", img)
-        # cv2.imshow("test3", res[xmin: xmax, ymin: ymax])
-        # cv2.imshow("test4", img_ori[xmin: xmax, ymin: ymax])
-        #
-        # cv2.waitKey()
-        # cv2.destroyAllWindows()
+                print(nonzero_indices[0][i],
+                      nonzero_indices[1][i], file=fp)
 
         cv2.imwrite("%s/%s" % (edge_saving_dir, im_name), res)
 
@@ -132,5 +122,5 @@ def simple_preprocess():
 if __name__ == '__main__':
     # extract_frame()
     edge_detection()
-    prepare_pixels_set()
-    simple_preprocess()
+    # prepare_pixels_set()
+    # simple_preprocess()

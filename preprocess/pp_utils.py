@@ -49,7 +49,7 @@ def k_means_smoothing(rgb):
     """
     perform k means segmentation to smooth
     """
-    n_colors = 3
+    n_colors = 2
 
     # Load the Summer Palace photo
     china = rgb
