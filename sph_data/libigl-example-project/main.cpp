@@ -14,7 +14,7 @@ using namespace std;
 
 Eigen::MatrixXd V1, V2, V3, V4;
 Eigen::MatrixXi F1, F2, F3, F4;
-igl::opengl::glfw::Viewer viewer;
+//igl::opengl::glfw::Viewer viewer;
 
 const auto &key_down = [](igl::opengl::glfw::Viewer &viewer,unsigned char key,int mod)->bool
   {

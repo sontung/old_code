@@ -104,7 +104,7 @@ def txt_to_mesh(txt_folder='../data_heavy/sph_solutions/new_state/', if_vis=Fals
         pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(point_cloud))
 
         nv, nf = surface_reconstruct_marching_cube(pcd, cube_size=0.15, isovalue=0.14, verbose=False)
-        nv, nf, _, _ = mesh_filtering(nv, nf, if_vis=False, verbose=True)
+        nv, nf, _, _ = mesh_filtering(nv, nf, if_vis=False, verbose=False)
 
         mesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(nv),
                                          triangles=o3d.utility.Vector3iVector(nf))
