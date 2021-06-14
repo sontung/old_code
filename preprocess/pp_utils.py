@@ -3,6 +3,7 @@ import os
 import cv2
 import numpy as np
 import os
+import sys
 from os import listdir
 from os.path import isfile, join
 from sklearn.cluster import KMeans
@@ -43,6 +44,28 @@ def extract_frame():
     with open(join("../data_heavy/frames", "info.txt"), "w") as text_file:
         for c in counts:
             print(c, file=text_file)
+
+
+def kmeans_mask(pixels, image):
+    n_colors = 2
+    image_array = np.zeros((pixels.shape[0], 3), dtype=np.float)
+    for i, (u, v) in enumerate(pixels):
+        image_array[i] = image[u, v]/255.0
+    image_array_sample = shuffle(image_array, random_state=0)
+    kmeans = KMeans(n_clusters=n_colors, random_state=0).fit(image_array_sample)
+
+    # Get labels for all points
+    labels = kmeans.predict(image_array)
+    label2color = {0: np.array([0.5, 0.6, 0.7]),
+                   1: np.array([0.1, 0.2, 0.3]),
+                   2: np.array([0.4, 0.7, 0.3])}
+    for i, (u, v) in enumerate(pixels):
+        image[u, v] = label2color[labels[i]]*255
+    return image
+    # cv2.imshow("t", image)
+    # cv2.waitKey()
+    # cv2.destroyAllWindows()
+    # sys.exit()
 
 
 def k_means_smoothing(rgb):

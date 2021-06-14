@@ -1,6 +1,7 @@
 from functools import partial
 import matplotlib.pyplot as plt
 from pycpd import DeformableRegistration, AffineRegistration
+from fast_registration import register, register_fast
 import numpy as np
 import time
 import sys
@@ -75,7 +76,7 @@ def draw_image(array):
 
 
 def process_cpd(debug=False):
-    ear = cv2.imread("/home/sontung/work/3d-air-bag-p2/data/ear.png")
+    ear = cv2.imread("../data/ear.png")
     ear = cv2.resize(ear, (ear.shape[1]//4, ear.shape[0]//4))
     all_files = glob.glob("../data_heavy/edge_pixels/*")
     transform_path = "../data_heavy/head_rotations"
@@ -105,5 +106,44 @@ def process_cpd(debug=False):
             cv2.imwrite(f"{debug_path}/{imn}-inp.png", draw_image(x_data))
 
 
+def process_cpd_fast(debug=False):
+    ear = cv2.imread("../data/ear.png")
+    ear = cv2.resize(ear, (ear.shape[1]//4, ear.shape[0]//4))
+    all_files = glob.glob("../data_heavy/edge_pixels/*")
+    transform_path = "../data_heavy/head_rotations"
+    os.makedirs(transform_path, exist_ok=True)
+    debug_path = "../data_heavy/head_rotations_debug"
+    if debug:
+        os.makedirs(debug_path, exist_ok=True)
+
+    nonzero_indices = np.nonzero(ear)
+    with open("../data/ear.txt", "w") as fp:
+        for i in range(nonzero_indices[0].shape[0]):
+            print(nonzero_indices[0][i],
+                  nonzero_indices[1][i], file=fp)
+
+    y_data = np.loadtxt('../data/ear.txt')
+
+    for file in tqdm(all_files, desc="Extracting rotation using CPD"):
+        x_data = np.loadtxt(file)
+        y_data_transformed, b, t = register_fast(x_data, y_data)
+
+        imn = file.split("/")[-1]
+        cv2.imwrite(f"{transform_path}/{imn}", draw_image(y_data_transformed))
+
+        if debug:
+            cv2.imwrite(f"{debug_path}/{imn}-res.png", draw_image(y_data_transformed))
+            cv2.imwrite(f"{debug_path}/{imn}-inp.png", draw_image(x_data))
+
+
 if __name__ == '__main__':
-    process_cpd(True)
+    import cProfile, io, pstats
+    pr = cProfile.Profile()
+    pr.enable()
+    process_cpd2(False)
+    pr.disable()
+    s = io.StringIO()
+    sortby = 'time'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats(100)
+    print(s.getvalue())

@@ -17,3 +17,4 @@ sph_data/image_gif
 *.gif
 sph_data/libigl-example-project/build/
 segmentation/output/
+*.lprof
