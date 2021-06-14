@@ -29,4 +29,5 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
     return
 
 
+os.makedirs('data_video/all_final_vis', exist_ok=True)
 move_video("data_video/all_video", "data_video/all_final_vis")
