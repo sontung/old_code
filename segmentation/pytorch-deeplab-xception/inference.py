@@ -101,7 +101,7 @@ def main():
                             sync_bn=None,
                             freeze_bn=True)
     checkpoint = torch.load("../../data_const/model_best.pth.tar")
-    model.cuda()
+    model.cuda().eval()
     model.load_state_dict(checkpoint['state_dict'])
     HAS_LABELS = False
     args = Args(513, 513)
