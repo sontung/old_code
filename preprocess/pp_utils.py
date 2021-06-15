@@ -36,9 +36,10 @@ def extract_frame():
     mypath = "../data_const/run"
     videos = sorted([join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))])
     print("Extracting frames from", videos)
-    counts = []
     os.makedirs("../data_heavy/frames", exist_ok=True)
 
+    min_nb_frame = None
+    keep_counts = []
     for c, v in enumerate(videos):
         cap = cv2.VideoCapture(v)
         count = 0
@@ -55,10 +56,17 @@ def extract_frame():
                     counts.append(count)
             else:
                 break
+        if min_nb_frame:
+            if min_nb_frame > count:
+                keep_counts = counts
+                min_nb_frame = count
+        else:
+            keep_counts = counts
+            min_nb_frame = count
 
-    counts = set(counts)
+    keep_counts = set(keep_counts)
     with open(join("../data_heavy/frames", "info.txt"), "w") as text_file:
-        for c in counts:
+        for c in keep_counts:
             print(c, file=text_file)
 
 

@@ -55,7 +55,7 @@ def compute_translation(reverse_for_vis=False):
     return trajectories
 
 
-def compute_rotation(reverse_for_vis=False):
+def compute_rotation(reverse_for_vis=False, view=1):
     sys.stdin = open("../data_heavy/frames/info.txt")
     trajectories = []
     prev_pos = None
@@ -65,9 +65,17 @@ def compute_rotation(reverse_for_vis=False):
     sys.stdin = open("../data_heavy/frame2ab.txt")
     lines2 = [du[:-1] for du in sys.stdin.readlines()]
     frame2ab = {du.split(" ")[0]: du for du in lines2}
+
+    # check view exist
+    all_key = list(frame2ab.keys())
+    views = [int(key.split('-')[0]) for key in all_key]
+    if view not in views:
+        print(f"View {view} does not exist")
+        return None
+
     rot_all = []
-    for frn in tqdm(lines, desc="Computing head rotation"):
-        akey = "1-%s.png" % frn
+    for frn in tqdm(lines, desc=f"Computing head rotation by view {view}"):
+        akey = "%s-%s.png" % (view, frn)
         _, ab_area, head_area, _, _, head_rot, _ = frame2ab[akey].split(" ")
         head_area = float(head_area)
         try:
@@ -122,7 +130,7 @@ def compute_rotation(reverse_for_vis=False):
 def visualize():
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
-    global pcd, trajectory, counter, rotated_trajectory
+    global pcd, trajectory, counter, rotated_trajectory, rotated_trajectory_z
     global ab_counter
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
@@ -138,6 +146,7 @@ def visualize():
     print(f"Airbag pose: translation=({ab_transx}, {ab_transy}), rotation={ab_rot}, scale={ab_scale}")
     trajectory = compute_translation()
     rotated_trajectory = compute_rotation()
+    rotated_trajectory_z = compute_rotation(view=2)
 
     start_ab, _ = compute_ab_frames()
     counter = 0
@@ -148,13 +157,18 @@ def visualize():
     vis.get_view_control().set_zoom(1.5)
 
     def rotate_view(avis):
-        global pcd, trajectory, counter, rotated_trajectory
+        global pcd, trajectory, counter, rotated_trajectory, rotated_trajectory_z
         global ab_counter
         ab_added = False
         pcd.translate(trajectory[counter % len(trajectory)]/5)
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
                                              degrees=True).as_matrix()
         pcd.rotate(rot_mat, pcd.get_center())
+
+        if rotated_trajectory_z is not None:
+            rot_mat_z = rot_mat_compute.from_euler('z', rotated_trajectory_z[counter % len(trajectory)],
+                                                   degrees=True).as_matrix()
+            pcd.rotate(rot_mat_z, pcd.get_center())
 
         avis.update_geometry(pcd)
         counter += 1
