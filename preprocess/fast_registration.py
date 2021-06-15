@@ -23,7 +23,7 @@ def initialize_sigma2(X, Y):
     return np.sum(err) / (D * M * N)
 
 
-def register_fast(X, Y, max_iterations=45):
+def register_fast(X, Y, max_iterations=45, threshold=0.1, stop_early=False):
     sigma2 = initialize_sigma2(X, Y)
     w = 0.0
     (N, D) = X.shape
@@ -34,7 +34,7 @@ def register_fast(X, Y, max_iterations=45):
     iteration = 0
     tolerance = 0.001
     q = np.inf
-
+    diff_all = []
     while iteration < max_iterations:
         iteration += 1
 
@@ -88,13 +88,16 @@ def register_fast(X, Y, max_iterations=45):
         q = (xPx - 2 * trAB + trBYPYP) / (2 * sigma2) + \
                  D * Np / 2 * np.log(sigma2)
         diff = np.abs(q - qprev)
+        diff_all.append(diff)
+        if diff < threshold and stop_early:
+            break
 
         sigma2 = (xPx - trAB) / (Np * D)
 
         if sigma2 <= 0:
             sigma2 = tolerance / 10
 
-    return TY, B, t
+    return TY, B, t, diff_all
 
 
 def register(X, Y, max_iterations=45):
@@ -167,4 +170,4 @@ def register(X, Y, max_iterations=45):
         if sigma2 <= 0:
             sigma2 = tolerance / 10
 
-    return TY, B, t
+    return TY, B, t, diff

@@ -54,6 +54,60 @@ def compute_translation(reverse_for_vis=False):
         trajectories.extend(new_list)
     return trajectories
 
+def compute_rotation_accurate(reverse_for_vis=False):
+    sys.stdin = open("../data_heavy/frames/info.txt")
+    lines = [du[:-1] for du in sys.stdin.readlines()]
+    refined_pixel_dir = "../data_heavy/refined_pixels"
+    images_dir = "../data_heavy/line_images"
+    trajectories = []
+    prev_pos = None
+    neighbors = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+    all_angles = []
+
+    for idx in tqdm(lines, desc="Computing head rotation using hough lines"):
+        with open("%s/1-%s.png" % (refined_pixel_dir, idx), "rb") as fp:
+            right_pixels_edges = pickle.load(fp)
+        img = cv2.imread("%s/1-%s.png" % (images_dir, idx))
+        image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        rho = 1  # distance resolution in pixels of the Hough grid
+        theta = np.pi / 180  # angular resolution in radians of the Hough grid
+        threshold = 15  # minimum number of votes (intersections in Hough grid cell)
+        min_line_length = min(image.shape)//2  # minimum number of pixels making up a line
+        max_line_gap = 30  # maximum gap in pixels between connectable line segments
+
+        lines = cv2.HoughLinesP(image, rho, theta, threshold, np.array([]),
+                                min_line_length, max_line_gap)
+        if lines is None:
+            all_angles.append(None)
+            continue
+
+        angles = []
+        angles_true = []
+        for line in lines:
+            for x1, y1, x2, y2 in line:
+                cv2.line(image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+                rot_deg = np.rad2deg(np.arctan2(y2 - y1, x2 - x1))
+                angles.append(abs(rot_deg))
+                angles_true.append(rot_deg)
+        clusters, centroids = kmeans1d.cluster(angles, 2)
+        rot_deg_overall = np.mean([angles_true[i] for i in range(len(clusters)) if clusters[i] == 0])
+        all_angles.append(rot_deg_overall)
+    failed_computation = len([du for du in all_angles if du is None])
+    if failed_computation/len(all_angles) > 0.5:
+        return None
+    all_angles = b_spline_smooth(all_angles)
+    for rot_deg_overall in all_angles:
+        if prev_pos is not None:
+            move = rot_deg_overall - prev_pos
+            trajectories.append(-move)
+        prev_pos = rot_deg_overall
+    if reverse_for_vis:
+        new_list = []
+        for i in reversed(trajectories):
+            new_list.append(i*-1)
+        trajectories.extend(new_list)
+    return trajectories
+
 
 def compute_rotation(reverse_for_vis=False, view=1):
     sys.stdin = open("../data_heavy/frames/info.txt")
@@ -145,8 +199,10 @@ def visualize():
 
     print(f"Airbag pose: translation=({ab_transx}, {ab_transy}), rotation={ab_rot}, scale={ab_scale}")
     trajectory = compute_translation()
-    rotated_trajectory = compute_rotation()
     rotated_trajectory_z = compute_rotation(view=2)
+    rotated_trajectory = compute_rotation_accurate()
+    if rotated_trajectory is None:
+        rotated_trajectory = compute_rotation()
 
     start_ab, _ = compute_ab_frames()
     counter = 0

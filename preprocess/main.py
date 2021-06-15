@@ -87,24 +87,6 @@ def fit_ellipse():
                 image[p[1], p[0]] = (0, 0, 0)
         imn = afile.split("/")[-1]
         cv2.imwrite("%s/%s" % (saved_dir, imn), image)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        rho = 1  # distance resolution in pixels of the Hough grid
-        theta = np.pi / 180  # angular resolution in radians of the Hough grid
-        threshold = 15  # minimum number of votes (intersections in Hough grid cell)
-        min_line_length = min(image.shape)//10  # minimum number of pixels making up a line
-        max_line_gap = 30  # maximum gap in pixels between connectable line segments
-
-        lines = cv2.HoughLinesP(image, rho, theta, threshold, np.array([]),
-                                min_line_length, max_line_gap)
-
-        angles = []
-        angles_true = []
-        for line in lines:
-            for x1, y1, x2, y2 in line:
-                cv2.line(image, (x1, y1), (x2, y2), (255, 0, 0), 5)
-                rot_deg = np.rad2deg(np.arctan2(y2 - y1, x2 - x1))
-                angles.append(abs(rot_deg))
-                angles_true.append(rot_deg)
 
         # cv2.imshow("t", image)
         # cv2.waitKey()
