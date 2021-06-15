@@ -135,15 +135,13 @@ def process_cpd_fast(debug=False):
                   nonzero_indices[1][i], file=fp)
 
     y_data = np.loadtxt('../data/ear.txt')
-
     for afile in tqdm(all_files, desc="Extracting rotation using CPD"):
         imn = afile.split("/")[-1]
         # if imn != "3-315.png":
         #    continue
         x_data = np.loadtxt(afile)
         y_data_norm = normalize(y_data, x_data)
-        y_data_transformed, b, t = register_fast(x_data, y_data_norm)
-
+        y_data_transformed, b, t, error = register_fast(x_data, y_data_norm, stop_early=True)
         # fig = plt.figure()
         # fig.add_axes([0, 0, 1, 1])
         # ax = fig.axes[0]
