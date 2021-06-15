@@ -12,6 +12,22 @@ from sklearn.datasets import load_sample_image
 from time import time
 from pathlib import Path
 
+def keep_one_biggest_contour(img):
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    cnts, _ = cv2.findContours(gray_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    mask = None
+    if len(cnts) > 0:
+        largest_cnt = max(cnts, key=lambda du1: cv2.contourArea(du1))
+        res = np.zeros_like(img) 
+        mask = np.zeros([img.shape[0], img.shape[1], 3])
+        cv2.fillPoly(res, pts=[largest_cnt], color=(192, 128, 128))
+        img[res != (192, 128, 128)] = 0
+        mask[res == (192, 128, 128)] = 1
+        mask = mask[:, :, 0]
+        #cv2.imshow("t", np.hstack([res, img]))
+        #cv2.waitKey()
+        #cv2.destroyAllWindows()
+    return img, mask
 
 def extract_frame():
     """
@@ -116,6 +132,79 @@ def k_means_smoothing(rgb):
     # cv2.waitKey()
     # cv2.destroyAllWindows()
 
+def prepare_pixels_set():
+    """
+    prepare sets of pixels to match based on segmentation and edges
+    """
+    pixels_path = "../data_heavy/frames_ear_coord_only"
+    edges_path = "../data_heavy/frames_ear_only_with_edges"
+    saved_dir = "../data_heavy/refined_pixels"
+    names = [f for f in listdir(pixels_path) if isfile(join(pixels_path, f))]
+    neighbors = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+    os.makedirs(saved_dir, exist_ok=True)
+
+    for im_name in tqdm(names, desc="Extracting refined pixel list for matching"):
+        edge_im = cv2.imread(join(edges_path, im_name), 0)
+        edge_im_filled = np.zeros_like(edge_im)
+
+        refined_pixel_list = []
+        with open(join(pixels_path, im_name), "rb") as fp:
+            pixels_list = pickle.load(fp)
+
+        for p in pixels_list:
+            i, j = p
+            edge_im_filled[i, j] = 255
+
+        for p in pixels_list:
+            i, j = p
+            if edge_im[i, j] > 0:
+                refined_pixel_list.append(p)
+            else:
+                for u, v in neighbors:
+                    if edge_im_filled[i+u, j+v] == 0:
+                        refined_pixel_list.append(p)
+                        break
+
+        # test
+        # edge_im_filled = np.zeros_like(edge_im)
+        # for p in refined_pixel_list:
+        #     i, j = p
+        #     edge_im_filled[i, j] = 255
+
+        with open(join(saved_dir, im_name), "wb") as fp:
+            pickle.dump(refined_pixel_list, fp)
+
+
+def simple_preprocess():
+    """
+    convert black background to non-black
+    """
+    mypath = "../data_heavy/frames_ear_only"
+    frames = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+    saving_dir = "../data_heavy/frames_ear_only_nonblack_bg"
+    pixels_path = "../data_heavy/frames_ear_coord_only"
+    os.makedirs(saving_dir, exist_ok=True)
+
+    for im_name in tqdm(frames, desc="Convert to non-black background"):
+        img = cv2.imread(join(mypath, im_name))
+        with open(join(pixels_path, im_name), "rb") as fp:
+            pixels_list = pickle.load(fp)
+
+        im_filled = np.zeros_like(img)
+
+        for p in pixels_list:
+            i, j = p
+            im_filled[i, j] = 255
+
+        indices = np.argwhere(im_filled[:, :, 0] == 0)
+        img[indices[:, 0], indices[:, 1]] = (128, 128, 255)
+        # for i, j in np.argwhere(im_filled[:, :, 0] == 0):
+        #     img[i, j] = (128, 128, 255)
+        # for i in range(img.shape[0]):
+        #     for j in range(img.shape[1]):
+        #         if im_filled[i, j, 0] == 0:
+        #             img[i, j] = (128, 128, 255)
+        cv2.imwrite("%s/%s" % (saving_dir, im_name), img)
 
 if __name__ == '__main__':
     extract_frame()
