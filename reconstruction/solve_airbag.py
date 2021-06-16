@@ -135,7 +135,7 @@ def compute_ab_pose():
         if ab_area > abam1 and head_area > ham1:
             scale_all.append(head_area / ab_area)
 
-    return np.mean(scale_all), np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all)
+    return np.mean(scale_all), np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all), abam1, ham1
 
 
 if __name__ == "__main__":

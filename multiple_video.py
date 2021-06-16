@@ -29,7 +29,8 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
             save_result = os.path.join(folder_output, folder)
             shutil.move(result_df, save_result)
         except:
-            print(f"{folder} don't complete")
+            print(f"{folder} doesn't complete")
+            return
             shutil.rmtree('data_heavy', ignore_errors=True)
             shutil.rmtree('sph_data/mc_solutions', ignore_errors=True)
             shutil.rmtree('sph_data/mc_solutions_smoothed', ignore_errors=True)
@@ -37,5 +38,6 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
     return
 
 
-os.makedirs('data_video/all_final_vis', exist_ok=True)
-move_video("data_video/all_video", "data_video/all_final_vis")
+if __name__ == '__main__':
+    os.makedirs('data_video/all_final_vis', exist_ok=True)
+    move_video("data_video/all_video", "data_video/all_final_vis")

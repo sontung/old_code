@@ -135,7 +135,7 @@ def process_cpd_fast(debug=False):
                   nonzero_indices[1][i], file=fp)
 
     y_data = np.loadtxt('../data/ear.txt')
-    for afile in tqdm(all_files, desc="Extracting rotation using CPD"):
+    for afile in tqdm(all_files, desc="Extracting rotation using affine CPD"):
         imn = afile.split("/")[-1]
         # if imn != "3-315.png":
         #    continue

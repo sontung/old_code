@@ -8,6 +8,8 @@
 pip install open3d
 pip install scikit-learn
 pip install kornia
+pip install pycpd
+pip install numba
 pip install pysplishsplash
 pip install microdict
 pip install meshio
