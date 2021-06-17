@@ -175,8 +175,6 @@ def compute_head_ab_areas(sim_first=False):
     if sim_first:
         ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
         os.makedirs("../data_heavy/area_compute/", exist_ok=True)
-        global pcd, trajectory, counter, rotated_trajectory, rotated_trajectory_z
-        global ab_counter
         pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
         ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
 
@@ -187,10 +185,10 @@ def compute_head_ab_areas(sim_first=False):
             global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
         global_scale_ab = np.mean(global_scale_ab_list)
 
-        print(f"Airbag pose: translation=({ab_transx}, {ab_transy}), rotation={ab_rot}, scale={ab_scale}")
         trajectory = compute_translation()
         rotated_trajectory_z = compute_rotation(view=2)
         rotated_trajectory = compute_rotation_accurate()
+        # rotated_trajectory = None
         if rotated_trajectory is None:
             rotated_trajectory = compute_rotation()
 
@@ -200,56 +198,53 @@ def compute_head_ab_areas(sim_first=False):
             assert len(trajectory) == len(rotated_trajectory)
 
         start_ab, _ = compute_ab_frames()
-        counter = 0
+        mesh_files = glob.glob("%s/*" % ab_mesh_dir)
+        print(f"Trajectory has {len(trajectory)} points, airbag starts at {start_ab} with {len(mesh_files)} meshes")
         ab_counter = 0
         vis = o3d.visualization.Visualizer()
         vis.create_window(visible=False)
         vis.add_geometry(pcd)
         vis.get_view_control().set_zoom(1.5)
-
-        def rotate_view(avis):
-            global pcd, trajectory, counter, rotated_trajectory, rotated_trajectory_z
-            global ab_counter
+        pcd.compute_vertex_normals()
+        arr = []
+        for counter in tqdm(range(len(trajectory)), desc="Prior sim to compute view areas"):
             ab_added = False
             pcd.translate(trajectory[counter % len(trajectory)]/5)
-            rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
+            rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter],
                                                  degrees=True).as_matrix()
             pcd.rotate(rot_mat, pcd.get_center())
 
             if rotated_trajectory_z is not None:
-                rot_mat_z = rot_mat_compute.from_euler('z', rotated_trajectory_z[counter % len(trajectory)],
+                rot_mat_z = rot_mat_compute.from_euler('z', rotated_trajectory_z[counter],
                                                        degrees=True).as_matrix()
                 pcd.rotate(rot_mat_z, pcd.get_center())
 
-            avis.update_geometry(pcd)
-            counter += 1
-            if counter > len(trajectory)-1:
-                counter = 0
-                sys.exit()
-            avis.get_view_control().rotate(-500, 0)
-            avis.capture_screen_image("../data_heavy/area_compute/head-%s.png" % counter, do_render=True)
-            if counter >= start_ab+1:
-                ab_counter += 1
-                ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
+            vis.update_geometry(pcd)
+
+            vis.get_view_control().rotate(-500, 0)
+            vis.capture_screen_image("../data_heavy/area_compute/head-%s.png" % counter, do_render=True)
+            if counter >= start_ab:
+                ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
+                arr.append(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
+                ab.compute_vertex_normals()
                 ab.scale(global_scale_ab, ab.get_center())
-                ab.translate([0, -ab_transy*2.5, -ab_transy*2.5])
+                ab.translate([0, -ab_transx, -ab_transy])
                 ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
                 ab.rotate(rot_mat_compute.from_euler("x", -90+ab_rot, degrees=True).as_matrix())
                 ab_added = True
-                avis.remove_geometry(pcd, reset_bounding_box=False)
-                avis.add_geometry(ab, reset_bounding_box=False)
-                avis.capture_screen_image("../data_heavy/area_compute/ab-%s.png" % counter, do_render=True)
-                avis.add_geometry(pcd, reset_bounding_box=False)
+                vis.remove_geometry(pcd, reset_bounding_box=False)
+                vis.add_geometry(ab, reset_bounding_box=False)
+                vis.capture_screen_image("../data_heavy/area_compute/ab-%s.png" % counter, do_render=True)
+                vis.add_geometry(pcd, reset_bounding_box=False)
+                ab_counter += 1
 
             if ab_added:
-                avis.remove_geometry(ab, reset_bounding_box=False)
-            avis.get_view_control().rotate(500, 0)
-
-            return False
-
-        vis.register_animation_callback(rotate_view)
-        vis.run()
+                vis.remove_geometry(ab, reset_bounding_box=False)
+            vis.get_view_control().rotate(500, 0)
+            vis.poll_events()
+            vis.update_renderer()
         vis.destroy_window()
+
     image_names = glob.glob("../data_heavy/area_compute/head*")
     arr = []
     for name in image_names:
@@ -263,18 +258,18 @@ def compute_head_ab_areas(sim_first=False):
         im = cv2.imread(name, cv2.IMREAD_GRAYSCALE)
         arr.append(np.sum(im != 255))
     ab_area = np.mean(arr)
+    if sim_first:
+        return head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z
     return head_area, ab_area
 
 
 def visualize():
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
-    global pcd, trajectory, counter, rotated_trajectory, rotated_trajectory_z
-    global ab_counter
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
-    sim_head_area, sim_ab_area = compute_head_ab_areas()
+    sim_head_area, sim_ab_area, trajectory, rotated_trajectory, rotated_trajectory_z = compute_head_ab_areas(sim_first=True)
     translation_scale = math.sqrt(sim_head_area/head_area)
     scale2 = math.sqrt(ab_area/head_area*sim_head_area/sim_ab_area)
     global_scale_ab_list = []
@@ -284,28 +279,15 @@ def visualize():
         global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
     global_scale_ab = np.mean(global_scale_ab_list)*scale2
     print(f"Airbag pose: translation=({ab_transx}, {ab_transy}), rotation={ab_rot}, scale={global_scale_ab}, translation scale = {translation_scale}")
-    trajectory = compute_translation()
-    rotated_trajectory_z = compute_rotation(view=2)
-    rotated_trajectory = compute_rotation_accurate()
-    if rotated_trajectory is None:
-        rotated_trajectory = compute_rotation()
-
-    if rotated_trajectory_z is not None:
-        assert len(trajectory) == len(rotated_trajectory) == len(rotated_trajectory_z)
-    else:
-        assert len(trajectory) == len(rotated_trajectory)
 
     start_ab, _ = compute_ab_frames()
-    counter = 0
     ab_counter = 0
     vis = o3d.visualization.Visualizer()
     vis.create_window(visible=False)
     vis.add_geometry(pcd)
     vis.get_view_control().set_zoom(1.5)
 
-    def rotate_view(avis):
-        global pcd, trajectory, counter, rotated_trajectory, rotated_trajectory_z
-        global ab_counter
+    for counter in tqdm(range(len(trajectory)), desc="Completing simulation"):
         ab_added = False
         pcd.translate(trajectory[counter % len(trajectory)]/5)
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
@@ -317,36 +299,28 @@ def visualize():
                                                    degrees=True).as_matrix()
             pcd.rotate(rot_mat_z, pcd.get_center())
 
-        avis.update_geometry(pcd)
-        counter += 1
-        if counter > len(trajectory)-1:
-            counter = 0
-            sys.exit()
+        vis.update_geometry(pcd)
+
         if counter >= start_ab+1:
             ab_counter += 1
             ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
             ab.compute_vertex_normals()
             ab.scale(global_scale_ab, ab.get_center())
-            ab.translate([0, -ab_transy*translation_scale, -ab_transy*translation_scale])
+            ab.translate([0, -ab_transx*translation_scale, -ab_transy*translation_scale])
             ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
             ab.rotate(rot_mat_compute.from_euler("x", -90+ab_rot, degrees=True).as_matrix())
             ab_added = True
-            avis.add_geometry(ab, reset_bounding_box=False)
-            # print(pcd.get_surface_area()/ab.get_surface_area())
-        avis.get_view_control().rotate(-500, 0)
-        avis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter, do_render=True)
+            vis.add_geometry(ab, reset_bounding_box=False)
+        vis.get_view_control().rotate(-500, 0)
+        vis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter, do_render=True)
 
-        avis.get_view_control().rotate(500, 0)
-        avis.get_view_control().rotate(-200, 0)
-        avis.capture_screen_image("../data_heavy/saved/v2-%s.png" % counter, do_render=True)
-        avis.get_view_control().rotate(200, 0)
+        vis.get_view_control().rotate(500, 0)
+        vis.get_view_control().rotate(-200, 0)
+        vis.capture_screen_image("../data_heavy/saved/v2-%s.png" % counter, do_render=True)
+        vis.get_view_control().rotate(200, 0)
         if ab_added:
-            avis.remove_geometry(ab, reset_bounding_box=False)
+            vis.remove_geometry(ab, reset_bounding_box=False)
 
-        return False
-
-    vis.register_animation_callback(rotate_view)
-    vis.run()
     vis.destroy_window()
 
 
