@@ -20,6 +20,7 @@ def visualize(iteration, error, X, Y, ax):
     ax.legend(loc='upper left', fontsize='x-large')
     plt.draw()
     plt.pause(0.001)
+    plt.savefig(f"test/t{iteration}.png")
 
 
 def normalize(inp, ref):
@@ -43,7 +44,7 @@ def process_cpd_with_vis():
     y_data2 = np.loadtxt('../data/ear.txt')
 
     for file in all_files:
-        if file.split("/")[-1] != "3-315.png":
+        if file.split("/")[-1] != "0-99.png":
             continue
         x_data = np.loadtxt(file)
 
@@ -51,13 +52,13 @@ def process_cpd_with_vis():
         fig.add_axes([0, 0, 1, 1])
         callback = partial(visualize, ax=fig.axes[0])
 
-        reg = AffineRegistration(**{'X': x_data, 'Y': y_data}, max_iterations=1000)
-        reg.register(callback)
+        reg = AffineRegistration(**{'X': x_data, 'Y': y_data}, max_iterations=100)
+        reg.register()
         y_data = reg.transform_point_cloud(y_data)
 
         y_data_norm = normalize(y_data, x_data)
         reg = AffineRegistration(**{'X': x_data, 'Y': y_data_norm}, max_iterations=45)
-        reg.register()
+        reg.register(callback)
         y_data_norm = reg.transform_point_cloud(y_data_norm)
 
         ax = fig.axes[0]
@@ -162,5 +163,5 @@ def process_cpd_fast(debug=False):
 
 
 if __name__ == '__main__':
-    process_cpd_fast()
-    # process_cpd_with_vis()
+    # process_cpd_fast()
+    process_cpd_with_vis()

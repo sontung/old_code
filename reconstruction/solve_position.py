@@ -16,6 +16,28 @@ from pycpd import RigidRegistration
 import matplotlib.pyplot as plt
 
 
+def remove_condition(path):
+    grad = np.gradient(path, 2)
+    clusters, centroids = kmeans1d.cluster(grad, 2)
+    if clusters.count(0) > clusters.count(1):
+        remove_label = 1
+    else:
+        remove_label = 0
+    res = path[:]
+    for i in range(len(path)):
+        if clusters[i] == remove_label:
+            res[i] = None
+    return res
+
+
+def refine_path_computation(path):
+    res = path[:]
+    null_indices = [du for du in range(len(path)) if path[du] is None]
+    res[:min(null_indices)] = remove_condition(path[:min(null_indices)])
+    res[max(null_indices)+1:] = remove_condition(path[max(null_indices)+1:])
+    return res
+
+
 def compute_translation(reverse_for_vis=False):
     """
     translation of the head
@@ -89,10 +111,10 @@ def compute_rotation_accurate(reverse_for_vis=False, debugging=False):
         ax.scatter(target_matrix[:, 0],  target_matrix[:, 1], color='red', label='Target')
         ax.scatter(y_data_norm[:, 0],  y_data_norm[:, 1], color='yellow', label='Source')
         ax.legend(loc='upper left', fontsize='x-large')
-        plt.savefig("../data_heavy/rigid_head_rotation/1-%s-%f.png" % (idx, rot_angle))
+        plt.savefig("../data_heavy/rigid_head_rotation/1-%s.png" % (idx))
         plt.close(fig)
-
-    all_angles = b_spline_smooth(all_angles)
+    all_angles = refine_path_computation(all_angles)
+    all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
             move = rot_deg_overall - prev_pos
@@ -121,7 +143,7 @@ def compute_rotation_accurate(reverse_for_vis=False, debugging=False):
             vis.poll_events()
             vis.update_renderer()
 
-    return trajectories
+    return trajectories, all_angles
 
 
 def compute_rotation(reverse_for_vis=False, view=1):
@@ -187,8 +209,8 @@ def compute_head_ab_areas(sim_first=False):
 
         trajectory = compute_translation()
         rotated_trajectory_z = compute_rotation(view=2)
-        rotated_trajectory = compute_rotation_accurate()
-        # rotated_trajectory = None
+        rotated_trajectory, ne_rot_traj = compute_rotation_accurate()
+        #rotated_trajectory = None
         if rotated_trajectory is None:
             rotated_trajectory = compute_rotation()
 
@@ -259,17 +281,33 @@ def compute_head_ab_areas(sim_first=False):
         arr.append(np.sum(im != 255))
     ab_area = np.mean(arr)
     if sim_first:
-        return head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z
+        return head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z, ne_rot_traj
     return head_area, ab_area
 
+def draw_text_to_image(img, text):
+    # Write some Text
 
-def visualize():
+    font                   = cv2.FONT_HERSHEY_SIMPLEX
+    bottomLeftCornerOfText = (10,500)
+    fontScale              = 4 
+    fontColor              = (0,0,0)
+    lineType               = 2
+
+    cv2.putText(img,text,
+        bottomLeftCornerOfText,
+        font,
+        fontScale,
+        fontColor,
+        lineType)
+    return img
+
+def visualize(debug_mode=False):
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
-    sim_head_area, sim_ab_area, trajectory, rotated_trajectory, rotated_trajectory_z = compute_head_ab_areas(sim_first=True)
+    sim_head_area, sim_ab_area, trajectory, rotated_trajectory, rotated_trajectory_z, ne_rot_traj = compute_head_ab_areas(sim_first=True)
     translation_scale = math.sqrt(sim_head_area/head_area)
     scale2 = math.sqrt(ab_area/head_area*sim_head_area/sim_ab_area)
     global_scale_ab_list = []
@@ -322,9 +360,49 @@ def visualize():
             vis.remove_geometry(ab, reset_bounding_box=False)
 
     vis.destroy_window()
+    if debug_mode:
+        sys.stdin = open("../data_heavy/frames/info.txt")
+        lines = [du[:-1] for du in sys.stdin.readlines()]
+        ear_dir = "../data_heavy/frames_ear_only"
+        rigid_dir = "../data_heavy/rigid_head_rotation"
+        images_dir = "../data_heavy/line_images"
+        print(lines)
+        lines = lines[1:]
+        print(len(lines), len(trajectory))
+        all_angles = []
+        assert len(lines) == len(trajectory)
+        for counter, ind in enumerate(lines):
+            line_img = cv2.imread("%s/1-%s.png" % (images_dir, ind))
+            ear_img = cv2.imread("%s/1-%s.png" % (ear_dir, ind))
+            rigid_img = cv2.imread("%s/1-%s.png" % (rigid_dir, ind))
+            arr = np.nonzero(ear_img)
+            if len(arr[0]) > 0:
+                ear_img = ear_img[np.min(arr[0]):np.max(arr[0]), np.min(arr[1]): np.max(arr[1])]
+                cv2.imwrite(f"test/ear-{ind}.png", ear_img)
+                cv2.imwrite(f"test/line-{ind}.png", line_img)
+                cv2.imwrite(f"test/rigid-{ind}.png", rigid_img)
+            im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)
+            im1 = draw_text_to_image(im1, "rot=%.3f" % (ne_rot_traj[counter]))
+            im1 = cv2.resize(im1, (im1.shape[1]//2, im1.shape[0]//2))
+            cv2.imwrite(f"test2/res-{ind}.png", im1)
 
+
+def zero_mean(array):
+    res = np.zeros_like(array)
+    u, v = np.min(array[:, 0]), np.min(array[:, 1])
+    res[:, 0] = array[:, 0] - u
+    res[:, 1] = array[:, 1] - v
+    return res
+
+
+def draw_image(array):
+    array = zero_mean(array)
+    res = np.zeros((int(np.max(array[:, 0])+1),
+                    int(np.max(array[:, 1])+1), 3))
+    for i in range(array.shape[0]):
+        u, v = map(int, array[i])
+        res[u, v] = (128, 128, 128)
+    return res
 
 if __name__ == '__main__':
-    # compute_head_ab_areas()
-    visualize()
-
+    visualize(False)

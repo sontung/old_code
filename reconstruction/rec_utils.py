@@ -9,7 +9,7 @@ from scipy import interpolate
 from matplotlib import pyplot as plt
 
 
-def b_spline_smooth(_trajectory, vis=False, return_params=False):
+def b_spline_smooth(_trajectory, vis=False, name="test2.png", return_params=False):
     """
     b spline smoothing for missing values (denoted None)
     Args:
@@ -37,7 +37,8 @@ def b_spline_smooth(_trajectory, vis=False, return_params=False):
         plt.xlabel("time")
         plt.ylabel("position")
         plt.legend(["available points", "missing points", "interpolated curve"], prop={'size': 15})
-        plt.savefig('/home/sontung/Downloads/Figure_1.png', dpi=300)
+        plt.savefig(f'{name}', dpi=300)
+        plt.close()
     if return_params:
         return tck
     return values

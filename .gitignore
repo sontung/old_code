@@ -18,3 +18,5 @@ sph_data/image_gif
 sph_data/libigl-example-project/build/
 segmentation/output/
 *.lprof
+*/test*/*
+reconstruction/*.png
