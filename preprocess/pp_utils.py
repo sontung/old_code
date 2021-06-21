@@ -50,8 +50,6 @@ def extract_frame():
             if ret:
                 count += 1
                 if count % 3 == 0:
-                    # Path("../data_heavy/sfm_data/%d/images" % count).mkdir(parents=True, exist_ok=True)
-                    # cv2.imwrite("../data_heavy/sfm_data/%d/images/%d-%d.png" % (count, c, count), frame)
                     cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, count), frame)
                     counts.append(count)
             else:
@@ -63,8 +61,7 @@ def extract_frame():
         else:
             keep_counts = counts
             min_nb_frame = count
-
-    keep_counts = set(keep_counts)
+    keep_counts = sorted(keep_counts)
     with open(join("../data_heavy/frames", "info.txt"), "w") as text_file:
         for c in keep_counts:
             print(c, file=text_file)

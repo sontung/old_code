@@ -2,7 +2,6 @@ import os
 import shutil
 import subprocess
 from tqdm import tqdm
-import sys
 from glob import glob
 
 

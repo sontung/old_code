@@ -89,6 +89,13 @@ def compute_rotation_accurate(reverse_for_vis=False, debugging=False):
     os.makedirs("../data_heavy/rigid_head_rotation", exist_ok=True)
     for idx in tqdm(lines, desc="Computing head x-y rotation using rigid CPD"):
         img = cv2.imread("%s/1-%s.png" % (images_dir, idx))
+
+        if debugging:
+            print("%s/1-%s.png" % (images_dir, idx))
+            cv2.imshow("t", img)
+            cv2.waitKey()
+            cv2.destroyAllWindows()
+
         if img is None:
             all_angles.append(None)
             continue
@@ -113,7 +120,9 @@ def compute_rotation_accurate(reverse_for_vis=False, debugging=False):
         ax.legend(loc='upper left', fontsize='x-large')
         plt.savefig("../data_heavy/rigid_head_rotation/1-%s.png" % (idx))
         plt.close(fig)
+    print(all_angles)
     all_angles = refine_path_computation(all_angles)
+    print(all_angles)
     all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
@@ -284,9 +293,9 @@ def compute_head_ab_areas(sim_first=False):
         return head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z, ne_rot_traj
     return head_area, ab_area
 
+
 def draw_text_to_image(img, text):
     # Write some Text
-
     font                   = cv2.FONT_HERSHEY_SIMPLEX
     bottomLeftCornerOfText = (10,500)
     fontScale              = 4 
@@ -300,6 +309,7 @@ def draw_text_to_image(img, text):
         fontColor,
         lineType)
     return img
+
 
 def visualize(debug_mode=False):
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
@@ -403,6 +413,7 @@ def draw_image(array):
         u, v = map(int, array[i])
         res[u, v] = (128, 128, 128)
     return res
+
 
 if __name__ == '__main__':
     visualize(False)
