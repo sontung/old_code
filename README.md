@@ -3,6 +3,10 @@
 1 drv
 2 rear
 
+### class ID
+head 64, 128, 128
+airbag 192, 128, 128
+
 ### dependencies
 ```
 pip install open3d

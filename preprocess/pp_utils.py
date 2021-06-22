@@ -12,6 +12,7 @@ from sklearn.datasets import load_sample_image
 from time import time
 from pathlib import Path
 
+
 def keep_one_biggest_contour(img):
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     cnts, _ = cv2.findContours(gray_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -28,6 +29,7 @@ def keep_one_biggest_contour(img):
         #cv2.waitKey()
         #cv2.destroyAllWindows()
     return img, mask
+
 
 def extract_frame():
     """
