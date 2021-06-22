@@ -38,7 +38,7 @@ class COCOSegmentation(Dataset):
 
     def __getitem__(self, index):
         _img, _target = self._make_img_gt_point_pair(index)
-        sample = {'image': _img, 'label': _target}
+        sample = {'image': _img, 'label': _target, "ori_img": _img}
 
         if self.split == "train":
             return self.transform_tr(sample)
@@ -105,13 +105,14 @@ class COCOSegmentation(Dataset):
         return composed_transforms(sample)
 
     def transform_val(self, sample):
-
+        an_img = sample["ori_img"]
         composed_transforms = transforms.Compose([
-            tr.FixScaleCrop(crop_size=self.args.crop_size),
             tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             tr.ToTensor()])
 
-        return composed_transforms(sample)
+        res = composed_transforms(sample)
+        res["ori_img"] = np.array(an_img)
+        return res
 
     def __len__(self):
         return len(self.ids)

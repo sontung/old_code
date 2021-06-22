@@ -15,6 +15,7 @@ import numpy as np
 import os
 import cv2
 import sys
+import post_process
 from tqdm import tqdm
 
 
@@ -103,7 +104,7 @@ def main():
     checkpoint = torch.load("../../data_const/model_best.pth.tar")
     model.cuda().eval()
     model.load_state_dict(checkpoint['state_dict'])
-    HAS_LABELS = False
+    HAS_LABELS = True
     args = Args(513, 513)
 
     test_set = TestDataset()
@@ -122,6 +123,22 @@ def main():
                            [0, 64, 128]])
     with open("../../data_heavy/frame2ab.txt", "w") as fp:
         for bid, sample in enumerate(tqdm(test_loader, desc="Extracting semantic masks")):
+
+            if HAS_LABELS:
+                image, target, ori_img = sample['image'], sample['label'], sample["ori_img"]
+                image = image.cuda()
+                target = target.cuda()
+                with torch.no_grad():
+                    output = model(image)
+                pred = output.data.cpu().numpy()
+                target = target.cpu().numpy()
+                pred = np.argmax(pred, axis=1)
+                for ind in range(pred.shape[0]):
+                    post_process.post_process(pred[ind], sample["ori_img"][ind].numpy())
+                print(pred.shape, np.unique(pred))
+                evaluator.add_batch(target, pred)
+                continue
+
             image, target, im_name = sample['image'], sample['label'], sample["name"]
             image = image.cuda()
             target = target.cuda()
@@ -159,11 +176,6 @@ def main():
                     print(imn, ab_pixels, head_pixels, dist_x, dist_y, rot1, rot2, file=fp)
                     Image.fromarray(im_final).save("../../data_heavy/frames_seg_abh/%s" % imn)
 
-            if HAS_LABELS:
-                pred = output.data.cpu().numpy()
-                target = target.cpu().numpy()
-                pred = np.argmax(pred, axis=1)
-                evaluator.add_batch(target, pred)
 
     # Fast test during the training
     if HAS_LABELS:
