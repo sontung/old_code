@@ -3,12 +3,21 @@
 1 drv
 2 rear
 
+# instruction
+Run
+```
+python multiple_video.py
+```
+inputs and outputs are saved in `data_video`
+
 ### class ID
 head 64, 128, 128
 airbag 192, 128, 128
 
 ### dependencies
 ```
+git submodule update --init --recursive
+
 pip install open3d
 pip install scikit-learn
 pip install kornia
