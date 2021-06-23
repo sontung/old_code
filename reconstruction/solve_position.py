@@ -16,7 +16,7 @@ from pycpd import RigidRegistration
 import matplotlib.pyplot as plt
 
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 def remove_condition(path):
