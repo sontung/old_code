@@ -4,7 +4,7 @@ scikit-learn
 opencv-python
 kornia
 pycpd
-pysplishsplash==2.9.2
+pysplishsplash
 microdict
 meshio
 pykdtree
