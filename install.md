@@ -12,20 +12,30 @@ git submodule update --init --recursive
 ```
 
 ### Step 2: Install environment 
+
 1. Install torch
-With cuda 10.1 using torch 1.7
+With cuda 10.1 using torch 1.7.1
 ```
 pip install torch==1.7.1+cu101 torchvision==0.8.2+cu101 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
 ```
-with cuda 11.1 using torch 1.8
+
+With cuda 11.1 or 11.0 using torch 1.7.0
+```
+conda install pytorch==1.7.0 torchvision==0.8.0 torchaudio==0.7.0 cudatoolkit=11.0 -c pytorch
 ```
 
-```
 2. Install detectron2
-for torch 1.7 and cuda 10.1
+With cuda 10.1 using torch 1.7 
 ```
 python -m pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu101/torch1.7/index.html
 ```
+
+With cuda 11.1 or 11.0 using torch 1.8
+```
+python -m pip install detectron2 -f \
+  https://dl.fbaipublicfiles.com/detectron2/wheels/cu110/torch1.7/index.html
+```
+
 3. Install packages
 ```
 sudo apt-get update -y
