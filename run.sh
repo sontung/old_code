@@ -41,6 +41,6 @@ python solve_position.py
 cd ../visualization
 python main.py
 
-#cd ../
-#python delete_runtime_files.py
+cd ../
+python delete_runtime_files.py
 
