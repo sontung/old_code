@@ -3,7 +3,7 @@ scikit-image
 scikit-learn
 opencv-python
 kornia
-pypcd
+pycpd
 pysplishsplash
 microdict
 meshio
