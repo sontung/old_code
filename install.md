@@ -11,19 +11,34 @@ git clone git@git.hblab.vn:ai/3d-air-bag-p2.git
 git submodule update --init --recursive
 ```
 
-### Step 2: Install environment
-1. Install torch with cuda 10.1
+### Step 2: Install environment 
+1. Install torch
+With cuda 10.1 using torch 1.7
 ```
 pip install torch==1.7.1+cu101 torchvision==0.8.2+cu101 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
 ```
-2. Install packages
+with cuda 11.1 using torch 1.8
+```
+
+```
+2. Install detectron2
+for torch 1.7 and cuda 10.1
+```
+python -m pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu101/torch1.7/index.html
+```
+3. Install packages
+```
+sudo apt-get update -y
+sudo apt install swig
+sudo apt-get install -y freeglut3-dev
+sudo apt-get install libssl-dev
+sudo apt-get install xorg-dev libglu1-mesa-dev
+```
+
 ```
 pip install -r requirements.txt
 ```
-2. Install detectron2
-```
-python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
-```
+
 2. Build partio
 ```
 cd libraries/partio
@@ -41,4 +56,13 @@ You load checkpoint and store in data_const folder.
 2. Prepare data to run:
 ```
 mkdir data_video
+cd data_vide/
+mkdir all_video
+```
+copy video folder to all_video.
+
+
+### Step 4: Running
+```
+python multiple_video.py
 ```
