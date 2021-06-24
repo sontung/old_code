@@ -1,0 +1,12 @@
+open3d
+scikit-image
+scikit-learn
+opencv-python
+kornia
+pypcd
+pysplishsplash
+microdict
+meshio
+pykdtree
+cmake
+
