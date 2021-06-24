@@ -1,13 +1,14 @@
-numpy==1.20.2
 open3d
 scikit-image
 scikit-learn
 opencv-python
 kornia
 pycpd
-pysplishsplash
+pysplishsplash==2.9.2
 microdict
 meshio
 pykdtree
 cmake
 numba
+kmeans1d
+numpy==1.20.2
