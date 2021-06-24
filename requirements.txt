@@ -10,4 +10,4 @@ microdict
 meshio
 pykdtree
 cmake
-
+numba
