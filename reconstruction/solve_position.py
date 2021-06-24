@@ -16,6 +16,9 @@ from pycpd import RigidRegistration
 import matplotlib.pyplot as plt
 
 
+DEBUG_MODE = False
+
+
 def remove_condition(path):
     grad = np.gradient(path, 2)
     clusters, centroids = kmeans1d.cluster(grad, 2)
@@ -33,6 +36,8 @@ def remove_condition(path):
 def refine_path_computation(path):
     res = path[:]
     null_indices = [du for du in range(len(path)) if path[du] is None]
+    if len(null_indices) <= 2:
+        return res
     res[:min(null_indices)] = remove_condition(path[:min(null_indices)])
     res[max(null_indices)+1:] = remove_condition(path[max(null_indices)+1:])
     return res
@@ -79,7 +84,7 @@ def compute_translation(reverse_for_vis=False):
     return trajectories
 
 
-def compute_rotation_accurate(reverse_for_vis=False, debugging=False):
+def compute_rotation_accurate(reverse_for_vis=False, debugging=DEBUG_MODE):
     sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]
     images_dir = "../data_heavy/line_images"
@@ -88,17 +93,14 @@ def compute_rotation_accurate(reverse_for_vis=False, debugging=False):
     all_angles = []
     os.makedirs("../data_heavy/rigid_head_rotation", exist_ok=True)
     for idx in tqdm(lines, desc="Computing head x-y rotation using rigid CPD"):
-        img = cv2.imread("%s/1-%s.png" % (images_dir, idx))
+    # for idx in lines:
 
-        if debugging:
-            print("%s/1-%s.png" % (images_dir, idx))
-            cv2.imshow("t", img)
-            cv2.waitKey()
-            cv2.destroyAllWindows()
+        img = cv2.imread("%s/1-%s.png" % (images_dir, idx))
 
         if img is None:
             all_angles.append(None)
             continue
+
         image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         nonzero_indices = np.nonzero(image)
         target_matrix = np.zeros((nonzero_indices[0].shape[0], 2))
@@ -120,9 +122,14 @@ def compute_rotation_accurate(reverse_for_vis=False, debugging=False):
         ax.legend(loc='upper left', fontsize='x-large')
         plt.savefig("../data_heavy/rigid_head_rotation/1-%s.png" % (idx))
         plt.close(fig)
-    print(all_angles)
+
+        if debugging:
+            print("%s/1-%s.png" % (images_dir, idx), all_angles)
+            cv2.imshow("t", img)
+            cv2.waitKey()
+            cv2.destroyAllWindows()
+
     all_angles = refine_path_computation(all_angles)
-    print(all_angles)
     all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
@@ -311,7 +318,7 @@ def draw_text_to_image(img, text):
     return img
 
 
-def visualize(debug_mode=False):
+def visualize(debug_mode=DEBUG_MODE):
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
@@ -379,7 +386,6 @@ def visualize(debug_mode=False):
         print(lines)
         lines = lines[1:]
         print(len(lines), len(trajectory))
-        all_angles = []
         assert len(lines) == len(trajectory)
         for counter, ind in enumerate(lines):
             line_img = cv2.imread("%s/1-%s.png" % (images_dir, ind))
