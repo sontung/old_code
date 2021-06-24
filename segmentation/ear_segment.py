@@ -32,7 +32,7 @@ class EAR:
                 for mask in masks[1:]:
                     final_mask = cv2.bitwise_or(final_mask, mask)
         final_mask *= 255
-        self.post_process(final_mask, im_name)
+        # self.post_process(final_mask, im_name)
 
         mask_img = img.copy()
         mask_img[final_mask == 0] *= 0
