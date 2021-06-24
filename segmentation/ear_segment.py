@@ -87,8 +87,6 @@ if __name__ == "__main__":
         mask_pre, combine_image = model.predict(image, im_name)
         cv2.imwrite(join(saved_dir, im_name), combine_image)
 
-        print(mask_pre.shape, np.unique(mask_pre))
-
         # cv2.imshow("test", combine_image)
         # cv2.waitKey()
         # cv2.destroyAllWindows()
@@ -96,5 +94,3 @@ if __name__ == "__main__":
         pixels = np.argwhere(mask_pre > 0)
         with open(join(saved_dir2, im_name), "wb") as fp:
             pickle.dump(pixels, fp)
-
-        break
