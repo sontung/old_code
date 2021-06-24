@@ -48,16 +48,15 @@ cd libraries/partio
 make -j prefix=./compiled install
 ```
 
-### Running 
+
+### Ceres
 ```
-extract frames (preprocess)
-ear segment (segmentation)
-simple_preprocess (preprocess)
-edge_detection (preprocess)
-prepare_pixels_set (preprocess)
-matching_main (reconstruction)
-recon_uncalib (reconstruction)
-solve_position (reconstruction)
+mkdir ceres-bin
+cd ceres-bin
+cmake ../ceres-solver-2.0.0
+make
+make test
+sudo make install
 ```
 
 
