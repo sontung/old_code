@@ -58,6 +58,7 @@ cd data_consta/
 mkdir run
 ```
 You load checkpoint and store in data_const folder. 
+
 2. Prepare data to run:
 ```
 mkdir data_video
