@@ -74,8 +74,11 @@ class EAR:
 
 
 if __name__ == "__main__":
+    import glob
+
     mypath = "../data_heavy/frames"
-    frames = [f for f in listdir(mypath) if isfile(join(mypath, f)) if ".txt" not in f]
+    # frames = [f for f in listdir(mypath) if isfile(join(mypath, f)) if ".txt" not in f]
+    frames = glob.glob("../data_heavy/frames/1-*.png")
     saved_dir = "../data_heavy/frames_ear_only"
     saved_dir2 = "../data_heavy/frames_ear_coord_only"
     os.makedirs(saved_dir, exist_ok=True)
@@ -83,6 +86,7 @@ if __name__ == "__main__":
 
     model = EAR()
     for im_name in tqdm(frames, desc="Extracting ear mask segment"):
+        im_name = im_name.split("/")[-1]
         image = cv2.imread(join(mypath, im_name))
         mask_pre, combine_image = model.predict(image, im_name)
         cv2.imwrite(join(saved_dir, im_name), combine_image)

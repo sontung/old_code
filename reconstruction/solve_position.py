@@ -14,7 +14,7 @@ from tqdm import tqdm
 from solve_airbag import compute_ab_pose, compute_ab_frames
 from pycpd import RigidRegistration
 import matplotlib.pyplot as plt
-
+import time
 
 DEBUG_MODE = False
 
@@ -92,15 +92,11 @@ def compute_rotation_accurate(reverse_for_vis=False, debugging=DEBUG_MODE):
     prev_pos = None
     all_angles = []
     os.makedirs("../data_heavy/rigid_head_rotation", exist_ok=True)
-    for idx in tqdm(lines, desc="Computing head x-y rotation using rigid CPD"):
-    # for idx in lines:
-
-        img = cv2.imread("%s/1-%s.png" % (images_dir, idx))
-
-        if img is None:
+    for idx in tqdm(lines[:], desc="Computing head x-y rotation using rigid CPD"):
+        img = cv2.imread(f"{images_dir}/1-{idx}.png")
+        if img is None or np.sum(img) == 0:
             all_angles.append(None)
             continue
-
         image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         nonzero_indices = np.nonzero(image)
         target_matrix = np.zeros((nonzero_indices[0].shape[0], 2))
@@ -128,9 +124,10 @@ def compute_rotation_accurate(reverse_for_vis=False, debugging=DEBUG_MODE):
             cv2.imshow("t", img)
             cv2.waitKey()
             cv2.destroyAllWindows()
-
+    stamp = time.time()
+    b_spline_smooth(all_angles, vis=True, name=f"rot_ori_{stamp}.png")
     all_angles = refine_path_computation(all_angles)
-    all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
+    all_angles = b_spline_smooth(all_angles, vis=True, name=f"rot_smooth_{stamp}.png")
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
             move = rot_deg_overall - prev_pos
@@ -421,5 +418,30 @@ def draw_image(array):
     return res
 
 
+def test():
+    angles = [-4.249123672419037, -4.06042588305064, -4.100706659193889, -4.502854905981135, -5.211328649500481, -4.236818542437244, -4.973425832429783, -5.122461669680074, -4.213002968916646, -3.6060948115779814, -3.8728006895552087, -3.801343832294335, -3.298066161415771, -3.6287874176276578, -3.1693856468991584, -3.510242578718621, -3.140791882368664, -4.103912366201475, -4.135883918800803, -4.024808394187761, -4.2437274197720685, -4.463149537001311, -4.208010409803948, -4.851680774004157, -4.1360025643413865, -4.719767764830964, -5.899437021478936, -5.66559692292461, -3.0361637259366314, -0.23594728146812557, 6.26483765369673, 10.299016359770043, 13.943018508997634, -5.813251142483006, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 5.405104832598654, 19.58789686826146, 20.468786114775167, 14.697888651019413, 11.20568145258964, 6.22562999073554, 4.128373419245486, 0.9092651808452706, -0.9603686950307418, -3.197679409451433, -4.320184105038989, -6.299168012111577, -8.77646369575391, -9.53550345993486, -10.972149596051482, -11.560929975665141, -13.128541600299346, -13.063096628992412, -13.670482107365373, -14.218429423869052, -14.15144475912785, -13.911124970738571, -13.06703927110693, -13.02563889257553, -12.571935248126767, -11.687513382410593, -11.207924547575049, -11.290370750130418, -11.556150089107536, -10.401508508456763, -10.146024235612684, -10.565632920824264, -10.711420519845431, -10.563194831318992, -9.986432414128881, -10.160312548723827, -9.055435962078626, -9.477542090709312, -9.982358727296557, -10.08329873016015, -9.749719576922745, -9.315396040761426, -9.1618467150131, -8.662547813203934, -8.099830341997585, -7.310695357768626, -6.851086186580008, -6.572821246436068, -6.78676265174479, -6.495933534014509, -7.847888469525019, -7.871362678973132, -8.466897314198885, -9.400673424387715, -10.419822784460676, -10.442531980976932, -10.07937149928611]
+    # all_angles = b_spline_smooth(angles, vis=True, name="bspline")
+    x = []
+    y = []
+    for i, v in enumerate(angles):
+        if v is not None:
+            x.append(i)
+            y.append(v)
+
+    from scipy import interpolate
+    x = np.array(x)
+    y = np.array(y)
+    f = interpolate.Rbf(x, y,
+                        function="inverse", mode="1-D")
+
+    new_x = np.array(range(len(angles)))
+    new_y = f(new_x)
+
+    plt.plot(x, y, 'o', new_x, new_y)
+    plt.show()
+
+
+
 if __name__ == '__main__':
-    visualize(False)
+    test()
+    # visualize(False)
