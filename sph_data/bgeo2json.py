@@ -22,8 +22,14 @@ from WDAS.  Reproduction of any section of this software must
 include this legend and all copyright notices.
 Copyright Disney Enterprises, Inc.  All rights reserved.
 """
+
+import os
+
+partio_path = '../libraries/partio/build/'
+linux_folder = os.listdir(partio_path)[0]
+
 import sys
-sys.path.append("../libraries/partio/build/Linux-5.4.0-x86_64-optimize/compiled/lib/python3.8/site-packages")
+sys.path.append(f"../libraries/partio/build/{linux_folder}/compiled/lib/python3.8/site-packages")
 import os, sys, json
 import partio
 import glob

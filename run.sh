@@ -2,7 +2,13 @@
 
 mkdir -p data_heavy
 
-cd libraries/partio/build/Linux-5.4.0-x86_64-optimize/compiled/lib
+cd libraries/partio/build/
+for partio_dir in */
+do
+  echo "found partio in libraries/partio/build/$partio_dir"
+  break
+done
+cd $partio_dir/compiled/lib
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
 cd ../../../../../
 cd ../sph_data/
