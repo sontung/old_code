@@ -5,7 +5,7 @@ mkdir -p data_heavy
 cd libraries/partio/build/
 for partio_dir in */
 do
-  echo "found partio in libraries/partio/build/$partio_dir"
+  echo "Found partio in libraries/partio/build/$partio_dir"
   break
 done
 cd $partio_dir/compiled/lib
