@@ -53,13 +53,16 @@ make -j prefix=./compiled install
 ### Step 3: Load checkpoint and prepare data to run
 1. Create data_const directory to store checkpoints:
 ```
+cd ../..
 mkdir data_const
-cd data_consta/
+cd data_const
 mkdir run
 ```
-You load checkpoint and store in data_const folder. 
+You load checkpoint and save in data_const folder.
+
 2. Prepare data to run:
 ```
+cd ../
 mkdir data_video
 cd data_vide/
 mkdir all_video
@@ -68,6 +71,10 @@ copy video folder to all_video.
 
 
 ### Step 4: Running
+change directory to 3d-air-bag-p2  
 ```
+cd ../
 python multiple_video.py
 ```
+
+Results are stored in data_video/all_final_vis folder 
