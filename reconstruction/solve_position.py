@@ -373,6 +373,7 @@ def visualize(debug_mode=DEBUG_MODE):
                 cv2.imwrite(f"test/ear-{ind}.png", np.hstack([ear_img, line_img, rigid_img]))
             im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)
             frame_im1 = cv2.imread('../data_heavy/frames/1-%s.png' % ind)
+            frame_im1 = cv2.resize(frame_im1, (im1.shape[1], im1.shape[0]))
             seg_im1 = cv2.imread('../data_heavy/frames_seg_abh/1-%s.png' % ind)
             seg_im1 = cv2.resize(seg_im1, (im1.shape[1], im1.shape[0]))
 
