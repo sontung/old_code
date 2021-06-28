@@ -16,8 +16,6 @@ import matplotlib.pyplot as plt
 import time
 import argparse
 
-DEBUG_MODE = True
-
 
 def compute_translation(debugging=DEBUG_MODE):
     """
@@ -363,7 +361,9 @@ def visualize(debug_mode=DEBUG_MODE):
 
 
 if __name__ == '__main__':
-    # test()
     parser = argparse.ArgumentParser()
-    parser.add_argument('--debug', '-d', )
+    parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
+    args = vars(parser.parse_args())
+    global DEBUG_MODE
+    DEBUG_MODE = args['debug']
     visualize(False)
