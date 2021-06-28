@@ -18,10 +18,18 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--debug', type=bool, default=True, help='Debug mode')
+parser.add_argument('-f', '--fast', type=bool, default=False, help='Fast mode')
+
 args = vars(parser.parse_args())
 DEBUG_MODE = args['debug']
+FAST_MODE = args['fast']
+
 if DEBUG_MODE:
+    os.makedirs("test", exist_ok=True)
+    os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
+if FAST_MODE:
+    print("running in fast mode (not recommended)")
 
 
 def compute_translation(debugging=DEBUG_MODE):
@@ -110,10 +118,9 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         plt.close(fig)
 
     if debugging:
-        stamp = time.time()
-        b_spline_smooth(all_angles, vis=True, name=f"rot_ori_{stamp}.png")
+        b_spline_smooth(all_angles, vis=True, name="rot_ori.png")
         all_angles = refine_path_computation(all_angles)
-        all_angles = b_spline_smooth(all_angles, vis=True, name=f"rot_smooth_{stamp}.png")
+        all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
     else:
         all_angles = refine_path_computation(all_angles)
         all_angles = b_spline_smooth(all_angles)
@@ -136,7 +143,7 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         for idx, rot in enumerate(trajectories):
             rot_mat = rot_mat_compute.from_euler('x', rot, degrees=True).as_matrix()
             pcd.rotate(rot_mat, pcd.get_center())
-            time.sleep(1)
+            time.sleep(0.1)
             vis.update_geometry(pcd)
             vis.poll_events()
             vis.update_renderer()
@@ -188,7 +195,7 @@ def compute_rotation(reverse_for_vis=False, view=1):
         for i in reversed(trajectories):
             new_list.append(i*-1)
         trajectories.extend(new_list)
-    return trajectories
+    return trajectories, all_angles
 
 
 def compute_head_ab_areas(sim_first=False):
@@ -206,10 +213,11 @@ def compute_head_ab_areas(sim_first=False):
         global_scale_ab = np.mean(global_scale_ab_list)
 
         trajectory = compute_translation()
-        rotated_trajectory_z = compute_rotation(view=2)
-        rotated_trajectory, ne_rot_traj = compute_rotation_accurate()
-        if rotated_trajectory is None:
-            rotated_trajectory = compute_rotation()
+        rotated_trajectory_z, _ = compute_rotation(view=2)
+        if not FAST_MODE:
+            rotated_trajectory, ne_rot_traj = compute_rotation_accurate()
+        else:
+            rotated_trajectory, ne_rot_traj = compute_rotation()
 
         if rotated_trajectory_z is not None:
             assert len(trajectory) == len(rotated_trajectory) == len(rotated_trajectory_z)
@@ -339,8 +347,8 @@ def visualize(debug_mode=DEBUG_MODE):
         vis.get_view_control().rotate(200, 0)
         if ab_added:
             vis.remove_geometry(ab, reset_bounding_box=False)
-
     vis.destroy_window()
+
     if debug_mode:
         os.makedirs("test", exist_ok=True)
         os.makedirs("test2", exist_ok=True)
@@ -349,9 +357,7 @@ def visualize(debug_mode=DEBUG_MODE):
         ear_dir = "../data_heavy/frames_ear_only"
         rigid_dir = "../data_heavy/rigid_head_rotation"
         images_dir = "../data_heavy/line_images"
-        print(lines)
         lines = lines[1:]
-        print(len(lines), len(trajectory))
         assert len(lines) == len(trajectory)
         for counter, ind in enumerate(lines):
             line_img = cv2.imread("%s/1-%s.png" % (images_dir, ind))
@@ -360,9 +366,10 @@ def visualize(debug_mode=DEBUG_MODE):
             arr = np.nonzero(ear_img)
             if len(arr[0]) > 0:
                 ear_img = ear_img[np.min(arr[0]):np.max(arr[0]), np.min(arr[1]): np.max(arr[1])]
-                cv2.imwrite(f"test/ear-{ind}.png", ear_img)
-                cv2.imwrite(f"test/line-{ind}.png", line_img)
-                cv2.imwrite(f"test/rigid-{ind}.png", rigid_img)
+                line_img = cv2.resize(line_img, [ear_img.shape[1], ear_img.shape[0]])
+                rigid_img = cv2.resize(rigid_img, [ear_img.shape[1], ear_img.shape[0]])
+
+                cv2.imwrite(f"test/ear-{ind}.png", np.hstack([ear_img, line_img, rigid_img]))
             im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)
             im1 = draw_text_to_image(im1, "rot=%.3f" % (ne_rot_traj[counter]))
             frame_im1 = cv2.imread('../data_heavy/frames/1-%s.png' % ind)
