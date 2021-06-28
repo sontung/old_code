@@ -191,16 +191,15 @@ def normalize(inp, ref):
     return inp
 
 
-def draw_text_to_image(img, text):
+def draw_text_to_image(img, text, pos):
     # Write some Text
     font                   = cv2.FONT_HERSHEY_SIMPLEX
-    bottomLeftCornerOfText = (10,500)
     fontScale              = 4
     fontColor              = (0,0,0)
     lineType               = 2
 
     cv2.putText(img,text,
-        bottomLeftCornerOfText,
+        pos,
         font,
         fontScale,
         fontColor,
