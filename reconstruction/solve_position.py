@@ -390,12 +390,12 @@ def visualize(debug_mode=DEBUG_MODE):
                                           "act. trans=%.3f %.3f" % (trans_actual_traj[counter][1],
                                                                     trans_actual_traj[counter][2]),
                                           (100, 400))
-            info_img = draw_text_to_image(info_img, "ab rot=%.3f (%.3f)" % (ab_rot, ab_rot-90), (100, 400))
+            info_img = draw_text_to_image(info_img, "ab rot=%.3f (%.3f)" % (ab_rot, ab_rot-90), (100, 500))
             info_img = draw_text_to_image(info_img,
                                           "act. trans=%.3f %.3f (%.3f %.3f)" % (ab_transx, ab_transy,
                                                                                 -ab_transx*translation_scale,
                                                                                 -ab_transy*translation_scale),
-                                          (100, 400))
+                                          (100, 600))
 
             res_im = np.hstack([seg_im1, im1, info_img])
             res_im = cv2.resize(res_im, (res_im.shape[1]//2, res_im.shape[0]//2))

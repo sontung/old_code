@@ -31,7 +31,8 @@ class TestDataset(Dataset):
 
     def __getitem__(self, ind):
         _img = np.array(Image.open(self.all_path_files[ind]).convert('RGB'))
-        original_img = cv2.resize(np.array(_img), (513, 513))
+        # original_img = cv2.resize(np.array(_img), (513, 513))
+        original_img = np.array(_img)
         _img = Image.fromarray(original_img)
         sample = {'image': _img, "label": _img, "name": self.all_path_files[ind]}
         sample2 = self.transform_val(sample)

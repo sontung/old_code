@@ -54,6 +54,8 @@ def extract_frame():
                 count += 1
                 if count % 3 == 0:
                     frame_idx += 1
+                    scale = np.min(frame.shape[:2]) // 500
+                    frame = cv2.resize(frame, (frame.shape[1]//scale, frame.shape[0]//scale))
                     cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, frame_idx), frame)
                     counts.append(frame_idx)
             else:

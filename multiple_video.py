@@ -13,6 +13,10 @@ DEBUG_MODE = args['debug']
 
 def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='data_const/final_vis',
                debug_mode=DEBUG_MODE):
+    shutil.rmtree('data_heavy', ignore_errors=True)
+    shutil.rmtree('sph_data/mc_solutions', ignore_errors=True)
+    shutil.rmtree('sph_data/mc_solutions_smoothed', ignore_errors=True)
+
     sub_folders = os.walk(folder_input).__next__()[1]
     sub_out_folders = os.walk(folder_output).__next__()[1]
     for folder in tqdm(sub_folders, desc="Running all video"):
@@ -38,10 +42,12 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
             shutil.move(result_df, save_result)
         except:
             print(f"{folder} doesn't complete")
-            return
-            shutil.rmtree('data_heavy', ignore_errors=True)
-            shutil.rmtree('sph_data/mc_solutions', ignore_errors=True)
-            shutil.rmtree('sph_data/mc_solutions_smoothed', ignore_errors=True)
+            if debug_mode:
+                return
+            else:
+                shutil.rmtree('data_heavy', ignore_errors=True)
+                shutil.rmtree('sph_data/mc_solutions', ignore_errors=True)
+                shutil.rmtree('sph_data/mc_solutions_smoothed', ignore_errors=True)
 
     return
 
