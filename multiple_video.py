@@ -38,6 +38,7 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
             shutil.move(result_df, save_result)
         except:
             print(f"{folder} doesn't complete")
+            return
             shutil.rmtree('data_heavy', ignore_errors=True)
             shutil.rmtree('sph_data/mc_solutions', ignore_errors=True)
             shutil.rmtree('sph_data/mc_solutions_smoothed', ignore_errors=True)

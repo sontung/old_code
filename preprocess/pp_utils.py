@@ -55,7 +55,7 @@ def extract_frame():
                 if count % 3 == 0:
                     cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, frame_idx), frame)
                     frame_idx += 1
-                    counts.append(count)
+                    counts.append(frame_idx)
             else:
                 break
         if min_nb_frame:
