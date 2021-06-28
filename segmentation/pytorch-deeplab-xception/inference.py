@@ -31,11 +31,12 @@ class TestDataset(Dataset):
 
     def __getitem__(self, ind):
         _img = np.array(Image.open(self.all_path_files[ind]).convert('RGB'))
-        _img = cv2.resize(np.array(_img), (513, 513))
-        _img = Image.fromarray(_img)
+        original_img = cv2.resize(np.array(_img), (513, 513))
+        _img = Image.fromarray(original_img)
         sample = {'image': _img, "label": _img, "name": self.all_path_files[ind]}
         sample2 = self.transform_val(sample)
         sample2["name"] = self.all_path_files[ind]
+        sample2["ori_img"] = original_img
         return sample2 
 
     def transform_val(self, sample):
@@ -115,12 +116,15 @@ def main():
         test_loader = DataLoader(test_set, batch_size=8, shuffle=False)
     evaluator = Evaluator(21)
     os.makedirs("../../data_heavy/frames_seg_abh/", exist_ok=True)
+    os.makedirs("../../data_heavy/frames_seg_abh_vis/", exist_ok=True)
+
     classid2color = np.asarray([[0, 0, 0], [128, 0, 0], [0, 128, 0], [128, 128, 0],
                            [0, 0, 128], [128, 0, 128], [0, 128, 128], [128, 128, 128],
                            [64, 0, 0], [192, 0, 0], [64, 128, 0], [192, 128, 0],
                            [64, 0, 128], [192, 0, 128], [64, 128, 128], [192, 128, 128],
                            [0, 64, 0], [128, 64, 0], [0, 192, 0], [128, 192, 0],
                            [0, 64, 128]])
+    count = 0
     with open("../../data_heavy/frame2ab.txt", "w") as fp:
         for bid, sample in enumerate(tqdm(test_loader, desc="Extracting semantic masks")):
 
@@ -134,12 +138,15 @@ def main():
                 target = target.cpu().numpy()
                 pred = np.argmax(pred, axis=1)
                 for ind in range(pred.shape[0]):
-                    post_process.post_process(pred[ind], sample["ori_img"][ind].numpy())
-                print(pred.shape, np.unique(pred))
+                    count+=1
+                    post_process.post_process(pred[ind],
+                                              sample["ori_img"][ind].numpy(),
+                                              count)
                 evaluator.add_batch(target, pred)
                 continue
 
             image, target, im_name = sample['image'], sample['label'], sample["name"]
+            original_frames = sample["ori_img"]
             image = image.cuda()
             target = target.cuda()
             with torch.no_grad():
@@ -175,7 +182,9 @@ def main():
                     head_pixels = np.sum((pred2[idx]==14).numpy())
                     print(imn, ab_pixels, head_pixels, dist_x, dist_y, rot1, rot2, file=fp)
                     Image.fromarray(im_final).save("../../data_heavy/frames_seg_abh/%s" % imn)
-
+                    original_frame = original_frames[idx].cpu().numpy().astype(np.uint8)
+                    blend2 = cv2.addWeighted(original_frame, 0.3, im_final, 0.7, 0)
+                    Image.fromarray(blend2).save("../../data_heavy/frames_seg_abh_vis/%s" % imn)
 
     # Fast test during the training
     if HAS_LABELS:

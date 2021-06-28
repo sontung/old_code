@@ -53,8 +53,8 @@ def extract_frame():
             if ret:
                 count += 1
                 if count % 3 == 0:
-                    cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, frame_idx), frame)
                     frame_idx += 1
+                    cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, frame_idx), frame)
                     counts.append(frame_idx)
             else:
                 break
