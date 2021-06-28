@@ -15,6 +15,7 @@ from solve_airbag import compute_ab_pose, compute_ab_frames
 from pycpd import RigidRegistration
 import matplotlib.pyplot as plt
 import time
+import argparse
 
 DEBUG_MODE = False
 
@@ -443,5 +444,11 @@ def test():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
+    args = vars(parser.parse_args())
+
+    DEBUG_MODE = args['debug']
+
     test()
     # visualize(False)
