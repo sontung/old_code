@@ -374,6 +374,7 @@ def visualize(debug_mode=DEBUG_MODE):
             im1 = draw_text_to_image(im1, "rot=%.3f" % (ne_rot_traj[counter]))
             frame_im1 = cv2.imread('../data_heavy/frames/1-%s.png' % ind)
             seg_im1 = cv2.imread('../data_heavy/frames_seg_abh/1-%s.png' % ind)
+            seg_im1 = cv2.resize(seg_im1, (frame_im1.shape[1], frame_im1.shape[0]))
             merge_im1 = np.hstack([frame_im1, seg_im1, im1])
             merge_im1 = cv2.resize(merge_im1, (merge_im1.shape[1]//2, merge_im1.shape[0]//2))
             cv2.imwrite(f"test2/res-{ind}.png", merge_im1)
