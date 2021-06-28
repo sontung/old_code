@@ -36,7 +36,7 @@ make
 ./example
 
 cd ../../../reconstruction/
-python solve_position.py
+python solve_position.py -d True
 
 cd ../visualization
 python main.py
