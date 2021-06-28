@@ -379,7 +379,7 @@ def visualize(debug_mode=DEBUG_MODE):
             info_img = np.ones_like(im1)*255
             info_img = draw_text_to_image(info_img, "rot=%.3f" % (ne_rot_traj[counter]), (100, 100))
             info_img = draw_text_to_image(info_img, "rot=%.3f" % (ne_rot_traj[counter]), (100, 200))
-
+            print(frame_im1.shape, seg_im1.shape)
             res_im = np.hstack([frame_im1, seg_im1, im1, info_img])
             res_im = cv2.resize(res_im, (res_im.shape[1]//2, res_im.shape[0]//2))
             cv2.imwrite(f"test2/res-{ind}.png", res_im)
