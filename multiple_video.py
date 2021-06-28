@@ -3,9 +3,16 @@ import shutil
 import subprocess
 from tqdm import tqdm
 from glob import glob
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
+args = vars(parser.parse_args())
+DEBUG_MODE = args['debug']
 
 
-def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='data_const/final_vis'):
+def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='data_const/final_vis',
+               debug_mode=DEBUG_MODE):
     sub_folders = os.walk(folder_input).__next__()[1]
     sub_out_folders = os.walk(folder_output).__next__()[1]
     for folder in tqdm(sub_folders, desc="Running all video"):
@@ -21,8 +28,10 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
         shutil.copytree(src_fd, dst_fd, dirs_exist_ok=True)
 
         # start run
-        subprocess.call('./run.sh')
-
+        if debug_mode:
+            subprocess.call('./debug_run.sh')
+        else:
+            subprocess.call('./run.sh')
         # move result
         try:
             save_result = os.path.join(folder_output, folder)
@@ -39,3 +48,4 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
 if __name__ == '__main__':
     os.makedirs('data_video/all_final_vis', exist_ok=True)
     move_video("data_video/all_video", "data_video/all_final_vis")
+
