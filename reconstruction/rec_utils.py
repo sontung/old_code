@@ -5,6 +5,7 @@ import os
 import json
 import open3d
 import numpy as np
+import kmeans1d
 from scipy import interpolate
 from matplotlib import pyplot as plt
 
@@ -188,6 +189,66 @@ def normalize(inp, ref):
     inp[:, 0] = (np.max(ref[:, 0]) - np.min(ref[:, 0]))*(inp[:, 0] - np.min(inp[:, 0]))/(np.max(inp[:, 0]) - np.min(inp[:, 0])) + np.min(ref[:, 0])
     inp[:, 1] = (np.max(ref[:, 1]) - np.min(ref[:, 1]))*(inp[:, 1] - np.min(inp[:, 1]))/(np.max(inp[:, 1]) - np.min(inp[:, 1])) + np.min(ref[:, 1])
     return inp
+
+
+def draw_text_to_image(img, text):
+    # Write some Text
+    font                   = cv2.FONT_HERSHEY_SIMPLEX
+    bottomLeftCornerOfText = (10,500)
+    fontScale              = 4
+    fontColor              = (0,0,0)
+    lineType               = 2
+
+    cv2.putText(img,text,
+        bottomLeftCornerOfText,
+        font,
+        fontScale,
+        fontColor,
+        lineType)
+    return img
+
+
+def zero_mean(array):
+    res = np.zeros_like(array)
+    u, v = np.min(array[:, 0]), np.min(array[:, 1])
+    res[:, 0] = array[:, 0] - u
+    res[:, 1] = array[:, 1] - v
+    return res
+
+
+def draw_image(array):
+    array = zero_mean(array)
+    res = np.zeros((int(np.max(array[:, 0])+1),
+                    int(np.max(array[:, 1])+1), 3))
+    for i in range(array.shape[0]):
+        u, v = map(int, array[i])
+        res[u, v] = (128, 128, 128)
+    return res
+
+
+def remove_condition(path):
+    grad = np.gradient(path, 2)
+    clusters, centroids = kmeans1d.cluster(grad, 2)
+    if clusters.count(0) > clusters.count(1):
+        remove_label = 1
+    else:
+        remove_label = 0
+    res = path[:]
+    for i in range(len(path)):
+        if clusters[i] == remove_label:
+            res[i] = None
+    return res
+
+
+def refine_path_computation(path):
+    res = path[:]
+    null_indices = [du for du in range(len(path)) if path[du] is None]
+    if len(null_indices) <= 2:
+        return res
+    res[:min(null_indices)] = remove_condition(path[:min(null_indices)])
+    res[max(null_indices)+1:] = remove_condition(path[max(null_indices)+1:])
+    return res
+
 
 if __name__ == '__main__':
     dump_into_tracks_osfm()
