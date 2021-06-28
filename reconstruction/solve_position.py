@@ -342,6 +342,8 @@ def visualize(debug_mode=DEBUG_MODE):
 
     vis.destroy_window()
     if debug_mode:
+        os.makedirs("test", exist_ok=True)
+        os.makedirs("test2", exist_ok=True)
         sys.stdin = open("../data_heavy/frames/info.txt")
         lines = [du[:-1] for du in sys.stdin.readlines()]
         ear_dir = "../data_heavy/frames_ear_only"
@@ -363,9 +365,12 @@ def visualize(debug_mode=DEBUG_MODE):
                 cv2.imwrite(f"test/rigid-{ind}.png", rigid_img)
             im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)
             im1 = draw_text_to_image(im1, "rot=%.3f" % (ne_rot_traj[counter]))
-            im1 = cv2.resize(im1, (im1.shape[1]//2, im1.shape[0]//2))
-            cv2.imwrite(f"test2/res-{ind}.png", im1)
+            frame_im1 = cv2.imread('../data_heavy/frames/1-%s.png' % ind)
+            seg_im1 = cv2.imread('../data_heavy/frames_seg_abh/1-%s.png' % ind)
+            merge_im1 = np.hstack([frame_im1, seg_im1, im1])
+            merge_im1 = cv2.resize(merge_im1, (merge_im1.shape[1]//2, merge_im1.shape[0]//2))
+            cv2.imwrite(f"test2/res-{ind}.png", merge_im1)
 
 
 if __name__ == '__main__':
-    visualize(False)
+    visualize()
