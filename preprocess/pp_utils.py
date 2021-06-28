@@ -45,6 +45,7 @@ def extract_frame():
     for c, v in enumerate(videos):
         cap = cv2.VideoCapture(v)
         count = 0
+        frame_idx = 0
         counts = []
 
         while True:
@@ -52,7 +53,8 @@ def extract_frame():
             if ret:
                 count += 1
                 if count % 3 == 0:
-                    cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, count), frame)
+                    cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, frame_idx), frame)
+                    frame_idx += 1
                     counts.append(count)
             else:
                 break

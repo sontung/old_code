@@ -17,7 +17,7 @@ import time
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-d', '--debug', type=bool, default=True, help='Debug mode')
+parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
 parser.add_argument('-f', '--fast', type=bool, default=False, help='Fast mode')
 
 args = vars(parser.parse_args())
@@ -350,7 +350,7 @@ def visualize(debug_mode=DEBUG_MODE):
                 vis.remove_geometry(ab, reset_bounding_box=False)
         vis.destroy_window()
 
-    if debug_mode:
+    else:
         os.makedirs("test", exist_ok=True)
         os.makedirs("test2", exist_ok=True)
         sys.stdin = open("../data_heavy/frames/info.txt")
@@ -379,8 +379,9 @@ def visualize(debug_mode=DEBUG_MODE):
 
             info_img = np.ones_like(im1)*255
             info_img = draw_text_to_image(info_img, "rot=%.3f" % (ne_rot_traj[counter]), (100, 100))
-            info_img = draw_text_to_image(info_img, "rot=%.3f" % (ne_rot_traj[counter]), (100, 200))
-            print(frame_im1.shape, seg_im1.shape)
+            info_img = draw_text_to_image(info_img, "trans=%.3f %.3f" % (ne_trans_x_traj[counter],
+                                                                         ne_trans_y_traj[counter]), (100, 200))
+
             res_im = np.hstack([frame_im1, seg_im1, im1, info_img])
             res_im = cv2.resize(res_im, (res_im.shape[1]//2, res_im.shape[0]//2))
             cv2.imwrite(f"test2/res-{ind}.png", res_im)

@@ -81,7 +81,7 @@ def compute_ab_frames():
         akey = "1-%s.png" % frn
         traj.append(frame2ab[akey])
     for idx, num in enumerate(traj):
-        if np.all([traj[idx+du] > 1000 for du in range(5)]):
+        if np.all([traj[idx+du] > 0 for du in range(5)]):
             return idx, len(traj)-idx-1
     raise RuntimeError
 
