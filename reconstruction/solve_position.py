@@ -6,44 +6,20 @@ import sys
 import numpy as np
 import open3d as o3d
 import cv2
-import kmeans1d
 import time
 from scipy.spatial.transform import Rotation as rot_mat_compute
-from rec_utils import b_spline_smooth, normalize
+from rec_utils import b_spline_smooth, normalize, draw_text_to_image, refine_path_computation
 from tqdm import tqdm
 from solve_airbag import compute_ab_pose, compute_ab_frames
 from pycpd import RigidRegistration
 import matplotlib.pyplot as plt
 import time
+import argparse
 
-DEBUG_MODE = False
-
-
-def remove_condition(path):
-    grad = np.gradient(path, 2)
-    clusters, centroids = kmeans1d.cluster(grad, 2)
-    if clusters.count(0) > clusters.count(1):
-        remove_label = 1
-    else:
-        remove_label = 0
-    res = path[:]
-    for i in range(len(path)):
-        if clusters[i] == remove_label:
-            res[i] = None
-    return res
+DEBUG_MODE = True
 
 
-def refine_path_computation(path):
-    res = path[:]
-    null_indices = [du for du in range(len(path)) if path[du] is None]
-    if len(null_indices) <= 2:
-        return res
-    res[:min(null_indices)] = remove_condition(path[:min(null_indices)])
-    res[max(null_indices)+1:] = remove_condition(path[max(null_indices)+1:])
-    return res
-
-
-def compute_translation(reverse_for_vis=False):
+def compute_translation(debugging=DEBUG_MODE):
     """
     translation of the head
     """
@@ -59,6 +35,7 @@ def compute_translation(reverse_for_vis=False):
         with open("%s/1-%s.png" % (all_pixel_dir, idx), "rb") as fp:
             right_pixels_all = pickle.load(fp)
         if len(right_pixels_all) == 0:
+            print(f"did not detect ear in 1-{idx}.png")
             mean = [None, None]
         else:
             mean = np.mean(np.array(right_pixels_all), axis=0)
@@ -66,7 +43,20 @@ def compute_translation(reverse_for_vis=False):
         y_traj.append(mean[1])
 
     # b spline interpolation
-    x_traj, y_traj = map(b_spline_smooth, (x_traj, y_traj))
+    if debugging:
+        b_spline_smooth(x_traj, vis=True, name=f"trans_x_ori.png")
+        b_spline_smooth(y_traj, vis=True, name=f"trans_y_ori.png")
+
+        x_traj = refine_path_computation(x_traj)
+        y_traj = refine_path_computation(y_traj)
+        x_traj = b_spline_smooth(x_traj, vis=True, name=f"trans_x_refined.png")
+        y_traj = b_spline_smooth(y_traj, vis=True, name=f"trans_y_refined.png")
+    else:
+        x_traj = refine_path_computation(x_traj)
+        y_traj = refine_path_computation(y_traj)
+        x_traj = b_spline_smooth(x_traj)
+        y_traj = b_spline_smooth(y_traj)
+
     for idx in tqdm(range(len(x_traj)), desc="Computing head x-y translation"):
         mean = np.array([x_traj[idx], y_traj[idx]])
         if prev_pos is not None:
@@ -76,15 +66,10 @@ def compute_translation(reverse_for_vis=False):
             trans[1] = move[0]
             trajectories.append(trans)
         prev_pos = mean
-    if reverse_for_vis:
-        new_list = []
-        for i in reversed(trajectories):
-            new_list.append(i*-1)
-        trajectories.extend(new_list)
     return trajectories
 
 
-def compute_rotation_accurate(reverse_for_vis=False, debugging=DEBUG_MODE):
+def compute_rotation_accurate(debugging=DEBUG_MODE):
     sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]
     images_dir = "../data_heavy/line_images"
@@ -116,28 +101,23 @@ def compute_rotation_accurate(reverse_for_vis=False, debugging=DEBUG_MODE):
         ax.scatter(target_matrix[:, 0],  target_matrix[:, 1], color='red', label='Target')
         ax.scatter(y_data_norm[:, 0],  y_data_norm[:, 1], color='yellow', label='Source')
         ax.legend(loc='upper left', fontsize='x-large')
-        plt.savefig("../data_heavy/rigid_head_rotation/1-%s.png" % (idx))
+        plt.savefig(f"../data_heavy/rigid_head_rotation/1-{idx}.png")
         plt.close(fig)
 
-        if debugging:
-            print("%s/1-%s.png" % (images_dir, idx), all_angles)
-            cv2.imshow("t", img)
-            cv2.waitKey()
-            cv2.destroyAllWindows()
-    stamp = time.time()
-    b_spline_smooth(all_angles, vis=True, name=f"rot_ori_{stamp}.png")
-    all_angles = refine_path_computation(all_angles)
-    all_angles = b_spline_smooth(all_angles, vis=True, name=f"rot_smooth_{stamp}.png")
+    if debugging:
+        stamp = time.time()
+        b_spline_smooth(all_angles, vis=True, name=f"rot_ori_{stamp}.png")
+        all_angles = refine_path_computation(all_angles)
+        all_angles = b_spline_smooth(all_angles, vis=True, name=f"rot_smooth_{stamp}.png")
+    else:
+        all_angles = refine_path_computation(all_angles)
+        all_angles = b_spline_smooth(all_angles)
+
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
             move = rot_deg_overall - prev_pos
             trajectories.append(-move)
         prev_pos = rot_deg_overall
-    if reverse_for_vis:
-        new_list = []
-        for i in reversed(trajectories):
-            new_list.append(i*-1)
-        trajectories.extend(new_list)
 
     if debugging:
         pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
@@ -223,7 +203,6 @@ def compute_head_ab_areas(sim_first=False):
         trajectory = compute_translation()
         rotated_trajectory_z = compute_rotation(view=2)
         rotated_trajectory, ne_rot_traj = compute_rotation_accurate()
-        #rotated_trajectory = None
         if rotated_trajectory is None:
             rotated_trajectory = compute_rotation()
 
@@ -296,23 +275,6 @@ def compute_head_ab_areas(sim_first=False):
     if sim_first:
         return head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z, ne_rot_traj
     return head_area, ab_area
-
-
-def draw_text_to_image(img, text):
-    # Write some Text
-    font                   = cv2.FONT_HERSHEY_SIMPLEX
-    bottomLeftCornerOfText = (10,500)
-    fontScale              = 4 
-    fontColor              = (0,0,0)
-    lineType               = 2
-
-    cv2.putText(img,text,
-        bottomLeftCornerOfText,
-        font,
-        fontScale,
-        fontColor,
-        lineType)
-    return img
 
 
 def visualize(debug_mode=DEBUG_MODE):
@@ -400,48 +362,8 @@ def visualize(debug_mode=DEBUG_MODE):
             cv2.imwrite(f"test2/res-{ind}.png", im1)
 
 
-def zero_mean(array):
-    res = np.zeros_like(array)
-    u, v = np.min(array[:, 0]), np.min(array[:, 1])
-    res[:, 0] = array[:, 0] - u
-    res[:, 1] = array[:, 1] - v
-    return res
-
-
-def draw_image(array):
-    array = zero_mean(array)
-    res = np.zeros((int(np.max(array[:, 0])+1),
-                    int(np.max(array[:, 1])+1), 3))
-    for i in range(array.shape[0]):
-        u, v = map(int, array[i])
-        res[u, v] = (128, 128, 128)
-    return res
-
-
-def test():
-    angles = [-4.249123672419037, -4.06042588305064, -4.100706659193889, -4.502854905981135, -5.211328649500481, -4.236818542437244, -4.973425832429783, -5.122461669680074, -4.213002968916646, -3.6060948115779814, -3.8728006895552087, -3.801343832294335, -3.298066161415771, -3.6287874176276578, -3.1693856468991584, -3.510242578718621, -3.140791882368664, -4.103912366201475, -4.135883918800803, -4.024808394187761, -4.2437274197720685, -4.463149537001311, -4.208010409803948, -4.851680774004157, -4.1360025643413865, -4.719767764830964, -5.899437021478936, -5.66559692292461, -3.0361637259366314, -0.23594728146812557, 6.26483765369673, 10.299016359770043, 13.943018508997634, -5.813251142483006, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 5.405104832598654, 19.58789686826146, 20.468786114775167, 14.697888651019413, 11.20568145258964, 6.22562999073554, 4.128373419245486, 0.9092651808452706, -0.9603686950307418, -3.197679409451433, -4.320184105038989, -6.299168012111577, -8.77646369575391, -9.53550345993486, -10.972149596051482, -11.560929975665141, -13.128541600299346, -13.063096628992412, -13.670482107365373, -14.218429423869052, -14.15144475912785, -13.911124970738571, -13.06703927110693, -13.02563889257553, -12.571935248126767, -11.687513382410593, -11.207924547575049, -11.290370750130418, -11.556150089107536, -10.401508508456763, -10.146024235612684, -10.565632920824264, -10.711420519845431, -10.563194831318992, -9.986432414128881, -10.160312548723827, -9.055435962078626, -9.477542090709312, -9.982358727296557, -10.08329873016015, -9.749719576922745, -9.315396040761426, -9.1618467150131, -8.662547813203934, -8.099830341997585, -7.310695357768626, -6.851086186580008, -6.572821246436068, -6.78676265174479, -6.495933534014509, -7.847888469525019, -7.871362678973132, -8.466897314198885, -9.400673424387715, -10.419822784460676, -10.442531980976932, -10.07937149928611]
-    # all_angles = b_spline_smooth(angles, vis=True, name="bspline")
-    x = []
-    y = []
-    for i, v in enumerate(angles):
-        if v is not None:
-            x.append(i)
-            y.append(v)
-
-    from scipy import interpolate
-    x = np.array(x)
-    y = np.array(y)
-    f = interpolate.Rbf(x, y,
-                        function="inverse", mode="1-D")
-
-    new_x = np.array(range(len(angles)))
-    new_y = f(new_x)
-
-    plt.plot(x, y, 'o', new_x, new_y)
-    plt.show()
-
-
-
 if __name__ == '__main__':
-    test()
-    # visualize(False)
+    # test()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', '-d', )
+    visualize(False)
