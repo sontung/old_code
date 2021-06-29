@@ -250,7 +250,7 @@ def compute_head_ab_areas(sim_first=False):
 
             vis.get_view_control().rotate(-500, 0)
             vis.capture_screen_image("../data_heavy/area_compute/head-%s.png" % counter, do_render=True)
-            if counter >= start_ab:
+            if counter >= start_ab-1:
                 ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
                 arr.append(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
                 ab.compute_vertex_normals()
@@ -321,11 +321,11 @@ def visualize(debug_mode=DEBUG_MODE):
     rot_actual_traj = []
     for counter in tqdm(range(len(trajectory)), desc="Completing simulation"):
         ab_added = False
-        pcd.translate(trajectory[counter % len(trajectory)]/translation_scale)
+        pcd.translate(trajectory[counter % len(trajectory)])
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
                                              degrees=True).as_matrix()
         pcd.rotate(rot_mat, pcd.get_center())
-        trans_actual_traj.append(trajectory[counter % len(trajectory)]*translation_scale)
+        trans_actual_traj.append(trajectory[counter % len(trajectory)])
         rot_actual_traj.append(rotated_trajectory[counter % len(trajectory)])
 
         if rotated_trajectory_z is not None:
@@ -335,8 +335,7 @@ def visualize(debug_mode=DEBUG_MODE):
 
         vis.update_geometry(pcd)
 
-        if counter >= start_ab+1:
-            ab_counter += 1
+        if counter >= start_ab-1:
             ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
             ab.compute_vertex_normals()
             ab.scale(global_scale_ab, ab.get_center())
@@ -345,6 +344,8 @@ def visualize(debug_mode=DEBUG_MODE):
             ab.rotate(rot_mat_compute.from_euler("x", -90+ab_rot, degrees=True).as_matrix())
             ab_added = True
             vis.add_geometry(ab, reset_bounding_box=False)
+            ab_counter += 1
+
         vis.get_view_control().rotate(-500, 0)
         vis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter, do_render=True)
 

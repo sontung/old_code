@@ -82,7 +82,7 @@ def compute_ab_frames():
         traj.append(frame2ab[akey])
     for idx, num in enumerate(traj):
         if np.all([traj[idx+du] > 0 for du in range(5)]):
-            return idx, len(traj)-idx-1
+            return idx, len(traj)-idx
     raise RuntimeError
 
 
