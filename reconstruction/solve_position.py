@@ -8,7 +8,7 @@ import open3d as o3d
 import cv2
 import time
 from scipy.spatial.transform import Rotation as rot_mat_compute
-from rec_utils import b_spline_smooth, normalize, draw_text_to_image, refine_path_computation
+from rec_utils import b_spline_smooth, normalize, draw_text_to_image, refine_path_computation, get_translation_scale
 from tqdm import tqdm
 from solve_airbag import compute_ab_pose, compute_ab_frames
 from pycpd import RigidRegistration
@@ -76,7 +76,7 @@ def compute_translation(debugging=DEBUG_MODE):
             trans = np.zeros((3, 1))
             move = mean - prev_pos
             trans[2] = -move[1]
-            trans[1] = move[0]
+            trans[1] = -move[0]
             trajectories.append(trans)
         prev_pos = mean
     return trajectories, x_traj, y_traj
@@ -232,11 +232,10 @@ def compute_head_ab_areas(sim_first=False):
         vis.create_window(visible=False)
         vis.add_geometry(pcd)
         vis.get_view_control().set_zoom(1.5)
-        pcd.compute_vertex_normals()
         arr = []
         for counter in tqdm(range(len(trajectory)), desc="Prior sim to compute view areas"):
             ab_added = False
-            pcd.translate(trajectory[counter % len(trajectory)]/5)
+            pcd.translate(trajectory[counter % len(trajectory)])
             rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter],
                                                  degrees=True).as_matrix()
             pcd.rotate(rot_mat, pcd.get_center())
@@ -253,7 +252,6 @@ def compute_head_ab_areas(sim_first=False):
             if counter >= start_ab-1:
                 ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
                 arr.append(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
-                ab.compute_vertex_normals()
                 ab.scale(global_scale_ab, ab.get_center())
                 ab.translate([0, -ab_transx, -ab_transy])
                 ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
@@ -307,9 +305,10 @@ def visualize(debug_mode=DEBUG_MODE):
         scale1 = pcd.get_surface_area() / ab.get_surface_area()
         global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
     global_scale_ab = np.mean(global_scale_ab_list)*scale2
+    head_translation_scale = get_translation_scale()
     print(f"Airbag pose: translation=({ab_transx}, {ab_transy}), rotation="
-          f"{ab_rot}, scale={global_scale_ab}, translation scale = {translation_scale}")
-
+          f"{ab_rot}, scale={global_scale_ab}, ab translation scale = {translation_scale}"
+          f" head translation scale = {head_translation_scale}")
     start_ab, _ = compute_ab_frames()
     ab_counter = 0
     vis = o3d.visualization.Visualizer()
@@ -321,11 +320,11 @@ def visualize(debug_mode=DEBUG_MODE):
     rot_actual_traj = []
     for counter in tqdm(range(len(trajectory)), desc="Completing simulation"):
         ab_added = False
-        pcd.translate(trajectory[counter % len(trajectory)])
+        pcd.translate(trajectory[counter % len(trajectory)]/head_translation_scale)
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
                                              degrees=True).as_matrix()
         pcd.rotate(rot_mat, pcd.get_center())
-        trans_actual_traj.append(trajectory[counter % len(trajectory)])
+        trans_actual_traj.append(trajectory[counter % len(trajectory)]/head_translation_scale)
         rot_actual_traj.append(rotated_trajectory[counter % len(trajectory)])
 
         if rotated_trajectory_z is not None:

@@ -249,6 +249,15 @@ def refine_path_computation(path):
     return res
 
 
+def get_translation_scale():
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {du.split(" ")[0]: du for du in lines2}
+    head_area_img = float(frame2ab["1-1.png"].split(" ")[2])
+    head_im = cv2.imread("../data_heavy/area_compute/head-0.png")
+    return head_area_img/np.sum(head_im[:, :, 0]!=255)
+
+
 if __name__ == '__main__':
     dump_into_tracks_osfm()
     # visualize_point_cloud()
