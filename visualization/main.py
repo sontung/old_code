@@ -11,6 +11,7 @@ shutil.rmtree(save_dir, ignore_errors=True)
 os.makedirs(save_dir, exist_ok=True)
 sys.stdin = open("../data_heavy/frames/info.txt")
 lines = [du[:-1] for du in sys.stdin.readlines()]
+lines = lines[1:]
 segment_view = "segment"
 recon_view = "recon"
 recon_dir = "../data_heavy/saved"
@@ -19,8 +20,8 @@ final_im_size = (513, 513)
 
 for idx_recon, idx_seg in enumerate(tqdm(lines, desc="Writing final visualization")):
     seg_im = cv2.imread("%s/1-%s.png" % (segment_dir, idx_seg))
-    recon_im = cv2.imread("%s/v1-%s.png" % (recon_dir, idx_recon+1))
-    recon_im2 = cv2.imread("%s/v2-%s.png" % (recon_dir, idx_recon+1))
+    recon_im = cv2.imread("%s/v1-%s.png" % (recon_dir, idx_recon))
+    recon_im2 = cv2.imread("%s/v2-%s.png" % (recon_dir, idx_recon))
 
     ori_im = cv2.imread("%s/1-%s.png" % ("../data_heavy/frames", idx_seg))
     ori_im2 = cv2.imread("%s/0-%s.png" % ("../data_heavy/frames", idx_seg))
