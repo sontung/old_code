@@ -347,11 +347,11 @@ def visualize(debug_mode=DEBUG_MODE):
             ab_counter += 1
 
         vis.get_view_control().rotate(-500, 0)
-        vis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter, do_render=True)
+        vis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter+2, do_render=True)
 
         vis.get_view_control().rotate(500, 0)
         vis.get_view_control().rotate(-200, 0)
-        vis.capture_screen_image("../data_heavy/saved/v2-%s.png" % counter, do_render=True)
+        vis.capture_screen_image("../data_heavy/saved/v2-%s.png" % counter+2, do_render=True)
         vis.get_view_control().rotate(200, 0)
         if ab_added:
             vis.remove_geometry(ab, reset_bounding_box=False)
@@ -381,6 +381,14 @@ def visualize(debug_mode=DEBUG_MODE):
             im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)
             seg_im1 = cv2.imread('../data_heavy/frames_seg_abh_vis/1-%s.png' % ind)
             seg_im1 = cv2.resize(seg_im1, (im1.shape[1], im1.shape[0]))
+            try:
+                im_view2 = cv2.imread("../data_heavy/frames/2-%s.png" % ind).astype(np.uint8)
+                seg_view2 = cv2.imread('../data_heavy/frames_seg_abh/2-%s.png' % ind).astype(np.uint8)
+                seg_im2 = cv2.addWeighted(im_view2, 0.3, seg_view2, 0.7, 0)
+                seg_im2 = cv2.resize(seg_im2, (im1.shape[1], im1.shape[0]))
+            except AttributeError:
+                print(f"../data_heavy/frames/2-{counter}.png does not exist")
+                seg_im2 = np.zeros_like(seg_im1)
 
             info_img = np.ones_like(im1)*255
             info_img = draw_text_to_image(info_img, "rot=%.3f" % (ne_rot_traj[counter]), (100, 100))
@@ -398,7 +406,7 @@ def visualize(debug_mode=DEBUG_MODE):
                                                                                 -ab_transy*translation_scale),
                                           (100, 600))
 
-            res_im = np.hstack([seg_im1, im1, info_img])
+            res_im = np.vstack([np.hstack([seg_im1, im1]), np.hstack([seg_im2, info_img])])
             res_im = cv2.resize(res_im, (res_im.shape[1]//2, res_im.shape[0]//2))
             cv2.imwrite(f"test2/res-{ind}.png", res_im)
 
