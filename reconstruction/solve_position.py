@@ -347,11 +347,11 @@ def visualize(debug_mode=DEBUG_MODE):
             ab_counter += 1
 
         vis.get_view_control().rotate(-500, 0)
-        vis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter+2, do_render=True)
+        vis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter, do_render=True)
 
         vis.get_view_control().rotate(500, 0)
         vis.get_view_control().rotate(-200, 0)
-        vis.capture_screen_image("../data_heavy/saved/v2-%s.png" % counter+2, do_render=True)
+        vis.capture_screen_image("../data_heavy/saved/v2-%s.png" % counter, do_render=True)
         vis.get_view_control().rotate(200, 0)
         if ab_added:
             vis.remove_geometry(ab, reset_bounding_box=False)
