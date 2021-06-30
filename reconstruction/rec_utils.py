@@ -255,7 +255,7 @@ def get_translation_scale():
     frame2ab = {du.split(" ")[0]: du for du in lines2}
     head_area_img = float(frame2ab["1-1.png"].split(" ")[2])
     head_im = cv2.imread("../data_heavy/area_compute/head-0.png")
-    return head_area_img/np.sum(head_im[:, :, 0]!=255)
+    return np.sqrt(head_area_img/np.sum(head_im[:, :, 0]!=255))
 
 
 if __name__ == '__main__':
