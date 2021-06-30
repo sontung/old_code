@@ -27,23 +27,33 @@ def b_spline_smooth(_trajectory, vis=False, name="test2.png", return_params=Fals
             control_points_time.append(idx)
         else:
             not_there.append(idx)
+    control_points_smoothed = smooth_1d(control_points, window_len=6)
+
+    tck_smoothed = interpolate.splrep(control_points_time, control_points_smoothed, k=2)
     tck = interpolate.splrep(control_points_time, control_points, k=3)
-    values = [interpolate.splev(du, tck) for du in np.linspace(0, len(_trajectory), len(_trajectory))]
+
     if vis:
+        plt.plot(control_points_time, control_points_smoothed, "og")
         plt.plot(control_points_time, control_points, "ob")
         plt.plot(not_there, [interpolate.splev(du, tck) for du in not_there], "or")
 
         plt.plot(np.linspace(0, len(_trajectory), 1000),
                  [interpolate.splev(du, tck) for du in np.linspace(0, len(_trajectory), 1000)], "y")
+
+        plt.plot(np.linspace(0, len(_trajectory), 1000),
+                 [interpolate.splev(du, tck_smoothed) for du in np.linspace(0, len(_trajectory), 1000)], "green")
+
+
         if removed is not None:
             plt.plot([du[0] for du in removed], [du[1] for du in removed], "oy")
         plt.xlabel("time")
         plt.ylabel("position")
-        plt.legend(["available points", "missing points", "interpolated curve"], prop={'size': 15})
+        plt.legend(["s. points", "points", "missing points", "curve", "s. curve"], prop={'size': 10})
         plt.savefig(f'{name}', dpi=300)
         plt.close()
     if return_params:
         return tck
+    values = [interpolate.splev(du, tck) for du in np.linspace(0, len(_trajectory), len(_trajectory))]
     return values
 
 
@@ -279,6 +289,48 @@ def get_translation_scale():
     head_area_img = float(frame2ab["1-1.png"].split(" ")[2])
     head_im = cv2.imread("../data_heavy/area_compute/head-0.png")
     return np.sqrt(head_area_img/np.sum(head_im[:, :, 0]!=255))
+
+
+def smooth_1d(x, window_len=4, window='hanning'):
+    """smooth the data using a window with requested size.
+
+    This method is based on the convolution of a scaled window with the signal.
+    The signal is prepared by introducing reflected copies of the signal
+    (with the window size) in both ends so that transient parts are minimized
+    in the begining and end part of the output signal.
+
+    input:
+        x: the input signal
+        window_len: the dimension of the smoothing window; should be an odd integer
+        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+            flat window will produce a moving average smoothing.
+
+    output:
+        the smoothed signal
+
+    example:
+
+    t=linspace(-2,2,0.1)
+    x=sin(t)+randn(len(t))*0.1
+    y=smooth(x)
+
+    see also:
+
+    numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
+    scipy.signal.lfilter
+
+    TODO: the window parameter could be the window itself if an array instead of a string
+    NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
+    """
+    s = np.r_[x[window_len - 1:0:-1], x, x[-2:-window_len - 1:-1]]
+    if window == 'flat':  # moving average
+        w = np.ones(window_len, 'd')
+    else:
+        w = eval('np.' + window + '(window_len)')
+
+    y = np.convolve(w / w.sum(), s, mode='valid')
+    y = y[int(window_len/2-1):-int(window_len/2)]
+    return list(y)
 
 
 if __name__ == '__main__':

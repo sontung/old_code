@@ -60,13 +60,13 @@ def compute_translation(debugging=DEBUG_MODE):
         b_spline_smooth(x_traj, vis=True, name=f"trans_x_ori.png")
         b_spline_smooth(y_traj, vis=True, name=f"trans_y_ori.png")
 
-        x_traj = refine_path_computation(x_traj)
-        y_traj = refine_path_computation(y_traj)
+        # x_traj = refine_path_computation(x_traj)
+        # y_traj = refine_path_computation(y_traj)
         x_traj = b_spline_smooth(x_traj, vis=True, name=f"trans_x_refined.png")
         y_traj = b_spline_smooth(y_traj, vis=True, name=f"trans_y_refined.png")
     else:
-        x_traj = refine_path_computation(x_traj)
-        y_traj = refine_path_computation(y_traj)
+        # x_traj = refine_path_computation(x_traj)
+        # y_traj = refine_path_computation(y_traj)
         x_traj = b_spline_smooth(x_traj)
         y_traj = b_spline_smooth(y_traj)
 
@@ -90,6 +90,7 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
     prev_pos = None
     all_angles = []
     os.makedirs("../data_heavy/rigid_head_rotation", exist_ok=True)
+    cost_arr = []
     for idx in tqdm(lines[:], desc="Computing head x-y rotation using rigid CPD"):
         img = cv2.imread(f"{images_dir}/1-{idx}.png")
         if img is None or np.sum(img) == 0:
@@ -103,10 +104,12 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         source_matrix = np.loadtxt('../data/ear.txt')
 
         source_matrix_norm = normalize(source_matrix, target_matrix)
-        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=45)
+        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=100)
         y_data_norm, (_, rot_mat, _) = reg.register()
         rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
         all_angles.append(rot_angle)
+
+        cost_arr.append(reg.q)
 
         fig = plt.figure()
         fig.add_axes([0, 0, 1, 1])
@@ -118,6 +121,8 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         plt.close(fig)
 
     if debugging:
+        print(cost_arr)
+        print(np.mean(cost_arr))
         ori_angles = all_angles[:]
         all_angles, removed_angles = refine_path_computation(all_angles, return_removed=True)
         all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
