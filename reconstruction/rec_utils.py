@@ -258,11 +258,14 @@ def refine_path_computation(path, return_removed=False):
             ranges.append((start, end))
             start = None
         ind += 1
+    if start is not None:
+        ranges.append((start, ind))
     res = path[:]
     removed_instances_all = []
     for start, end in ranges:
         res[start: end], removed_instances = remove_condition(path[start: end])
-        removed_instances_all.extend(removed_instances)
+        for v, k in removed_instances:
+            removed_instances_all.append((v+start, k))
     if return_removed:
         print("removing", removed_instances_all)
         return res, removed_instances_all

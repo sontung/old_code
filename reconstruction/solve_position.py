@@ -118,14 +118,14 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         plt.close(fig)
 
     if debugging:
-        b_spline_smooth(all_angles, vis=True, name="rot_ori.png")
+        ori_angles = all_angles[:]
         all_angles, removed_angles = refine_path_computation(all_angles, return_removed=True)
-        all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png",
-                                     removed=removed_angles)
+        all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
+        b_spline_smooth(ori_angles, vis=True, name="rot_ori.png", removed=removed_angles)
+
     else:
         all_angles = refine_path_computation(all_angles)
         all_angles = b_spline_smooth(all_angles)
-    sys.exit()
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
             move = rot_deg_overall - prev_pos
