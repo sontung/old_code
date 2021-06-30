@@ -10,7 +10,7 @@ from scipy import interpolate
 from matplotlib import pyplot as plt
 
 
-def b_spline_smooth(_trajectory, vis=False, name="test2.png", return_params=False):
+def b_spline_smooth(_trajectory, vis=False, name="test2.png", return_params=False, removed=None):
     """
     b spline smoothing for missing values (denoted None)
     Args:
@@ -35,6 +35,8 @@ def b_spline_smooth(_trajectory, vis=False, name="test2.png", return_params=Fals
 
         plt.plot(np.linspace(0, len(_trajectory), 1000),
                  [interpolate.splev(du, tck) for du in np.linspace(0, len(_trajectory), 1000)], "y")
+        if removed is not None:
+            plt.plot([du[0] for du in removed], [du[1] for du in removed], "oy")
         plt.xlabel("time")
         plt.ylabel("position")
         plt.legend(["available points", "missing points", "interpolated curve"], prop={'size': 15})
@@ -227,25 +229,43 @@ def draw_image(array):
 
 def remove_condition(path):
     grad = np.gradient(path, 2)
+    # grad = np.gradient(np.gradient(path))
     clusters, centroids = kmeans1d.cluster(grad, 2)
     if clusters.count(0) > clusters.count(1):
         remove_label = 1
     else:
         remove_label = 0
     res = path[:]
+    removed_instances = []
     for i in range(len(path)):
         if clusters[i] == remove_label:
             res[i] = None
-    return res
+            removed_instances.append((i, path[i]))
+    return res, removed_instances
 
 
-def refine_path_computation(path):
+def refine_path_computation(path, return_removed=False):
+
+    ind = 0
+    start = None
+    end = None
+    ranges = []
+    while ind < len(path):
+        if path[ind] is not None and start is None:
+            start = ind
+        elif path[ind] is None and start is not None:
+            end = ind
+            ranges.append((start, end))
+            start = None
+        ind += 1
     res = path[:]
-    null_indices = [du for du in range(len(path)) if path[du] is None]
-    if len(null_indices) <= 2:
-        return res
-    res[:min(null_indices)] = remove_condition(path[:min(null_indices)])
-    res[max(null_indices)+1:] = remove_condition(path[max(null_indices)+1:])
+    removed_instances_all = []
+    for start, end in ranges:
+        res[start: end], removed_instances = remove_condition(path[start: end])
+        removed_instances_all.extend(removed_instances)
+    if return_removed:
+        print("removing", removed_instances_all)
+        return res, removed_instances_all
     return res
 
 

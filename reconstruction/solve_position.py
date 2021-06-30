@@ -119,12 +119,13 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
 
     if debugging:
         b_spline_smooth(all_angles, vis=True, name="rot_ori.png")
-        all_angles = refine_path_computation(all_angles)
-        all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
+        all_angles, removed_angles = refine_path_computation(all_angles, return_removed=True)
+        all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png",
+                                     removed=removed_angles)
     else:
         all_angles = refine_path_computation(all_angles)
         all_angles = b_spline_smooth(all_angles)
-
+    sys.exit()
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
             move = rot_deg_overall - prev_pos
@@ -373,8 +374,11 @@ def visualize(debug_mode=DEBUG_MODE):
             arr = np.nonzero(ear_img)
             if len(arr[0]) > 0:
                 ear_img = ear_img[np.min(arr[0]):np.max(arr[0]), np.min(arr[1]): np.max(arr[1])]
-                line_img = cv2.resize(line_img, [ear_img.shape[1], ear_img.shape[0]])
-                rigid_img = cv2.resize(rigid_img, [ear_img.shape[1], ear_img.shape[0]])
+                img_size = max([ear_img, line_img, rigid_img], key=lambda x: x.shape[0]*x.shape[1])
+
+                ear_img = cv2.resize(ear_img, (img_size.shape[1], img_size.shape[0]))
+                line_img = cv2.resize(line_img, [img_size.shape[1], img_size.shape[0]])
+                rigid_img = cv2.resize(rigid_img, [img_size.shape[1], img_size.shape[0]])
 
                 cv2.imwrite(f"test/ear-{ind}.png", np.hstack([ear_img, line_img, rigid_img]))
             im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)
