@@ -102,6 +102,45 @@ def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_
     return
 
 
+def compute_head_ab_areas_image_space():
+    sys.stdin = open("../data_heavy/frames/info.txt")
+    lines = [du[:-1] for du in sys.stdin.readlines()]
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {du.split(" ")[0]: du for du in lines2}
+    ab_area_all = []
+    head_area_all = []
+
+    for frn in lines:
+        akey = "1-%s.png" % frn
+        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
+        ab_area, head_area = map(float, [ab_area, head_area])
+        ab_area_all.append(ab_area)
+    for frn in lines[:10]:
+        akey = "1-%s.png" % frn
+        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
+        ab_area, head_area = map(float, [ab_area, head_area])
+        head_area_all.append(head_area)
+    return np.max(ab_area_all), np.max(head_area_all)
+
+
+def compute_ab_trans():
+    sys.stdin = open("../data_heavy/frames/info.txt")
+    lines = [du[:-1] for du in sys.stdin.readlines()]
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {du.split(" ")[0]: du for du in lines2}
+    dist_all_x = []
+    dist_all_y = []
+    for frn in lines:
+        akey = "1-%s.png" % frn
+        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
+        dist_x, dist_y = map(float, [dist_x, dist_y])
+        dist_all_x.append(dist_x)
+        dist_all_y.append(dist_y)
+    return dist_all_x, dist_all_y
+
+
 def compute_ab_pose():
     sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]
@@ -139,8 +178,9 @@ def compute_ab_pose():
 
 
 if __name__ == "__main__":
+    compute_ab_trans()
     # compute_ab_pose()
-    start, nb_frames = compute_ab_frames()
-    a = sample_accordingly(nb_frames)
-    write_to_pcd(a)
+    # start, nb_frames = compute_ab_frames()
+    # a = sample_accordingly(nb_frames)
+    # write_to_pcd(a)
 
