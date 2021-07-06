@@ -178,9 +178,9 @@ def compute_ab_pose():
 
 
 if __name__ == "__main__":
-    compute_ab_trans()
+    # compute_ab_trans()
     # compute_ab_pose()
-    # start, nb_frames = compute_ab_frames()
-    # a = sample_accordingly(nb_frames)
-    # write_to_pcd(a)
+    start, nb_frames = compute_ab_frames()
+    a = sample_accordingly(nb_frames)
+    write_to_pcd(a)
 
