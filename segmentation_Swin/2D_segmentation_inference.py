@@ -131,13 +131,15 @@ def compute_postion_and_rotation(mask, rgb_mask, contours, vis=False):
         for i in range(1, len(contours)):
             points = np.append(points, contours[i], axis=0)
         hull = cv.convexHull(points)
+        copy_mask = np.zeros(rgb_mask.shape, dtype=np.uint8)
+        cv.fillPoly(copy_mask, [hull], (255, 255, 255))
+        copy_mask = copy_mask[:, :, 0]
+        mask = copy_mask
+
     else:
         hull = contours[0]
 
-    copy_mask = np.zeros(rgb_mask.shape, dtype=np.uint8)
-    cv.fillPoly(copy_mask, [hull], (255, 255, 255))
-    copy_mask = copy_mask[:, :, 0]
-    area = np.sum(copy_mask == 255)
+    area = np.sum(mask == 255)
 
     orient_rect = cv.minAreaRect(hull)
     center = (int(orient_rect[0][0]), int(orient_rect[0][1]))
@@ -179,45 +181,48 @@ def opencv_show_image(name, image):
     return
 
 
-def get_seg_head_from_prediction(class_predict, vis=False):
+def get_seg_head_from_prediction(class_predict):
     head_mask = np.zeros(class_predict.shape, dtype=np.uint8)
     head_mask[class_predict == HEAD] = 255
     head_mask[class_predict == EAR] = 255
     rgb_mask = np.zeros((class_predict.shape[0], class_predict.shape[1], 3), dtype=np.uint8)
-    mask = rgb_mask[:, :, 0]
 
     contours, _ = cv.findContours(head_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
     if len(contours) > 0:
         max_contours = [max(contours, key=lambda x: cv.contourArea(x))]
         cv.fillPoly(rgb_mask, max_contours, HEAD_COLOR)
-        mask[mask > 0] = 255
     else:
         max_contours = contours
 
-    if vis:
-        opencv_show_image('mask of head', rgb_mask)
-    return mask, rgb_mask, max_contours
-
-
-def get_seg_airbag_from_prediction(class_predict, vis=False, kept_area=1000):
-    ab_mask = np.zeros(class_predict.shape, dtype=np.uint8)
-    ab_mask[class_predict == AIRBAG] = 255
-
-    contours, _ = cv.findContours(ab_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-    contours = [cnt for cnt in contours if cv.contourArea(cnt) >= kept_area]
-
-    rgb_mask = np.zeros((class_predict.shape[0], class_predict.shape[1], 3), dtype=np.uint8)
-    cv.fillPoly(rgb_mask, contours, AIRBAG_COLOR)
     mask = rgb_mask[:, :, 0]
     mask[mask > 0] = 255
 
-    if vis:
-        opencv_show_image('mask of airbag', rgb_mask)
+    return mask, rgb_mask, max_contours
+
+
+def get_seg_airbag_from_prediction(class_predict, view=None, kept_area=1000):
+    ab_mask = np.zeros(class_predict.shape, dtype=np.uint8)
+    ab_mask[class_predict == AIRBAG] = 255
+    rgb_mask = np.zeros((class_predict.shape[0], class_predict.shape[1], 3), dtype=np.uint8)
+
+    contours, _ = cv.findContours(ab_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+    if len(contours) > 0:
+        if view == 2:
+            contours = [cnt for cnt in contours if cv.contourArea(cnt) >= kept_area]
+        else:
+            largest_cnt = max(contours, key=lambda x: cv.contourArea(x))
+            contours = [largest_cnt]
+
+        cv.fillPoly(rgb_mask, contours, AIRBAG_COLOR)
+
+    mask = rgb_mask[:, :, 0]
+    mask[mask > 0] = 255
 
     return mask, rgb_mask, contours
 
 
-def get_seg_ear_from_prediction(class_predict, head_contour, vis=False):
+def get_seg_ear_from_prediction(class_predict, head_contour):
 
     ear_mask = np.zeros(class_predict.shape, dtype=np.uint8)
     ear_mask[class_predict == EAR] = 255
@@ -255,8 +260,8 @@ def main(debuging=DEBUG_MODE):
             img_name = os.path.basename(path)
             view = int(img_name.split('-')[0])
 
-            head_mask, head_rgb_mask, head_contour = get_seg_head_from_prediction(pred, vis=debuging)
-            ab_mask, ab_rgb_mask, ab_contours = get_seg_airbag_from_prediction(pred, vis=debuging)
+            head_mask, head_rgb_mask, head_contour = get_seg_head_from_prediction(pred)
+            ab_mask, ab_rgb_mask, ab_contours = get_seg_airbag_from_prediction(pred, view=view)
 
             head_pixels, head_center, head_rot = compute_postion_and_rotation(head_mask, head_rgb_mask, head_contour, vis=debuging)
             ab_pixels, ab_center, ab_rot = compute_postion_and_rotation(ab_mask, ab_rgb_mask, ab_contours, vis=debuging)
@@ -275,7 +280,7 @@ def main(debuging=DEBUG_MODE):
             Image.fromarray(blend).save(f"{OUT_SEG_ABH_VIS_DIR}/{img_name}")
 
             if view == 1:
-                ear_mask = get_seg_ear_from_prediction(pred, head_contour, vis=debuging)
+                ear_mask = get_seg_ear_from_prediction(pred, head_contour)
                 orgin_img_copy = inp_img.copy()
                 orgin_img_copy[ear_mask == 0] *= 0
                 cv.imwrite(f'{OUT_VIS_EAR_DIR}/{img_name}', orgin_img_copy)
@@ -286,26 +291,5 @@ def main(debuging=DEBUG_MODE):
 
 
 if __name__ == '__main__':
-    # test_image = cv.imread('/media/hblab/01D5F2DD5173DEA0/AirBag/segment/anno/frame-107568.png')
-    # test_image = cv.cvtColor(test_image, cv.COLOR_BGR2RGB)
-    #
-    # head = np.zeros(test_image.shape, dtype=np.uint8)
-    # ab = np.zeros(test_image.shape, dtype=np.uint8)
-    #
-    # head[(test_image == HEAD_COLOR).all(axis=2)] = HEAD_COLOR
-    # ab[(test_image == AIRBAG_COLOR).all(axis=2)] = AIRBAG_COLOR
-    #
-    # head_mask = head[:, :, 0]
-    # head_mask[head_mask > 0] = 255
-    #
-    # ab_mask = ab[:, :, 0]
-    # ab_mask[ab_mask > 0] = 255
-    #
-    # head_cnt, _ = cv.findContours(head_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-    # ab_cnts, _ = cv.findContours(ab_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-    #
-    # # compute_postion_and_rotation(head_mask, head_mask, test_image, head_cnt, True)
-    # compute_postion_and_rotation(ab_mask, ab, ab_cnts, vis=DEBUG_MODE)
-    # opencv_show_image('t', head)
     main()
 
