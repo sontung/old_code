@@ -20,3 +20,5 @@ segmentation/output/
 *.lprof
 */test*/*
 reconstruction/*.png
+segmentation_Swin/checkpoints
+
