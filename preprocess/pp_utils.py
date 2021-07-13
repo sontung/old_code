@@ -11,6 +11,7 @@ from sklearn.utils import shuffle
 from sklearn.datasets import load_sample_image
 from time import time
 from pathlib import Path
+from tqdm import tqdm
 
 
 def keep_one_biggest_contour(img):
@@ -31,14 +32,15 @@ def keep_one_biggest_contour(img):
     return img, mask
 
 
-def extract_frame():
+def extract_frame(mypath='../data_const/run', output='../data_heavy/frames'):
     """
     extract frames from videos stored in ../data_heavy/run
     """
-    mypath = "../data_const/run"
+    # mypath = "../data_const/run"
     videos = sorted([join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))])
     print("Extracting frames from", videos)
-    os.makedirs("../data_heavy/frames", exist_ok=True)
+    # os.makedirs("../data_heavy/frames", exist_ok=True)
+    os.makedirs(output, exist_ok=True)
 
     min_nb_frame = None
     keep_counts = []
@@ -56,7 +58,7 @@ def extract_frame():
                     frame_idx += 1
                     scale = np.min(frame.shape[:2]) // 500
                     frame = cv2.resize(frame, (frame.shape[1]//scale, frame.shape[0]//scale))
-                    cv2.imwrite('../data_heavy/frames/%d-%d.png' % (c, frame_idx), frame)
+                    cv2.imwrite(f'{output}/%d-%d.png' % (c, frame_idx), frame)
                     counts.append(frame_idx)
             else:
                 break
@@ -68,7 +70,7 @@ def extract_frame():
             keep_counts = counts
             min_nb_frame = count
     keep_counts = sorted(keep_counts)
-    with open(join("../data_heavy/frames", "info.txt"), "w") as text_file:
+    with open(join(output, "info.txt"), "w") as text_file:
         for c in keep_counts:
             print(c, file=text_file)
 
@@ -217,6 +219,22 @@ def simple_preprocess():
         #             img[i, j] = (128, 128, 255)
         cv2.imwrite("%s/%s" % (saving_dir, im_name), img)
 
+
+def extract_all_video(root='/media/hblab/01D5F2DD5173DEA0/AirBag/3d-air-bag-p2/data_video'):
+    videos = 'all_video'
+    frames = 'all_frames'
+
+    sub_videos = os.walk(os.path.join(root, videos)).__next__()[1]
+    sub_frames = os.walk(os.path.join(root, frames)).__next__()[1]
+    for v in tqdm(sub_videos, desc="Extracting video"):
+        if v in sub_frames:
+            print(f'Skipping {v}')
+        else:
+            extract_frame(mypath=os.path.join(root, videos, v), output=os.path.join(root, frames, v))
+    return
+
+
 if __name__ == '__main__':
     extract_frame()
+    # extract_all_video()
     # k_means_smoothing(None)
