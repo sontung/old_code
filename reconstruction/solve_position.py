@@ -9,6 +9,7 @@ import cv2
 from scipy.spatial.transform import Rotation as rot_mat_compute
 from rec_utils import b_spline_smooth, normalize, draw_text_to_image, refine_path_computation, get_translation_scale
 from tqdm import tqdm
+from kalman_filter import kalman_smooth
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from pycpd import RigidRegistration
 import matplotlib.pyplot as plt
@@ -126,6 +127,7 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         all_angles_before_null = all_angles[:]
         all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
         b_spline_smooth(ori_angles, vis=True, name="rot_ori.png", removed=removed_angles)
+        all_angles = kalman_smooth(ori_angles, all_angles)
 
     else:
         all_angles = refine_path_computation(all_angles)
@@ -187,7 +189,7 @@ def compute_rotation(reverse_for_vis=False, view=1):
     return trajectories, all_angles, all_angles_before_null
 
 
-def compute_head_ab_areas(sim_first=False):
+def compute_head_ab_areas():
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/area_compute/", exist_ok=True)
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
@@ -296,7 +298,7 @@ def visualize(debug_mode=DEBUG_MODE):
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
-    du_outputs = compute_head_ab_areas(sim_first=True)
+    du_outputs = compute_head_ab_areas()
     sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
     rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null = du_outputs
     img_ab_area, img_head_area = compute_head_ab_areas_image_space()
