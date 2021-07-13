@@ -127,7 +127,7 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         all_angles_before_null = all_angles[:]
         all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
         b_spline_smooth(ori_angles, vis=True, name="rot_ori.png", removed=removed_angles)
-        kalman_smooth(ori_angles, all_angles)
+        all_angles = kalman_smooth(ori_angles, all_angles)
 
     else:
         all_angles = refine_path_computation(all_angles)

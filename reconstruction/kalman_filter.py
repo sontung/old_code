@@ -98,3 +98,4 @@ def kalman_smooth(angles, angles_spline):
     plt.plot(angles_spline, "b")
     plt.legend(["kalman", "b-spline"])
     plt.savefig(f"kalman-{time.time()}.png")
+    return kalman_angles
