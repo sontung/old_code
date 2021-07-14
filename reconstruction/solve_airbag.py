@@ -7,6 +7,7 @@ from scipy import interpolate
 import numpy as np
 import json
 import glob
+import pickle
 
 
 def sample_accordingly(new_time_step=27):
@@ -82,7 +83,11 @@ def compute_ab_frames():
         traj.append(frame2ab[akey])
     for idx, num in enumerate(traj):
         if np.all([traj[idx+du] > 0 for du in range(5)]):
-            return idx, len(traj)-idx
+            os.makedirs("../data_const/final_vis", exist_ok=True)
+            results = idx, len(traj)-idx
+            with open("../data_const/final_vis/ab_frames.pkl", "wb") as pickle_file:
+                pickle.dump(results, pickle_file)
+            return results
     raise RuntimeError
 
 
@@ -121,7 +126,11 @@ def compute_head_ab_areas_image_space():
         _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
         ab_area, head_area = map(float, [ab_area, head_area])
         head_area_all.append(head_area)
-    return np.max(ab_area_all), np.max(head_area_all)
+    results = [np.max(ab_area_all), np.max(head_area_all)]
+    os.makedirs("../data_const/final_vis", exist_ok=True)
+    with open("../data_const/final_vis/ab_areas.pkl", "wb") as pickle_file:
+        pickle.dump(results, pickle_file)
+    return results
 
 
 def compute_ab_trans():
@@ -173,8 +182,11 @@ def compute_ab_pose():
         ab_area, head_area = map(float, [ab_area, head_area])
         if ab_area > abam1 and head_area > ham1:
             scale_all.append(head_area / ab_area)
-
-    return np.mean(scale_all), np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all), abam1, ham1
+    results = [np.mean(scale_all), np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all), abam1, ham1]
+    os.makedirs("../data_const/final_vis", exist_ok=True)
+    with open("../data_const/final_vis/ab_poses.pkl", "wb") as pickle_file:
+        pickle.dump(results, pickle_file)
+    return results
 
 
 if __name__ == "__main__":

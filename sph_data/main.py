@@ -146,7 +146,8 @@ if __name__ == "__main__":
     start = time.time()
     os.makedirs("mc_solutions", exist_ok=True)
     os.makedirs("mc_solutions_smoothed", exist_ok=True)
-    build_shape()
+    if not os.path.exists("airbag.obj"):
+        build_shape()
     sph_simulation()
     process_bgeo2json()
     print("SPH simulation done in %f" % (time.time()-start))

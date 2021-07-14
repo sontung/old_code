@@ -7,7 +7,6 @@ import sys
 import shutil
 
 save_dir = "../data_const/final_vis" 
-shutil.rmtree(save_dir, ignore_errors=True)
 os.makedirs(save_dir, exist_ok=True)
 sys.stdin = open("../data_heavy/frames/info.txt")
 lines = [du[:-1] for du in sys.stdin.readlines()]
@@ -40,3 +39,4 @@ for idx_recon, idx_seg in enumerate(tqdm(lines, desc="Writing final visualizatio
     final_im2 = np.hstack([recon_im2, recon_im])
     all_im = np.vstack([final_im, final_im2])
     Image.fromarray(all_im).save("%s/%d.png" % (save_dir, idx_recon))
+

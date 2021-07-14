@@ -195,6 +195,7 @@ def compute_head_ab_areas():
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
 
+    # scale the AB to match the scale head/ab in image space
     global_scale_ab_list = []
     for ab_dir in glob.glob(f"{ab_mesh_dir}/*"):
         ab = o3d.io.read_triangle_mesh(ab_dir)
@@ -273,8 +274,12 @@ def compute_head_ab_areas():
         im = cv2.imread(name, cv2.IMREAD_GRAYSCALE)
         arr.append(np.sum(im != 255))
     ab_area = np.max(arr)
-    return head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z, \
-           ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null
+    results = [head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z,
+               ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null]
+    os.makedirs("../data_const/final_vis", exist_ok=True)
+    with open("../data_const/final_vis/trajectory.pkl", "wb") as pickle_file:
+        pickle.dump(results, pickle_file)
+    return results
 
 
 def debug_vis_img(image, head_center, ab_center):
@@ -303,6 +308,7 @@ def visualize(debug_mode=DEBUG_MODE):
     rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null = du_outputs
     img_ab_area, img_head_area = compute_head_ab_areas_image_space()
 
+    # scale both head and ab to match image space
     global_scale_ab_list = []
     for ab_dir in glob.glob(f"{ab_mesh_dir}/*"):
         ab = o3d.io.read_triangle_mesh(ab_dir)
