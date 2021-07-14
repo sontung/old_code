@@ -21,20 +21,11 @@ args = vars(parser.parse_args())
 DEBUG_MODE = args['debug']
 
 # section Runtime Arguments
-INP_IMG_DIR     = '../data_heavy/frames'
-OUT_SEG_ABH_DIR = '../data_heavy/frames_seg_abh'
-OUT_SEG_ABH_VIS_DIR = '../data_heavy/frames_seg_abh_vis'
-os.makedirs(OUT_SEG_ABH_DIR, exist_ok=True)
-os.makedirs(OUT_SEG_ABH_VIS_DIR, exist_ok=True)
-
-OUT_VIS_EAR_DIR  = '../data_heavy/frames_ear_only'
-OUT_EAR_COOR_DIR = '../data_heavy/frames_ear_coord_only'
-os.makedirs(OUT_VIS_EAR_DIR, exist_ok=True)
-os.makedirs(OUT_EAR_COOR_DIR, exist_ok=True)
-
 CONFIG_FILE = 'configs/AB__SwinBase__2_local__no_TTA.py'
 CHECKPOINT  = 'checkpoints/config_2_16000iter.pth'
 DEVICE      = 'cuda:0'
+
+MODEL = init_segmentor(CONFIG_FILE, CHECKPOINT, device=DEVICE)
 
 BACKGROUND, AIRBAG, SIDE_AIRBAG, HEAD, EAR = 0, 1, 2, 3, 4
 HEAD_COLOR = [64, 128, 128]
@@ -173,12 +164,33 @@ def compute_postion_and_rotation(mask, rgb_mask, contours, vis=False):
     return area, center, angle
 
 
-def opencv_show_image(name, image):
+def opencv_show_image(image, name='vis'):
     cv.namedWindow(name, cv.WINDOW_NORMAL)
     cv.imshow(name, image)
     cv.waitKey()
     cv.destroyAllWindows()
     return
+
+
+def refine_airbag_segmentation(ab_mask, head_mask):
+    test_mask = cv2.bitwise_or(ab_mask, head_mask)
+    test_cnts, _ = cv2.findContours(test_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    overlap_mask = None
+    for cnt in test_cnts:
+        dum_mask = np.zeros(head_mask.shape, dtype=np.uint8)
+        cv2.fillPoly(dum_mask, [cnt], [255])
+        intersec = cv2.bitwise_and(head_mask, dum_mask)
+        intersec_pixel = np.sum(intersec)
+        if intersec_pixel > 0:
+            overlap_mask = dum_mask
+            break
+    if overlap_mask is None:
+        return None
+
+    refine_ab_mask = cv2.bitwise_and(ab_mask, overlap_mask)
+    ab_contours, _ = cv2.findContours(refine_ab_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    return refine_ab_mask, ab_contours
 
 
 def get_seg_head_from_prediction(class_predict):
@@ -200,7 +212,7 @@ def get_seg_head_from_prediction(class_predict):
     return mask, rgb_mask, max_contours
 
 
-def get_seg_airbag_from_prediction(class_predict, view=None, kept_area=1000):
+def get_seg_airbag_from_prediction(class_predict, head_contour, view=None, kept_area=1000):
     ab_mask = np.zeros(class_predict.shape, dtype=np.uint8)
     ab_mask[class_predict == AIRBAG] = 255
     rgb_mask = np.zeros((class_predict.shape[0], class_predict.shape[1], 3), dtype=np.uint8)
@@ -241,27 +253,61 @@ def get_seg_ear_from_prediction(class_predict, head_contour):
     return mask
 
 
-def main(debuging=DEBUG_MODE):
-    # Remove previous running results
-    previous_result = '../data_heavy/frame2ab.txt'
-    if Path(previous_result).exists():
-        Path(previous_result).unlink()
+def segment_all_video(root='/media/hblab/01D5F2DD5173DEA0/AirBag/3d-air-bag-p2/data_video'):
+    frames = 'all_frames'
+    segs = 'all_segments'
+
+    sub_frames_folder = os.walk(os.path.join(root, frames)).__next__()[1]
+    sub_segs_folder = os.walk(os.path.join(root, segs)).__next__()[1]
+
+    for f in tqdm(sub_frames_folder, desc="Segmentation"):
+        if f in sub_segs_folder:
+            print(f"Skipping {f}")
+        else:
+            dir = os.path.join(root, segs, f)
+            os.makedirs(dir, exist_ok=True)
+            main(txt_file=os.path.join(dir, 'frame2ab.txt'),
+                 input_images=os.path.join(root, frames, f),
+                 save_seg_abh=os.path.join(dir, "frames_seg_abh"),
+                 save_seg_abh_vis=os.path.join(dir, "frames_seg_abh_vis"),
+                 save_ear_vis=os.path.join(dir, "frames_ear_only"),
+                 save_ear_coor=os.path.join(dir, "frames_ear_coord_only"))
+
+    return
+
+def main(debuging=DEBUG_MODE,
+         txt_file='../data_heavy/frame2ab.txt',
+         input_images='../data_heavy/frames',
+         save_seg_abh='../data_heavy/frames_seg_abh',
+         save_seg_abh_vis='../data_heavy/frames_seg_abh_vis',
+         save_ear_vis='../data_heavy/frames_ear_only',
+         save_ear_coor='../data_heavy/frames_ear_coord_only'):
+
+    os.makedirs(save_seg_abh, exist_ok=True)
+    os.makedirs(save_seg_abh_vis, exist_ok=True)
+    os.makedirs(save_ear_vis, exist_ok=True)
+    os.makedirs(save_ear_coor, exist_ok=True)
 
     # section Predict
-    model = init_segmentor(CONFIG_FILE, CHECKPOINT, device=DEVICE)
-    file_paths = glob.glob(f"{INP_IMG_DIR}/*.png")
-
-    with open("../data_heavy/frame2ab.txt", "w") as fp:
+    file_paths = glob.glob(f"{input_images}/*.png")
+    with open(txt_file, "w") as fp:
         for path in tqdm(file_paths, desc='2D Segmentation:'):
             inp_img = cv.imread(path, 1)
-            result    = inference_segmentor(model, inp_img)
+            result    = inference_segmentor(MODEL, inp_img)
             pred    = result[0]
 
             img_name = os.path.basename(path)
             view = int(img_name.split('-')[0])
 
             head_mask, head_rgb_mask, head_contour = get_seg_head_from_prediction(pred)
-            ab_mask, ab_rgb_mask, ab_contours = get_seg_airbag_from_prediction(pred, view=view)
+            ab_mask, ab_rgb_mask, ab_contours = get_seg_airbag_from_prediction(pred, head_contour, view=view)
+
+            if view == 2:
+                refine = refine_airbag_segmentation(ab_mask, head_mask)
+                if refine is not None:
+                    ab_mask, ab_contours = refine
+                    ab_rgb_mask = np.zeros_like(ab_rgb_mask)
+                    ab_rgb_mask[ab_mask == 255] = AIRBAG_COLOR
 
             head_pixels, head_center, head_rot = compute_postion_and_rotation(head_mask, head_rgb_mask, head_contour, vis=debuging)
             ab_pixels, ab_center, ab_rot = compute_postion_and_rotation(ab_mask, ab_rgb_mask, ab_contours, vis=debuging)
@@ -275,21 +321,22 @@ def main(debuging=DEBUG_MODE):
             print(img_name, ab_pixels, head_pixels, dist_x, dist_y, head_rot, ab_rot, file=fp)
 
             seg_final = merge_2images(head_rgb_mask, ab_rgb_mask, HEAD_COLOR, AIRBAG_COLOR)
-            Image.fromarray(seg_final).save(f"{OUT_SEG_ABH_DIR}/{img_name}")
+            Image.fromarray(seg_final).save(f"{save_seg_abh}/{img_name}")
             blend = cv2.addWeighted(inp_img, 0.3, seg_final, 0.7, 0)
-            Image.fromarray(blend).save(f"{OUT_SEG_ABH_VIS_DIR}/{img_name}")
+            Image.fromarray(blend).save(f"{save_seg_abh_vis}/{img_name}")
 
-            if view == 1:
-                ear_mask = get_seg_ear_from_prediction(pred, head_contour)
-                orgin_img_copy = inp_img.copy()
-                orgin_img_copy[ear_mask == 0] *= 0
-                cv.imwrite(f'{OUT_VIS_EAR_DIR}/{img_name}', orgin_img_copy)
-
-                pixels = np.argwhere(ear_mask > 0)
-                with open(f'{OUT_EAR_COOR_DIR}/{img_name}', 'wb') as ear_fp:
-                    pickle.dump(pixels, ear_fp)
+            # if view == 1:
+            #     ear_mask = get_seg_ear_from_prediction(pred, head_contour)
+            #     orgin_img_copy = inp_img.copy()
+            #     orgin_img_copy[ear_mask == 0] *= 0
+            #     cv.imwrite(f'{save_ear_vis}/{img_name}', orgin_img_copy)
+            #
+            #     pixels = np.argwhere(ear_mask > 0)
+            #     with open(f'{save_ear_coor}/{img_name}', 'wb') as ear_fp:
+            #         pickle.dump(pixels, ear_fp)
 
 
 if __name__ == '__main__':
+    # segment_all_video()
     main()
 
