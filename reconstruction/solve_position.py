@@ -127,7 +127,7 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         all_angles_before_null = all_angles[:]
         all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
         b_spline_smooth(ori_angles, vis=True, name="rot_ori.png", removed=removed_angles)
-        all_angles = kalman_smooth(ori_angles, all_angles)
+        # all_angles = kalman_smooth(ori_angles, all_angles)
 
     else:
         all_angles = refine_path_computation(all_angles)
@@ -407,7 +407,13 @@ def visualize(debug_mode=DEBUG_MODE):
                 cv2.imwrite(f"test/ear-{ind}.png", np.hstack([ear_img, line_img, rigid_img]))
             im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)
             seg_im1 = cv2.imread('../data_heavy/frames_seg_abh_vis/1-%s.png' % ind)
+            ear_im1 = np.zeros_like(seg_im1).astype(np.uint8)
+            with open(f"../data_heavy/frames_ear_coord_only/1-{ind}.png", "rb") as ear_file:
+                ear = pickle.load(ear_file)
+            ear_im1[ear[:, 0], ear[:, 1]] = [125, 60, 80]
+            seg_im1 = cv2.addWeighted(seg_im1, 0.3, ear_im1, 0.7, 0)
             seg_im1 = cv2.resize(seg_im1, (im1.shape[1], im1.shape[0]))
+
             try:
                 im_view2 = cv2.imread("../data_heavy/frames/2-%s.png" % ind).astype(np.uint8)
                 seg_view2 = cv2.imread('../data_heavy/frames_seg_abh/2-%s.png' % ind).astype(np.uint8)
