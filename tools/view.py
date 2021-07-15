@@ -23,6 +23,7 @@ AB_FRAMES_DIR = f"{RESULTS_DIR}/ab_frames.pkl"
 
 RENDER_MODE = 0
 NEXT = False
+PREV = False
 
 
 def key_cb(u):
@@ -39,8 +40,14 @@ def key_sw(u):
         NEXT = True
 
 
+def key_sw2(u):
+    global PREV
+    if not PREV and RENDER_MODE == 0:
+        PREV = True
+
+
 def visualize():
-    global NEXT
+    global NEXT, PREV
 
     with open(TRAJECTORY_DIR, "rb") as pickle_file:
         du_outputs = pickle.load(pickle_file)
@@ -82,6 +89,7 @@ def visualize():
     vis.get_view_control().rotate(-500, 0)
     vis.register_key_callback(ord("A"), key_cb)
     vis.register_key_callback(ord("N"), key_sw)
+    vis.register_key_callback(ord("P"), key_sw2)
 
     trans_actual_traj = []
     rot_actual_traj = []
@@ -90,7 +98,7 @@ def visualize():
     ab_centers = []
     ab_added_mode0 = False
     ab_added_mode1 = False
-
+    prev_renders = []
     counter = 0
     while True:
         if RENDER_MODE == 0:
@@ -98,6 +106,8 @@ def visualize():
             vis.update_renderer()
 
             if NEXT:
+                counter += 1
+                NEXT = False
                 if ab_added_mode0:
                     vis.remove_geometry(ab, reset_bounding_box=False)
                     ab_added_mode0 = False
@@ -109,10 +119,9 @@ def visualize():
                 trans_actual_traj.append(trajectory[counter % len(trajectory)])
                 rot_actual_traj.append(rotated_trajectory[counter % len(trajectory)])
 
-                if rotated_trajectory_z is not None:
-                    rot_mat_z = rot_mat_compute.from_euler('z', rotated_trajectory_z[counter % len(trajectory)],
-                                                           degrees=True).as_matrix()
-                    pcd.rotate(rot_mat_z, pcd.get_center())
+                rot_mat_z = rot_mat_compute.from_euler('z', rotated_trajectory_z[counter % len(trajectory)],
+                                                       degrees=True).as_matrix()
+                pcd.rotate(rot_mat_z, pcd.get_center())
 
                 if counter >= start_ab - 1:
                     ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
@@ -127,9 +136,42 @@ def visualize():
 
                 vis.update_geometry(pcd)
                 vis.update_renderer()
+                prev_renders.append([-trajectory[counter % len(trajectory)],
+                                     -rotated_trajectory[counter % len(trajectory)],
+                                     -rotated_trajectory_z[counter % len(trajectory)]])
 
-                counter += 1
-                NEXT = False
+            elif PREV and len(prev_renders) > 0:
+                counter -= 1
+                PREV = False
+                trans, rot, rot_z = prev_renders.pop()
+                if ab_added_mode0:
+                    vis.remove_geometry(ab, reset_bounding_box=False)
+                    ab_added_mode0 = False
+                vis.poll_events()
+                pcd.translate(trans)
+                rot_mat = rot_mat_compute.from_euler('x', rot, degrees=True).as_matrix()
+                pcd.rotate(rot_mat, pcd.get_center())
+                trans_actual_traj.append(trajectory[counter % len(trajectory)])
+                rot_actual_traj.append(rotated_trajectory[counter % len(trajectory)])
+
+                rot_mat_z = rot_mat_compute.from_euler('z', rot_z, degrees=True).as_matrix()
+                pcd.rotate(rot_mat_z, pcd.get_center())
+
+                if counter >= start_ab - 1:
+                    ab_counter -= 2
+                    ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
+                    ab.compute_vertex_normals()
+                    ab.scale(global_ab_scale, ab.get_center())
+                    ab.translate([0, -ab_transy, -ab_transx])
+                    ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
+                    ab.rotate(rot_mat_compute.from_euler("x", -90 + ab_rot, degrees=True).as_matrix())
+                    vis.add_geometry(ab, reset_bounding_box=False)
+                    ab_counter += 1
+                    ab_added_mode0 = True
+
+                vis.update_geometry(pcd)
+                vis.update_renderer()
+
 
         elif RENDER_MODE == 1:
             vis.poll_events()
