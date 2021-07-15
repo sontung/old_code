@@ -7,6 +7,7 @@ from scipy import interpolate
 import numpy as np
 import json
 import glob
+import pickle
 
 
 def sample_accordingly(new_time_step=27):
@@ -81,8 +82,12 @@ def compute_ab_frames():
         akey = "1-%s.png" % frn
         traj.append(frame2ab[akey])
     for idx, num in enumerate(traj):
-        if np.all([traj[idx+du] > 1000 for du in range(5)]):
-            return idx, len(traj)-idx-1
+        if np.all([traj[idx+du] > 0 for du in range(5)]):
+            os.makedirs("../data_const/final_vis", exist_ok=True)
+            results = idx, len(traj)-idx
+            with open("../data_const/final_vis/ab_frames.pkl", "wb") as pickle_file:
+                pickle.dump(results, pickle_file)
+            return results
     raise RuntimeError
 
 
@@ -100,6 +105,49 @@ def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_
                     break
             f.close()
     return
+
+
+def compute_head_ab_areas_image_space():
+    sys.stdin = open("../data_heavy/frames/info.txt")
+    lines = [du[:-1] for du in sys.stdin.readlines()]
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {du.split(" ")[0]: du for du in lines2}
+    ab_area_all = []
+    head_area_all = []
+
+    for frn in lines:
+        akey = "1-%s.png" % frn
+        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
+        ab_area, head_area = map(float, [ab_area, head_area])
+        ab_area_all.append(ab_area)
+    for frn in lines[:10]:
+        akey = "1-%s.png" % frn
+        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
+        ab_area, head_area = map(float, [ab_area, head_area])
+        head_area_all.append(head_area)
+    results = [np.max(ab_area_all), np.max(head_area_all)]
+    os.makedirs("../data_const/final_vis", exist_ok=True)
+    with open("../data_const/final_vis/ab_areas.pkl", "wb") as pickle_file:
+        pickle.dump(results, pickle_file)
+    return results
+
+
+def compute_ab_trans():
+    sys.stdin = open("../data_heavy/frames/info.txt")
+    lines = [du[:-1] for du in sys.stdin.readlines()]
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {du.split(" ")[0]: du for du in lines2}
+    dist_all_x = []
+    dist_all_y = []
+    for frn in lines:
+        akey = "1-%s.png" % frn
+        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
+        dist_x, dist_y = map(float, [dist_x, dist_y])
+        dist_all_x.append(dist_x)
+        dist_all_y.append(dist_y)
+    return dist_all_x, dist_all_y
 
 
 def compute_ab_pose():
@@ -134,11 +182,15 @@ def compute_ab_pose():
         ab_area, head_area = map(float, [ab_area, head_area])
         if ab_area > abam1 and head_area > ham1:
             scale_all.append(head_area / ab_area)
-
-    return np.mean(scale_all), np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all), abam1, ham1
+    results = [np.mean(scale_all), np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all), abam1, ham1]
+    os.makedirs("../data_const/final_vis", exist_ok=True)
+    with open("../data_const/final_vis/ab_poses.pkl", "wb") as pickle_file:
+        pickle.dump(results, pickle_file)
+    return results
 
 
 if __name__ == "__main__":
+    # compute_ab_trans()
     # compute_ab_pose()
     start, nb_frames = compute_ab_frames()
     a = sample_accordingly(nb_frames)

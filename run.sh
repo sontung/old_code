@@ -19,16 +19,13 @@ set -euxo pipefail
 cd ../preprocess/
 python pp_utils.py
 
-cd ../segmentation/
-python ear_segment.py
+cd ../segmentation_Swin
+python 2D_segmentation_inference.py
 
 cd ../preprocess/
 python main.py
 
-cd ../segmentation/pytorch-deeplab-xception
-python inference.py
-
-cd ../../reconstruction/
+cd ../reconstruction/
 python solve_airbag.py
 
 cd ../sph_data

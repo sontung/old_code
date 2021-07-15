@@ -32,21 +32,35 @@ class EAR:
                 for mask in masks[1:]:
                     final_mask = cv2.bitwise_or(final_mask, mask)
         final_mask *= 255
-        # self.post_process(final_mask, im_name)
+
+        seg_im = cv2.imread(f"../data_heavy/frames_seg_abh/{im_name}")
+        head_only_im = np.zeros(seg_im.shape, dtype=np.uint8)
+        head_indices = (seg_im == (128, 128, 64)).all(axis=2).astype(np.uint8)
+        final_mask_filtered = self.inside_head(final_mask, np.nonzero(head_indices))
+        head_only_im[(seg_im == (128, 128, 64)).all(axis=2)] = 255
+
+        # cv2.imshow("t", np.hstack([final_mask_filtered, final_mask]))
+        # cv2.imshow("t2", np.hstack([img, head_only_im]))
+        # cv2.waitKey()
+        # cv2.destroyAllWindows()
 
         mask_img = img.copy()
-        mask_img[final_mask == 0] *= 0
+        mask_img[final_mask_filtered == 0] *= 0
 
-        return final_mask, mask_img
+        return final_mask_filtered, mask_img
 
-    def inside_head(self, cnt, head):
-        x0, y0 = np.mean(cnt[:, :, 0]), np.mean(cnt[:, :, 1])
-        print("cnt", x0, y0)
-        print(cnt)
-        if np.min(head[0]) <= x0 <= np.max(head[1]):
-            return True
-        else:
-            return False
+    def inside_head(self, ear_mask, head):
+        res = np.zeros_like(ear_mask, np.uint8)
+        head_x, head_y = head
+        if len(head_x) == 0:
+            return res
+        contours, _ = cv2.findContours(ear_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            x0, y0 = np.mean(cnt[:, :, 0]), np.mean(cnt[:, :, 1])
+            if np.min(head_x) <= y0 <= np.max(head_x) and np.min(head_y) <= x0 <= np.max(head_y):
+                cv2.fillPoly(res, pts=[cnt], color=[255])
+                return res
+        return res
 
     def post_process(self, mask, im_name):
         contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -74,8 +88,11 @@ class EAR:
 
 
 if __name__ == "__main__":
+    import glob
+
     mypath = "../data_heavy/frames"
-    frames = [f for f in listdir(mypath) if isfile(join(mypath, f)) if ".txt" not in f]
+    # frames = [f for f in listdir(mypath) if isfile(join(mypath, f)) if ".txt" not in f]
+    frames = glob.glob("../data_heavy/frames/1-*.png")
     saved_dir = "../data_heavy/frames_ear_only"
     saved_dir2 = "../data_heavy/frames_ear_coord_only"
     os.makedirs(saved_dir, exist_ok=True)
@@ -83,6 +100,7 @@ if __name__ == "__main__":
 
     model = EAR()
     for im_name in tqdm(frames, desc="Extracting ear mask segment"):
+        im_name = im_name.split("/")[-1]
         image = cv2.imread(join(mypath, im_name))
         mask_pre, combine_image = model.predict(image, im_name)
         cv2.imwrite(join(saved_dir, im_name), combine_image)
