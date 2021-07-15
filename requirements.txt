@@ -11,4 +11,5 @@ pykdtree
 cmake
 numba
 kmeans1d
+filterpy
 numpy==1.20.2
