@@ -138,19 +138,19 @@ def process_cpd_fast(debug=False):
     y_data = np.loadtxt('../data/ear.txt')
     for afile in tqdm(all_files, desc="Extracting rotation using affine CPD"):
         imn = afile.split("/")[-1]
-        # if imn != "3-315.png":
-        #    continue
+        if imn != "1-47.png":
+           continue
         x_data = np.loadtxt(afile)
         y_data_norm = normalize(y_data, x_data)
         y_data_transformed, b, t, error = register_fast(x_data, y_data_norm, stop_early=True)
-        # fig = plt.figure()
-        # fig.add_axes([0, 0, 1, 1])
-        # ax = fig.axes[0]
-        # ax.scatter(x_data[:, 0],  x_data[:, 1], color='red', label='Target')
-        # ax.scatter(y_data_norm[:, 0],  y_data_norm[:, 1], color='blue', label='Source')
-        # ax.scatter(y_data_transformed[:, 0],  y_data_transformed[:, 1], color='yellow', label='Source norm')
-        # ax.legend(loc='upper left', fontsize='x-large')
-        # plt.show()
+        fig = plt.figure()
+        fig.add_axes([0, 0, 1, 1])
+        ax = fig.axes[0]
+        ax.scatter(x_data[:, 0],  x_data[:, 1], color='red', label='Target')
+        ax.scatter(y_data_norm[:, 0],  y_data_norm[:, 1], color='blue', label='Source')
+        ax.scatter(y_data_transformed[:, 0],  y_data_transformed[:, 1], color='yellow', label='Source norm')
+        ax.legend(loc='upper left', fontsize='x-large')
+        plt.show()
 
         cv2.imwrite(f"{transform_path}/{imn}", draw_image(y_data_transformed))
 
@@ -163,5 +163,5 @@ def process_cpd_fast(debug=False):
 
 
 if __name__ == '__main__':
-    # process_cpd_fast()
-    process_cpd_with_vis()
+    process_cpd_fast()
+    # process_cpd_with_vis()
