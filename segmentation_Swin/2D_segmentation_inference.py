@@ -325,15 +325,15 @@ def main(debuging=DEBUG_MODE,
             blend = cv2.addWeighted(inp_img, 0.3, seg_final, 0.7, 0)
             Image.fromarray(blend).save(f"{save_seg_abh_vis}/{img_name}")
 
-            # if view == 1:
-            #     ear_mask = get_seg_ear_from_prediction(pred, head_contour)
-            #     orgin_img_copy = inp_img.copy()
-            #     orgin_img_copy[ear_mask == 0] *= 0
-            #     cv.imwrite(f'{save_ear_vis}/{img_name}', orgin_img_copy)
-            #
-            #     pixels = np.argwhere(ear_mask > 0)
-            #     with open(f'{save_ear_coor}/{img_name}', 'wb') as ear_fp:
-            #         pickle.dump(pixels, ear_fp)
+            if view == 1:
+                ear_mask = get_seg_ear_from_prediction(pred, head_contour)
+                orgin_img_copy = inp_img.copy()
+                orgin_img_copy[ear_mask == 0] *= 0
+                cv.imwrite(f'{save_ear_vis}/{img_name}', orgin_img_copy)
+
+                pixels = np.argwhere(ear_mask > 0)
+                with open(f'{save_ear_coor}/{img_name}', 'wb') as ear_fp:
+                    pickle.dump(pixels, ear_fp)
 
 
 if __name__ == '__main__':
