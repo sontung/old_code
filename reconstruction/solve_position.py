@@ -102,7 +102,7 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         source_matrix = np.loadtxt('../data/ear.txt')
 
         source_matrix_norm = normalize(source_matrix, target_matrix)
-        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=100)
+        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=150)
         y_data_norm, (_, rot_mat, _) = reg.register()
         rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
         all_angles.append(rot_angle)
