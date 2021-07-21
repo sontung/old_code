@@ -126,8 +126,10 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         all_angles = laplacian_fairing(all_angles, all_angles)
 
     else:
-        all_angles = refine_path_computation(all_angles)
-        all_angles = b_spline_smooth(all_angles)
+        ori_angles = all_angles[:]
+        all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
+        all_angles_before_null = all_angles[:]
+        all_angles = laplacian_fairing(all_angles, all_angles)
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
             move = rot_deg_overall - prev_pos

@@ -20,14 +20,17 @@ def neutralize_head_rot(cpd_computations, head_mask_computations):
     for idx, x in enumerate(cpd_computations):
         if x is None:
             new_rot.append(None)
+        elif head_mask_computations[idx] is None:
+            new_rot.append(x)
         else:
             head_mask_computations[idx] = 90-head_mask_computations[idx]
             new_rot.append(min([x+90, x-90, x], key=lambda du: abs(du-head_mask_computations[idx])))
-            print(idx, new_rot[-1],
-                  head_mask_computations[idx],
-                  [x + 90, x - 90, x],
-                  min([x+90, x-90, x], key=lambda du: abs(du-head_mask_computations[idx])),
-                  )
+    change = False
+    for idx, x in enumerate(new_rot):
+        if x is None and not change:
+            change = True
+        if change:
+            new_rot[idx] = head_mask_computations[idx]
     plt.plot(cpd_computations, "r")
     plt.plot(new_rot, "b")
     plt.plot(head_mask_computations, "g")
@@ -409,7 +412,6 @@ def draw_image(array):
 
 def remove_condition(path):
     grad = np.gradient(path, 2)
-    # grad = np.gradient(np.gradient(path))
     clusters, centroids = kmeans1d.cluster(grad, 2)
     if clusters.count(0) > clusters.count(1):
         remove_label = 1

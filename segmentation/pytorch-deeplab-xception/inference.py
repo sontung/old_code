@@ -63,7 +63,7 @@ def check_contour(_image, _color):
     cnts, _ = cv2.findContours(gray_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     angle = None
     center = None
-    x1, y1, x2, y2 = None, None, None, None
+    x1, y1, x2, y2 = 0, 0, 0, 0
     if len(cnts) > 0:
         cv2.drawContours(_image, cnts, -1, (255, 0, 0), 3)
         largest_cnt = max(cnts, key=lambda du1: cv2.contourArea(du1))
