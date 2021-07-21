@@ -21,5 +21,5 @@ segmentation/output/
 */test*/*
 reconstruction/*.png
 misc/
-segmentation_Swin/checkpoints
+segmentation_swin/checkpoints
 

@@ -408,6 +408,7 @@ def visualize(debug_mode=DEBUG_MODE):
         lines = lines[1:]
         all_angles_before_null = all_angles_before_null[1:]
         ne_rot_traj = ne_rot_traj[1:]
+        # vis_rotated_trajectory_z = rotated_trajectory_z[1:]
         head_rotations_by_masks = head_rotations_by_masks[1:]
         assert len(lines) == len(trajectory)
         for counter, ind in enumerate(lines):
@@ -441,13 +442,18 @@ def visualize(debug_mode=DEBUG_MODE):
                 im_view2 = cv2.imread("../data_heavy/frames/2-%s.png" % ind).astype(np.uint8)
                 seg_view2 = cv2.imread('../data_heavy/frames_seg_abh/2-%s.png' % ind).astype(np.uint8)
                 seg_im2 = cv2.addWeighted(im_view2, 0.3, seg_view2, 0.7, 0)
+                x12, y12, x22, y22 = map(int, frame2head_rect[f"2-{ind}.png"].split(" ")[1:])
+                cv2.circle(seg_im1, (x12, y12), 3, (255, 255, 255), -1)
+                cv2.circle(seg_im2, (x22, y22), 3, (255, 255, 255), -1)
+                cv2.line(seg_im2, (x12, y12), (x22, y22), (255, 255, 255), 5)
                 seg_im2 = cv2.resize(seg_im2, (im1.shape[1], im1.shape[0]))
             except AttributeError:
                 print(f"../data_heavy/frames/2-{counter}.png does not exist")
                 seg_im2 = np.zeros_like(seg_im1)
 
             info_img = np.ones_like(im1)*255
-            info_img = draw_text_to_image(info_img, "rot=%.3f" % (ne_rot_traj[counter]), (100, 100))
+            info_img = draw_text_to_image(info_img, "rot=%.3f, rot2=%3.f" % (
+                ne_rot_traj[counter], rotated_trajectory_z[counter]), (100, 100))
             info_img = draw_text_to_image(info_img, "trans=%.3f %.3f" % (ne_trans_x_traj[counter],
                                                                          ne_trans_y_traj[counter]), (100, 200))
             info_img = draw_text_to_image(info_img, "act. rot=%.3f" % (rot_actual_traj[counter]), (100, 300))
