@@ -148,7 +148,6 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         plt.savefig(f"../data_heavy/rigid_head_rotation/1-{idx}.png")
         plt.close(fig)
 
-    all_angles_before_null = []
     if debugging:
         ori_angles = all_angles[:]
         all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
@@ -460,10 +459,6 @@ def visualize(debug_mode=DEBUG_MODE):
             info_img = draw_text_to_image(info_img, "dist1 =%.2f %.2f" % (ab_trans_image_space_x[counter], ab_trans_image_space_y[counter]), (100, 600))
             if head_rotations_by_masks[counter] is not None:
                 info_img = draw_text_to_image(info_img, "rot. (head mask) =%.2f" % (-head_rotations_by_masks[counter]+90), (100, 900))
-                info_img = draw_text_to_image(info_img, "[%.2f, %.2f, %.2f]" %
-                                              (ne_rot_traj[counter]+90,
-                                               ne_rot_traj[counter]-90,
-                                               ne_rot_traj[counter]), (100, 1000))
 
             if all_angles_before_null[counter] is None:
                 info_img = draw_text_to_image(info_img, "missing comp.", (100, 800))
