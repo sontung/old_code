@@ -17,8 +17,10 @@ from PIL import Image
 
 parser = ArgumentParser()
 parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
+parser.add_argument('-v', '--visualize', type=bool, default=False, help="Visulization mode")
 args = vars(parser.parse_args())
 DEBUG_MODE = args['debug']
+VISUALIZE_MODE = args["visualize"]
 
 # section Runtime Arguments
 CONFIG_FILE = 'configs/AB__SwinBase__2_local__no_TTA.py'
@@ -113,7 +115,7 @@ def check_contour(_image, _color):
     return _new_image, center, angle
 
 
-def compute_postion_and_rotation(mask, rgb_mask, contours, vis=False):
+def compute_postion_and_rotation(mask, rgb_mask, contours, vis=VISUALIZE_MODE):
     assert mask.shape == rgb_mask.shape[:2]
     if len(contours) < 1:
         return 0, None, None
@@ -275,6 +277,64 @@ def segment_all_video(root='/media/hblab/01D5F2DD5173DEA0/AirBag/3d-air-bag-p2/d
 
     return
 
+
+def compute_2d_x_asix(ab_contours, head_contour, origin_img, img_name, debuging=DEBUG_MODE):
+
+    def bb_box(contour):
+        top_left = np.min(contour, axis=0)[0]
+        bottom_right = np.max(contour, axis=0)[0]
+        center = ((top_left[0] + bottom_right[0])/2, (top_left[1] + bottom_right[1])/2)
+        return top_left, bottom_right, center
+
+    def draw_rectange(_image, top_left, bottom_right, center):
+        cv2.rectangle(_image, top_left, bottom_right, (0, 255, 0), 2)
+        cv2.circle(_image, center, 2, (0, 255, 0), 2)
+        return _image
+
+    def float2int(rect):
+        tl, br, center = rect
+        tl = (int(tl[0]), int(tl[1]))
+        br = (int(br[0]), int(br[1]))
+        center = (int(center[0]), int(center[1]))
+        return tl, br, center
+
+    if len(ab_contours) < 1 or len(head_contour) < 1 :
+        return None
+
+    if len(ab_contours) == 1:
+        new_ab_contour = ab_contours
+    else:
+        points = ab_contours[0]
+        for i in range(len(ab_contours)):
+            points = np.append(points, ab_contours[i], axis=0)
+
+        new_ab_contour = [cv2.convexHull(points)]
+
+    ab_rect = bb_box(new_ab_contour[0])
+    head_rect = bb_box(head_contour[0])
+
+    if debuging:
+        os.makedirs('debugs', exist_ok=True)
+        mask = np.zeros(origin_img.shape, dtype=np.uint8)
+        cv2.fillPoly(mask, pts=new_ab_contour, color=AIRBAG_COLOR)
+        cv2.fillPoly(mask, pts=head_contour, color=HEAD_COLOR)
+
+        blend = cv2.addWeighted(origin_img, 0.3, mask, 0.7, 0)
+
+        ab_rect = float2int(ab_rect)
+        blend = draw_rectange(blend, ab_rect[0], ab_rect[1], ab_rect[2])
+
+        head_rect = float2int(head_rect)
+        blend = draw_rectange(blend, head_rect[0], head_rect[1], head_rect[2])
+
+
+        Image.fromarray(blend).save(f'debugs/{img_name}')
+
+    # sys.exit()
+
+    return
+
+
 def main(debuging=DEBUG_MODE,
          txt_file='../data_heavy/frame2ab.txt',
          input_images='../data_heavy/frames',
@@ -292,12 +352,14 @@ def main(debuging=DEBUG_MODE,
     file_paths = glob.glob(f"{input_images}/*.png")
     with open(txt_file, "w") as fp:
         for path in tqdm(file_paths, desc='2D Segmentation:'):
+            img_name = os.path.basename(path)
+            view = int(img_name.split('-')[0])
+            # if view !=2:
+            #     continue
+
             inp_img = cv.imread(path, 1)
             result    = inference_segmentor(MODEL, inp_img)
             pred    = result[0]
-
-            img_name = os.path.basename(path)
-            view = int(img_name.split('-')[0])
 
             head_mask, head_rgb_mask, head_contour = get_seg_head_from_prediction(pred)
             ab_mask, ab_rgb_mask, ab_contours = get_seg_airbag_from_prediction(pred, head_contour, view=view)
@@ -309,8 +371,10 @@ def main(debuging=DEBUG_MODE,
                     ab_rgb_mask = np.zeros_like(ab_rgb_mask)
                     ab_rgb_mask[ab_mask == 255] = AIRBAG_COLOR
 
-            head_pixels, head_center, head_rot = compute_postion_and_rotation(head_mask, head_rgb_mask, head_contour, vis=debuging)
-            ab_pixels, ab_center, ab_rot = compute_postion_and_rotation(ab_mask, ab_rgb_mask, ab_contours, vis=debuging)
+                    # compute_2d_x_asix(ab_contours, head_contour, inp_img, img_name)
+
+            head_pixels, head_center, head_rot = compute_postion_and_rotation(head_mask, head_rgb_mask, head_contour)
+            ab_pixels, ab_center, ab_rot = compute_postion_and_rotation(ab_mask, ab_rgb_mask, ab_contours)
 
             dist_x = -1
             dist_y = -1

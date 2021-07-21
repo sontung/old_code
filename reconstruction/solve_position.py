@@ -35,6 +35,31 @@ if FAST_MODE:
     print("running in fast mode (not recommended)")
 
 
+def compute_translation_axis_z():
+    sys.stdin = open("../data_heavy/frames/info.txt")
+    lines = [du[:-1] for du in sys.stdin.readlines()]
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {du.split(" ")[0]: du for du in lines2}
+
+    distance_x = [0] * len(lines)
+    for i, line in enumerate(lines):
+        akey = '2-%s.png' % line
+        dx = int(frame2ab[akey].split()[3])
+        distance_x[i] = None if dx == -1 else dx
+
+    for i in range(len(distance_x)-1, -1, -1):
+        if distance_x[i] is None:
+            distance_x[i] = distance_x[i+1]
+    print(distance_x)
+
+    # trajectories = []
+    # for i in range(1, len(lines)):
+    #     diff = distance_x[i] - distance_x[i-1]
+    #     trajectories.append(diff)
+    return distance_x
+
+
 def compute_translation(debugging=DEBUG_MODE):
     """
     translation of the head
@@ -68,13 +93,18 @@ def compute_translation(debugging=DEBUG_MODE):
         x_traj = b_spline_smooth(x_traj)
         y_traj = b_spline_smooth(y_traj)
 
+    # z_traj = compute_translation_axis_z()
+    # assert len(x_traj) == len(x_traj)
+
     for idx in tqdm(range(len(x_traj)), desc="Computing head x-y translation"):
+        # mean = np.array([x_traj[idx], y_traj[idx], z_traj[idx]])
         mean = np.array([x_traj[idx], y_traj[idx]])
         if prev_pos is not None:
             trans = np.zeros((3, 1))
             move = mean - prev_pos
             trans[2] = -move[1]
             trans[1] = -move[0]
+            # trans[0] = -move[2]
             trajectories.append(trans)
         prev_pos = mean
     return trajectories, x_traj, y_traj
@@ -448,3 +478,4 @@ def visualize(debug_mode=DEBUG_MODE):
 
 if __name__ == '__main__':
     visualize()
+    # compute_translation_axis_z()
