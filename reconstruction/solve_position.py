@@ -7,13 +7,14 @@ import numpy as np
 import open3d as o3d
 import cv2
 from scipy.spatial.transform import Rotation as rot_mat_compute
-from rec_utils import b_spline_smooth, normalize, draw_text_to_image, refine_path_computation, get_translation_scale
+from rec_utils import b_spline_smooth, normalize, draw_text_to_image, refine_path_computation, neutralize_head_rot
 from tqdm import tqdm
-from kalman_filter import kalman_smooth
+from laplacian_fairing_1d import laplacian_fairing
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from pycpd import RigidRegistration
 import matplotlib.pyplot as plt
 import time
+import shutil
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -25,6 +26,8 @@ DEBUG_MODE = args['debug']
 FAST_MODE = args['fast']
 
 if DEBUG_MODE:
+    shutil.rmtree("test")
+    shutil.rmtree("test2")
     os.makedirs("test", exist_ok=True)
     os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
@@ -84,14 +87,9 @@ def compute_translation(debugging=DEBUG_MODE):
     if debugging:
         b_spline_smooth(x_traj, vis=True, name=f"trans_x_ori.png")
         b_spline_smooth(y_traj, vis=True, name=f"trans_y_ori.png")
-
-        # x_traj = refine_path_computation(x_traj)
-        # y_traj = refine_path_computation(y_traj)
         x_traj = b_spline_smooth(x_traj, vis=True, name=f"trans_x_refined.png")
         y_traj = b_spline_smooth(y_traj, vis=True, name=f"trans_y_refined.png")
     else:
-        # x_traj = refine_path_computation(x_traj)
-        # y_traj = refine_path_computation(y_traj)
         x_traj = b_spline_smooth(x_traj)
         y_traj = b_spline_smooth(y_traj)
 
@@ -134,7 +132,7 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         source_matrix = np.loadtxt('../data/ear.txt')
 
         source_matrix_norm = normalize(source_matrix, target_matrix)
-        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=100)
+        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=150)
         y_data_norm, (_, rot_mat, _) = reg.register()
         rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
         all_angles.append(rot_angle)
@@ -153,11 +151,9 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
     all_angles_before_null = []
     if debugging:
         ori_angles = all_angles[:]
-        all_angles, removed_angles = refine_path_computation(all_angles, return_removed=True)
+        all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
         all_angles_before_null = all_angles[:]
-        all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
-        b_spline_smooth(ori_angles, vis=True, name="rot_ori.png", removed=removed_angles)
-        # all_angles = kalman_smooth(ori_angles, all_angles)
+        all_angles = laplacian_fairing(all_angles, all_angles)
 
     else:
         all_angles = refine_path_computation(all_angles)
@@ -312,21 +308,6 @@ def compute_head_ab_areas():
     return results
 
 
-def debug_vis_img(image, head_center, ab_center):
-    print(head_center, ab_center)
-    x1, y1 = map(int, (head_center[1], head_center[0]))
-    if np.all(ab_center != -1):
-        x2, y2 = map(int, (ab_center[1], ab_center[2]))
-        cv2.circle(image, (x2, y2), 10, (0, 0, 0), -1)
-    x1, y1 = map(int, (head_center[1], head_center[2]))
-    cv2.circle(image, (x1, y1), 10, (0, 0, 0), -1)
-    cv2.circle(image, (y1, x1), 10, (0, 0, 0), -1)
-    cv2.imshow("t", image)
-    cv2.waitKey()
-    cv2.destroyAllWindows()
-    return image
-
-
 def visualize(debug_mode=DEBUG_MODE):
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
@@ -408,6 +389,11 @@ def visualize(debug_mode=DEBUG_MODE):
 
     if debug_mode:
         from solve_airbag import compute_ab_trans
+
+        sys.stdin = open("../data_heavy/head_masks.txt")
+        lines2 = [du[:-1] for du in sys.stdin.readlines()]
+        frame2head_rect = {du.split(" ")[0]: du for du in lines2}
+        head_rotations_by_masks = compute_rotation()[-1]
         ab_trans_image_space = compute_ab_trans()
         os.makedirs("test", exist_ok=True)
         os.makedirs("test2", exist_ok=True)
@@ -420,6 +406,8 @@ def visualize(debug_mode=DEBUG_MODE):
         ab_trans_image_space_y = ab_trans_image_space[1][1:]
         lines = lines[1:]
         all_angles_before_null = all_angles_before_null[1:]
+        ne_rot_traj = ne_rot_traj[1:]
+        head_rotations_by_masks = head_rotations_by_masks[1:]
         assert len(lines) == len(trajectory)
         for counter, ind in enumerate(lines):
             line_img = cv2.imread("%s/1-%s.png" % (images_dir, ind))
@@ -442,6 +430,10 @@ def visualize(debug_mode=DEBUG_MODE):
                 ear = pickle.load(ear_file)
             ear_im1[ear[:, 0], ear[:, 1]] = [125, 60, 80]
             seg_im1 = cv2.addWeighted(seg_im1, 0.3, ear_im1, 0.7, 0)
+            x1, y1, x2, y2 = map(int, frame2head_rect[f"1-{ind}.png"].split(" ")[1:])
+            cv2.circle(seg_im1, (x1, y1), 3, (255, 255, 255), -1)
+            cv2.circle(seg_im1, (x2, y2), 3, (255, 255, 255), -1)
+            cv2.line(seg_im1, (x1, y1), (x2, y2), (255, 255, 255), 5)
             seg_im1 = cv2.resize(seg_im1, (im1.shape[1], im1.shape[0]))
 
             try:
@@ -464,6 +456,13 @@ def visualize(debug_mode=DEBUG_MODE):
                                           (100, 400))
             info_img = draw_text_to_image(info_img, "ab rot=%.3f (%.3f)" % (ab_rot, ab_rot-90), (100, 500))
             info_img = draw_text_to_image(info_img, "dist1 =%.2f %.2f" % (ab_trans_image_space_x[counter], ab_trans_image_space_y[counter]), (100, 600))
+            if head_rotations_by_masks[counter] is not None:
+                info_img = draw_text_to_image(info_img, "rot. (head mask) =%.2f" % (-head_rotations_by_masks[counter]+90), (100, 900))
+                info_img = draw_text_to_image(info_img, "[%.2f, %.2f, %.2f]" %
+                                              (ne_rot_traj[counter]+90,
+                                               ne_rot_traj[counter]-90,
+                                               ne_rot_traj[counter]), (100, 1000))
+
             if all_angles_before_null[counter] is None:
                 info_img = draw_text_to_image(info_img, "missing comp.", (100, 800))
 

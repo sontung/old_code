@@ -23,7 +23,7 @@ def initialize_sigma2(X, Y):
     return np.sum(err) / (D * M * N)
 
 
-def register_fast(X, Y, max_iterations=45, threshold=0.1, stop_early=False):
+def register_fast(X, Y, max_iterations=100, threshold=0.1, stop_early=False):
     sigma2 = initialize_sigma2(X, Y)
     w = 0.0
     (N, D) = X.shape
@@ -96,7 +96,6 @@ def register_fast(X, Y, max_iterations=45, threshold=0.1, stop_early=False):
 
         if sigma2 <= 0:
             sigma2 = tolerance / 10
-
     return TY, B, t, diff_all
 
 
