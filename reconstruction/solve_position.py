@@ -439,6 +439,7 @@ def visualize(debug_mode=DEBUG_MODE):
             seg_im1 = cv2.resize(seg_im1, (im1.shape[1], im1.shape[0]))
 
             try:
+                im2 = cv2.imread("../data_heavy/saved/v2-%s.png" % counter)
                 im_view2 = cv2.imread("../data_heavy/frames/2-%s.png" % ind).astype(np.uint8)
                 seg_view2 = cv2.imread('../data_heavy/frames_seg_abh/2-%s.png' % ind).astype(np.uint8)
                 seg_im2 = cv2.addWeighted(im_view2, 0.3, seg_view2, 0.7, 0)
@@ -447,13 +448,20 @@ def visualize(debug_mode=DEBUG_MODE):
                 cv2.circle(seg_im2, (x22, y22), 3, (255, 255, 255), -1)
                 cv2.line(seg_im2, (x12, y12), (x22, y22), (255, 255, 255), 5)
                 seg_im2 = cv2.resize(seg_im2, (im1.shape[1], im1.shape[0]))
+
+                info_img2 = np.ones_like(im2) * 255
+                info_img2 = draw_text_to_image(info_img2, "rot=%3f" % (rotated_trajectory_z[counter]), (100, 100))
+                img_part2 = np.vstack([im2, info_img2])
+                img_part1 = seg_im2.resize(seg_im2, (img_part2.shape[1], img_part2.shape[0]))
+                res_img_2 = np.hstack([img_part1, img_part2])
+                cv2.imwrite(f"test2/view2-res-{ind}.png", res_img_2)
+
             except AttributeError:
                 print(f"../data_heavy/frames/2-{counter}.png does not exist")
                 seg_im2 = np.zeros_like(seg_im1)
 
             info_img = np.ones_like(im1)*255
-            info_img = draw_text_to_image(info_img, "rot=%.3f, rot2=%3.f" % (
-                ne_rot_traj[counter], rotated_trajectory_z[counter]), (100, 100))
+            info_img = draw_text_to_image(info_img, "rot=%.3f" % (ne_rot_traj[counter]), (100, 100))
             info_img = draw_text_to_image(info_img, "trans=%.3f %.3f" % (ne_trans_x_traj[counter],
                                                                          ne_trans_y_traj[counter]), (100, 200))
             info_img = draw_text_to_image(info_img, "act. rot=%.3f" % (rot_actual_traj[counter]), (100, 300))
