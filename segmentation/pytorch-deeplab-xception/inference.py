@@ -1,11 +1,8 @@
 from collections import namedtuple
 from utils.metrics import Evaluator
-import torch
 from modeling.deeplab import *
 from torch.utils.data import DataLoader, Dataset
-from dataloaders.datasets import cityscapes, coco
 from dataloaders import custom_transforms as tr
-from torchvision.utils import make_grid
 from torchvision import transforms
 from dataloaders.utils import decode_seg_map_sequence
 from PIL import Image
@@ -14,7 +11,6 @@ import glob
 import numpy as np
 import os
 import cv2
-import sys
 import post_process
 from tqdm import tqdm
 
@@ -31,7 +27,6 @@ class TestDataset(Dataset):
 
     def __getitem__(self, ind):
         _img = np.array(Image.open(self.all_path_files[ind]).convert('RGB'))
-        # original_img = cv2.resize(np.array(_img), (513, 513))
         original_img = np.array(_img)
         _img = Image.fromarray(original_img)
         sample = {'image': _img, "label": _img, "name": self.all_path_files[ind]}
@@ -97,8 +92,8 @@ def check_contour(_image, _color):
     return _new_image, center, angle, x1, y1, x2, y2
 
 
-def main():
-    Args = namedtuple("Args", ["base_size", "crop_size"])
+def main(has_labels=False):
+    args_tuple = namedtuple("Args", ["base_size", "crop_size"])
     model = DeepLab(num_classes=21,
                             backbone="resnet",
                             output_stride=16,
@@ -107,11 +102,10 @@ def main():
     checkpoint = torch.load("../../data_const/model_best.pth.tar")
     model.cuda().eval()
     model.load_state_dict(checkpoint['state_dict'])
-    HAS_LABELS = False
-    args = Args(513, 513)
+    args = args_tuple(513, 513)
 
     test_set = TestDataset()
-    if HAS_LABELS:
+    if has_labels:
         val_set = coco.COCOSegmentation(args, split="val")
         test_loader = DataLoader(val_set, batch_size=8, shuffle=False)
     else:
@@ -131,7 +125,7 @@ def main():
         with open("../../data_heavy/frame2ab.txt", "w") as fp:
             for bid, sample in enumerate(tqdm(test_loader, desc="Extracting semantic masks")):
 
-                if HAS_LABELS:
+                if has_labels:
                     image, target, ori_img = sample['image'], sample['label'], sample["ori_img"]
                     image = image.cuda()
                     target = target.cuda()
@@ -191,7 +185,7 @@ def main():
                         Image.fromarray(blend2).save("../../data_heavy/frames_seg_abh_vis/%s" % imn)
 
     # Fast test during the training
-    if HAS_LABELS:
+    if has_labels:
         Acc = evaluator.Pixel_Accuracy()
         Acc_class = evaluator.Pixel_Accuracy_Class()
         mIoU = evaluator.Mean_Intersection_over_Union()

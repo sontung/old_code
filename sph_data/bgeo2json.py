@@ -23,7 +23,12 @@ include this legend and all copyright notices.
 Copyright Disney Enterprises, Inc.  All rights reserved.
 """
 import sys
-sys.path.append("../libraries/partio/build/Linux-5.4.0-x86_64-optimize/compiled/lib/python3.8/site-packages")
+import glob
+print()
+dir1 = glob.glob("../libraries/partio/build/*")
+dir2 = [du for du in glob.glob("../libraries/partio/build/*/compiled/lib/*") if "python3." in du]
+assert len(dir1) == 1 and len(dir2) == 1
+sys.path.append(f"{dir2[0]}/site-packages")
 import os, sys, json
 import partio
 import glob

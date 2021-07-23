@@ -12,4 +12,6 @@ cmake
 numba
 kmeans1d
 tqdm
+pycocotools
 numpy
+tbb
