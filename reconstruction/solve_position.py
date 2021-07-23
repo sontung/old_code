@@ -26,8 +26,8 @@ DEBUG_MODE = args['debug']
 FAST_MODE = args['fast']
 
 if DEBUG_MODE:
-    shutil.rmtree("test")
-    shutil.rmtree("test2")
+    shutil.rmtree("test", ignore_errors=True)
+    shutil.rmtree("test2", ignore_errors=True)
     os.makedirs("test", exist_ok=True)
     os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
@@ -184,7 +184,7 @@ def compute_rotation(reverse_for_vis=False, view=1):
     views = [int(key.split('-')[0]) for key in all_key]
     if view not in views:
         print(f"View {view} does not exist")
-        return None
+        return None, [], []
 
     rot_all = []
     for frn in tqdm(lines, desc=f"Computing head y-z rotation by view {view}"):
