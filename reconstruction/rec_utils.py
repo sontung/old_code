@@ -11,44 +11,76 @@ from matplotlib import pyplot as plt
 
 
 def neutralize_head_rot(cpd_computations, head_mask_computations):
-    new_rot = []
-    for idx, x in enumerate(cpd_computations):
-        if x is None:
-            new_rot.append(None)
-        elif head_mask_computations[idx] is None:
-            new_rot.append(x)
-        else:
-            head_mask_computations[idx] = 90-head_mask_computations[idx]
-            new_rot.append(min([x+90, x-90, x], key=lambda du: abs(du-head_mask_computations[idx])))
-    change = False
-    for idx, x in enumerate(new_rot):
-        if x is None and not change:
-            change = True
-        if change:
-            new_rot[idx] = head_mask_computations[idx]
-    new_rot = look_for_abnormals(new_rot)
+    head_mask_computations = [90-du if du is not None else None for du in head_mask_computations]
+    head_mask_computations = look_for_abnormals(head_mask_computations)
+    best_solution = cpd_computations[:]
+
+    ranges = partition_by_none(cpd_computations)
+    for start, end in ranges:
+        cpd_path = cpd_computations[start:end]
+        head_path = head_mask_computations[start:end]
+        best_solution[start:end] = smooth_enforce(cpd_path, head_path)
+
     plt.plot(cpd_computations, "r")
-    plt.plot(new_rot, "b")
+    plt.plot(best_solution, "b")
     plt.plot(head_mask_computations, "g")
-    plt.legend(["ori", "neutral", "by head mask"])
+    plt.legend(["cpd", "best", "head mask"])
     plt.savefig("neutral.png")
     plt.close()
-    return new_rot
+    return best_solution
+
+
+def smooth_enforce(path1, path2):
+    """
+    select the smoothest solution
+    Args:
+        path1:
+        path2:
+
+    Returns:
+
+    """
+    assert None not in path1 and None not in path2
+    assert len(path2) == len(path1)
+    solution1 = [path1[0]]
+    solution2 = [path2[0]]
+
+    for x in range(1, len(path1)):
+        possible_comp = [path1[x], path2[x], path1[x]-90, path2[x]-90, path1[x]+90, path2[x]+90]
+        solution1.append(min(possible_comp, key=lambda du: abs(du-solution1[x-1])))
+        solution2.append(min(possible_comp, key=lambda du: abs(du - solution2[x - 1])))
+    grad1 = np.sum(np.abs(np.gradient(solution1)))
+    grad2 = np.sum(np.abs(np.gradient(solution2)))
+    if grad1 < grad2:
+        print(f"{np.sum(np.abs(np.gradient(path1)))} and {np.sum(np.abs(np.gradient(path2)))}, we select {grad1}")
+        return solution1
+    else:
+        print(f"{np.sum(np.abs(np.gradient(path1)))} and {np.sum(np.abs(np.gradient(path2)))}, we select {grad2}")
+        return solution2
 
 
 def grad_diff_compute(path, idx):
     grad = np.diff(path)
-    return abs(grad[idx]/np.mean(grad[:idx]))
+    if abs(np.mean(grad[:idx])-0.0) > 0.00001:
+        return abs(grad[idx]/np.mean(grad[:idx]))
+    else:
+        return abs(grad[idx])
 
 
 def look_for_abnormals(rot_computation):
+    total_grad1 = 0
+    total_grad2 = 0
+
     ranges = partition_by_none(rot_computation)
+    changed = False
     for start, end in ranges:
         path = rot_computation[start: end]
-
+        total_grad1 += np.sum(np.abs(np.gradient(path)))
         grad2 = np.diff(path)
         avg_grad = []
         for idx, x in enumerate(path[:-1]):
+            if idx == 0:
+                continue
             grad_diff = grad_diff_compute(path, idx)
             if grad_diff > 2:
                 new_path = path[:]
@@ -56,9 +88,12 @@ def look_for_abnormals(rot_computation):
                 new_grad_diff = grad_diff_compute(new_path, idx)
                 if new_grad_diff < grad_diff:
                     path[idx + 1] = path[idx + 1] - 90
+                    changed = True
             avg_grad.append(grad2[idx])
-
+        total_grad2 += np.sum(np.abs(np.gradient(path)))
         rot_computation[start: end] = path
+    if changed:
+        print(f"reducing grad from {total_grad1} to {total_grad2}")
     return rot_computation
 
 
@@ -386,8 +421,10 @@ def smooth_1d(x, window_len=4, window='hanning'):
 
 
 if __name__ == '__main__':
-    comp = [-2.7430823888528497, -2.3871419216915166, -2.6525135364839527, -2.7710530732902616, -2.3328848344287905, -2.6867270874501865, -2.7173049828551155, -2.3048933111668135, -2.320021241518628, -2.7633239075989766, -2.5109960493297985, -2.5294591047542587, -1.9519517513821982, -0.33529335017819983, -0.7827002205083188, -1.1392232511848064, -1.7332324932649146, -2.113860126233615, -1.736338308713227, -1.9519517513821982, -1.590656146436118, -2.9804508542138386, -3.702264176049598, -3.1405633568288334, -1.9398017055652115, 0.4439732621709637, -1.9519517513821982, -0.5761361260520776, 2.7303567338867785, 6.696931140305691, 10.182689222715931, 14.789627611973323, 24.5095558632201, 17.7013531356012, 56.10383343663609, None, None, None, None, None, None, None, None, None, None, 45.44414443311193, 53.43690413140591, 33.48616881551299, 32.5825542099237, 29.789573783597895, 31.024774378561823, 21.602236084073937, 16.288774030059443, 12.490405717909184, 9.462322208025611, 4.08561677997487, 0.0, -4.763641690726175, -8.365886124032599, -9.246112745563252, -15.368463321796114, -18.735974667018382, -22.499394605148836, -26.003345844511443, -29.357753542791272, -33.34749594591361, -36.139279062169805, -40.763605200941186, -45.0, -49.62415132842909, -51.525764471951106, -55.08059798754235, -56.63968871512978, 32.680554743363395, 30.724693470790633, 29.63153667820388, -54.462322208025626, -56.22579776281441, -55.79454206189527, -52.0703448201576]
-    look_for_abnormals(comp)
+    comp1 = [-3.331811436631019, -2.370992247085103, -2.3369010783300346, -1.746864269251612, -2.542238367619816, -1.3075301728787483, 0.01162379659686222, -3.1439884355419943, -0.885553967662569, -0.6206479659601194, -1.9334674258980526, -0.24625291474438868, -1.374377562862289, -0.17674498712054387, -1.1109950332312468, -0.8371164603186343, -3.235297973998725, -2.1538464777100548, -2.1060506237437466, -2.434094822758995, -1.780015115078935, -2.6837248159212135, -1.2434516201909307, -1.0396915711889108, -0.39597611776322167, 0.11827018267437443, -0.8839504363124505, 0.026236362036187996, -1.1814544402506588, 4.0079521250550485, 7.551482601517014, 12.286478371313683, 17.432671515492515, 18.842151937913624, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 22.983762124043338, 33.701765515515056, -46.733126516573776, 37.043928158947246, 32.40435501920804, 35.52221484448409, 26.404080565144227, 26.795890481818184, 26.453917353949954, 23.402516180227998, 17.155962725344512, 14.486018250729956, 12.927769103251538, None, 3.268536818422602, 0.7696964903960787, -0.21839683191743775, -3.382156521092589, -8.236834967063082, -13.102014730568778, -15.517319135243058, -22.859052970208623, -25.31896165592243, -31.170305363428184, -33.61130751156506, -38.133515998109914, -4.885349093352581, 7.472414838150087, -47.70963153772957, 37.83015578639968, 34.67715587982051, 35.003441546484844, -52.11348881650302, -50.36738529417156, 35.41833135353911, 38.83675216582057, 41.20879127967122, 42.54207329306298]
+    comp2 = [100.08816978339003, 99.8060927598971, 100.08816978339003, 99.8060927598971, 100.08816978339003, 99.06285611434294, 99.06285611434294, 100.42852847743808, 100.08816978339003, 100.4914770123316, 100.42852847743808, 100.14915179896826, 99.8060927598971, 99.4053115009569, 99.06285611434294, 99.11786275379579, 96.64864518326891, 97.34122581136417, 95.95410743116503, 95.95410743116503, 95.95410743116503, 96.64864518326891, 99.4053115009569, 99.4053115009569, 98.71974650623733, 97.4314079711725, 97.73359809902286, 98.47855197356995, 96.37924816761314, 92.45904399010462, 90.0, 84.70295189540322, 61.15733986458794, 62.604633336664, 61.6725577992615, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 51.60483549675397, 55.30484646876604, 57.50135405552036, 59.15763264967725, 59.743562836470744, 64.81715251961899, 66.98243820311863, 68.98791985595881, 70.7923225847816, 74.3991621933845, 76.30128299291555, 77.50959428209082, 81.06438615741824, 84.64417495714481, 87.83892051177364, 88.90530940814698, 90.0, 96.77215996611356, 100.08816978339003, 103.36021844476448, 91.44109929212215, 108.32326128502405, 114.22774531795417, 117.07967008819517, 119.12405349477743, 126.94089609712906, 92.68977032315048, 93.05288251479243, 95.51491159124505, 95.1944289077348, 99.01320435564273, 93.67823872199338, 59.88626684901757, 74.11986122292473, 93.31778116833485, 58.360218444764485, 96.64151913801155, 94.76364169072617, 91.17714488598206]
+    neutralize_head_rot(comp1, comp2)
+    # look_for_abnormals(comp)
     # kalman_smooth2()
     # dump_into_tracks_osfm()
     # visualize_point_cloud()
