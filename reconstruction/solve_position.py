@@ -93,18 +93,13 @@ def compute_translation(debugging=DEBUG_MODE):
         x_traj = b_spline_smooth(x_traj)
         y_traj = b_spline_smooth(y_traj)
 
-    # z_traj = compute_translation_axis_z()
-    # assert len(x_traj) == len(x_traj)
-
     for idx in tqdm(range(len(x_traj)), desc="Computing head x-y translation"):
-        # mean = np.array([x_traj[idx], y_traj[idx], z_traj[idx]])
         mean = np.array([x_traj[idx], y_traj[idx]])
         if prev_pos is not None:
             trans = np.zeros((3, 1))
             move = mean - prev_pos
             trans[2] = -move[1]
             trans[1] = -move[0]
-            # trans[0] = -move[2]
             trajectories.append(trans)
         prev_pos = mean
     return trajectories, x_traj, y_traj
@@ -421,8 +416,8 @@ def visualize(debug_mode=DEBUG_MODE):
                 img_size = max([ear_img, line_img, rigid_img], key=lambda x: x.shape[0]*x.shape[1])
 
                 ear_img = cv2.resize(ear_img, (img_size.shape[1], img_size.shape[0]))
-                line_img = cv2.resize(line_img, [img_size.shape[1], img_size.shape[0]])
-                rigid_img = cv2.resize(rigid_img, [img_size.shape[1], img_size.shape[0]])
+                line_img = cv2.resize(line_img, (img_size.shape[1], img_size.shape[0]))
+                rigid_img = cv2.resize(rigid_img, (img_size.shape[1], img_size.shape[0]))
 
                 cv2.imwrite(f"test/ear-{ind}.png", np.hstack([ear_img, line_img, rigid_img]))
             im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)

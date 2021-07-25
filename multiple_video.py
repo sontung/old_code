@@ -44,6 +44,10 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
             subprocess.call('./debug_run.sh')
         else:
             subprocess.call('./run.sh')
+
+        if len(glob(f"{result_df}/*")) < 5 and debug_mode:
+            return
+
         # move result
         try:
             save_result = os.path.join(folder_output, folder)
@@ -57,7 +61,6 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
                 shutil.rmtree('data_heavy', ignore_errors=True)
                 shutil.rmtree('sph_data/mc_solutions', ignore_errors=True)
                 shutil.rmtree('sph_data/mc_solutions_smoothed', ignore_errors=True)
-    return
 
 
 if __name__ == '__main__':
