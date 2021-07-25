@@ -17,7 +17,6 @@ def neutralize_head_rot(cpd_computations, head_mask_computations):
 
     ranges = partition_by_none(cpd_computations)
     for start, end in ranges:
-        print(start, end)
         cpd_path = cpd_computations[start:end]
         head_path = head_mask_computations[start:end]
         best_solution[start:end] = smooth_enforce(cpd_path, head_path)
@@ -53,10 +52,12 @@ def smooth_enforce(path1, path2):
     grad1 = np.sum(np.abs(np.gradient(solution1)))
     grad2 = np.sum(np.abs(np.gradient(solution2)))
     if grad1 < grad2:
-        print(f"{np.sum(np.abs(np.gradient(np.gradient(path1))))} and {np.sum(np.abs(np.gradient(np.gradient(path2))))}, we select {grad1}")
+        print(f"from {np.sum(np.abs(np.gradient(np.gradient(path1))))}"
+              f" and {np.sum(np.abs(np.gradient(np.gradient(path2))))}, we select {grad1}")
         return solution1
     else:
-        print(f"{np.sum(np.abs(np.gradient(np.gradient(path1))))} and {np.sum(np.abs(np.gradient(np.gradient(path2))))}, we select {grad2}")
+        print(f"from {np.sum(np.abs(np.gradient(np.gradient(path1))))}"
+              f" and {np.sum(np.abs(np.gradient(np.gradient(path2))))}, we select {grad2}")
         return solution2
 
 
