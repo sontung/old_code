@@ -2,11 +2,18 @@
 
 mkdir -p data_heavy
 
-cd libraries/partio/build/Linux-5.8.0-x86_64-optimize/compiled/lib
+cd libraries/partio/build/
+for partio_dir in */
+do
+  echo "Found partio in libraries/partio/build/$partio_dir"
+  break
+done
+cd $partio_dir/compiled/lib
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
 cd ../../../../../
 cd ../sph_data/
 python main.py
+
 
 set -euxo pipefail
 
