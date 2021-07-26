@@ -2,7 +2,7 @@
 
 mkdir -p data_heavy
 
-cd libraries/partio/build/Linux-5.4.0-x86_64-optimize/compiled/lib
+cd libraries/partio/build/Linux-5.8.0-x86_64-optimize/compiled/lib
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
 cd ../../../../../
 cd ../sph_data/
