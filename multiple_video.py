@@ -1,9 +1,9 @@
 import os
 import shutil
 import subprocess
+import argparse
 from tqdm import tqdm
 from glob import glob
-import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
