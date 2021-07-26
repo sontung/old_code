@@ -19,7 +19,7 @@ set -euxo pipefail
 cd ../preprocess/
 python pp_utils.py
 
-cd ../segmentation_Swin
+cd ../segmentation_swin
 python 2D_segmentation_inference.py
 
 cd ../preprocess/
@@ -39,11 +39,11 @@ make
 ./example
 
 cd ../../../reconstruction/
-python solve_position.py
+python solve_position.py -d True
 
 cd ../visualization
 python main.py
 
-cd ../
-python delete_runtime_files.py
+#cd ../
+#python delete_runtime_files.py
 

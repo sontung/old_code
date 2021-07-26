@@ -6,157 +6,121 @@ import json
 import open3d
 import numpy as np
 import kmeans1d
-import pylab as pl
-from filterpy.kalman import KalmanFilter, UnscentedKalmanFilter, MerweScaledSigmaPoints
-from filterpy.common import Q_discrete_white_noise
-from sklearn.linear_model import RANSACRegressor, LinearRegression, LogisticRegression, BayesianRidge
-from sklearn.svm import SVR
 from scipy import interpolate
 from matplotlib import pyplot as plt
 
 
-def cpd_smooth():
-    angles = [-3.4462777027866776, -2.1150250755250406, -1.8560732528568555, -1.3574491120418282, -1.9546781171926215, -3.2734472716413046, -1.0872772653182894, -3.5105807534448528, -1.630900699090774, -0.7040869824998134, -2.4389707939738656, -1.7013383263965176, -1.700699473614145, -3.2926932466343324, -2.682874266060129, -1.976978904131933, -3.255259406658046, -3.1089576073968206, -3.0907377835695913, -3.9150016407316484, -2.608541079583464, -3.1756303516994775, -3.576447407041296, -3.5430354249761327, -1.7217838073417828, -2.7387528621254464, -2.982519293322194, -1.7270068806145518, -0.14698977255068216, 3.152358527307376, 6.110672974270201, 11.282876184188087, 16.731277354001755, 19.247687601717978, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 22.688711753964206, 6.163171894580451, 5.287295527264798, 14.621030445863529, 24.241563554687293, 26.978299546281132, 27.72163226221281, -39.679278262916284, 26.182223906695505, 12.20184900439492, 17.931186169334115, 13.889772675802327, 8.420033492333705, None, 2.432931184129019, -1.7305925821014478, 0.35896367442838506, -3.6254288311620755, -11.125160058885974, -12.628546710957924, -15.747831931260873, -19.597861043749145, -22.81247066292442, -25.58436698968336, -28.538474775553823, -25.3960300152347, -16.456842931264294, 6.685207752747491, 19.488347538793196, 27.551517685662347, 26.075859374935472, 27.062517178012236, 6.011572279737814, 26.892404943686618, -63.28764972386039, 20.558372192743466, 22.993873603607625, 7.7387799841224005]
-    inds = [du for du in range(len(angles)) if angles[du] is not None]
-    observations = [du for du in angles if du is not None]
+def neutralize_head_rot(cpd_computations, head_mask_computations):
+    head_mask_computations = [90-du if du is not None else None for du in head_mask_computations]
+    head_mask_computations = look_for_abnormals(head_mask_computations)
+    best_solution = cpd_computations[:]
 
-    ear = cv2.imread("../data/curve.png")
-    ear = cv2.resize(ear, (ear.shape[1]//4, ear.shape[0]//4))
+    ranges = partition_by_none(cpd_computations)
+    for start, end in ranges:
+        print(start, end)
+        cpd_path = cpd_computations[start:end]
+        head_path = head_mask_computations[start:end]
+        best_solution[start:end] = smooth_enforce(cpd_path, head_path)
 
-    nonzero_indices = np.nonzero(ear)
-    with open("../data/curve.txt", "w") as fp:
-        for i in range(nonzero_indices[0].shape[0]):
-            print(nonzero_indices[0][i],
-                  nonzero_indices[1][i], file=fp)
-    y_data = np.loadtxt('../data/curve.txt')
-    x_data = np.array([inds, observations])
-    print(y_data.shape)
-    plt.plot(y_data[:, 1], y_data[:, 0], "ob")
-    plt.plot(x_data[:, 1], x_data[:, 0], "or")
-
-    plt.show()
-
-def normalize_angle(x):
-    x = np.radians(x)
-    x = x % (2 * np.pi)
-    if x > np.pi:
-        x -= 2 * np.pi
-    return np.degrees(x)
-
-def kalman_smooth():
-    angles = [-3.4462777027866776, -2.1150250755250406, -1.8560732528568555, -1.3574491120418282, -1.9546781171926215, -3.2734472716413046, -1.0872772653182894, -3.5105807534448528, -1.630900699090774, -0.7040869824998134, -2.4389707939738656, -1.7013383263965176, -1.700699473614145, -3.2926932466343324, -2.682874266060129, -1.976978904131933, -3.255259406658046, -3.1089576073968206, -3.0907377835695913, -3.9150016407316484, -2.608541079583464, -3.1756303516994775, -3.576447407041296, -3.5430354249761327, -1.7217838073417828, -2.7387528621254464, -2.982519293322194, -1.7270068806145518, -0.14698977255068216, 3.152358527307376, 6.110672974270201, 11.282876184188087, 16.731277354001755, 19.247687601717978, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 22.688711753964206, 6.163171894580451, 5.287295527264798, 14.621030445863529, 24.241563554687293, 26.978299546281132, 27.72163226221281, -39.679278262916284, 26.182223906695505, 12.20184900439492, 17.931186169334115, 13.889772675802327, 8.420033492333705, None, 2.432931184129019, -1.7305925821014478, 0.35896367442838506, -3.6254288311620755, -11.125160058885974, -12.628546710957924, -15.747831931260873, -19.597861043749145, -22.81247066292442, -25.58436698968336, -28.538474775553823, -25.3960300152347, -16.456842931264294, 6.685207752747491, 19.488347538793196, 27.551517685662347, 26.075859374935472, 27.062517178012236, 6.011572279737814, 26.892404943686618, -63.28764972386039, 20.558372192743466, 22.993873603607625, 7.7387799841224005]
-    angles_spline = b_spline_smooth(angles)
-
-    inds = [du for du in range(len(angles)) if angles[du] is not None]
-    observations = [du for du in angles if du is not None]
-    states = [angles[0], 0, 0, 0]
-    angles = []
-    crash = False
-    kp = 0.55
-    ki = 0.01
-    kd = 0.5
-    e_sum = 0
-    e_prev = 0 - states[0]
-    dt = 1
+    plt.plot(cpd_computations, "r")
+    plt.plot(best_solution, "b")
+    plt.plot(head_mask_computations, "g")
+    plt.legend(["cpd", "best", "head mask"])
+    plt.savefig("neutral.png")
+    plt.close()
+    return best_solution
 
 
-    # points = SigmaPoints(n=3, alpha=.00001, beta=2, kappa=0,
-    #                      subtract=residual_x)
-    # ukf = UnscentedKalmanFilter(dim_x=4, dim_z=2, fx=fx, hx=Hx, dt=dt, points=points,
-    #           x_mean_fn=state_mean, z_mean_fn=z_mean,
-    #           residual_x=residual_x, residual_z=residual_h)
+def smooth_enforce(path1, path2):
+    """
+    select the smoothest solution
+    Args:
+        path1:
+        path2:
 
-    for i in range(100):
-        e = normalize_angle(-states[0])
-        if i > 50 and not crash:
-            states[3] = 50
-            crash = True
-        elif i > 50 and crash:
-            states[3] = 0
-            e_sum += e*dt
-            dedt = (e-e_prev)/dt
-            u = kp*e+ki*e_sum+kd*dedt
-            states[2] = u
-            e_prev = e
+    Returns:
 
-        if states[3] > 0:
-            states[2] = states[3]/2
-        states[1] = states[1]+states[2]
-        states[0] = states[0]+states[1]
-        angles.append(states[0])
-        print(-states[0], normalize_angle(-states[0]))
+    """
+    assert None not in path1 and None not in path2
+    assert len(path2) == len(path1)
+    solution1 = [path1[0]]
+    solution2 = [path2[0]]
 
-    plt.plot(angles)
-    plt.savefig("test.png")
-
-
-def kalman_smooth2():
-    def fx(state_, dt):
-        new_state_ = state_[:]
-        new_state_[0] = state_[0]+state_[1]*dt
-        new_state_[1] = state_[1]+0.5*(state_[2])**2*dt
-        new_state_[2] = state_[3]*dt
-        new_state_[3] = state_[3]
-
-        return new_state_
-
-    def hx(state_):
-        return np.array([state_[0]])
-
-    angles = [-3.4462777027866776, -2.1150250755250406, -1.8560732528568555, -1.3574491120418282, -1.9546781171926215, -3.2734472716413046, -1.0872772653182894, -3.5105807534448528, -1.630900699090774, -0.7040869824998134, -2.4389707939738656, -1.7013383263965176, -1.700699473614145, -3.2926932466343324, -2.682874266060129, -1.976978904131933, -3.255259406658046, -3.1089576073968206, -3.0907377835695913, -3.9150016407316484, -2.608541079583464, -3.1756303516994775, -3.576447407041296, -3.5430354249761327, -1.7217838073417828, -2.7387528621254464, -2.982519293322194, -1.7270068806145518, -0.14698977255068216, 3.152358527307376, 6.110672974270201, 11.282876184188087, 16.731277354001755, 19.247687601717978, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 22.688711753964206, 6.163171894580451, 5.287295527264798, 14.621030445863529, 24.241563554687293, 26.978299546281132, 27.72163226221281, -39.679278262916284, 26.182223906695505, 12.20184900439492, 17.931186169334115, 13.889772675802327, 8.420033492333705, None, 2.432931184129019, -1.7305925821014478, 0.35896367442838506, -3.6254288311620755, -11.125160058885974, -12.628546710957924, -15.747831931260873, -19.597861043749145, -22.81247066292442, -25.58436698968336, -28.538474775553823, -25.3960300152347, -16.456842931264294, 6.685207752747491, 19.488347538793196, 27.551517685662347, 26.075859374935472, 27.062517178012236, 6.011572279737814, 26.892404943686618, -63.28764972386039, 20.558372192743466, 22.993873603607625, 7.7387799841224005]
-    angles_spline = b_spline_smooth(angles)
-
-    inds = [du for du in range(len(angles)) if angles[du] is not None]
-    observations = [du for du in angles if du is not None]
-    points = MerweScaledSigmaPoints(4, alpha=.1, beta=2., kappa=-1)
-
-    f = UnscentedKalmanFilter(dim_x=4, dim_z=1, dt=0.5, hx=hx, fx=fx, points=points)
-    f.x = np.array([angles[0], 0., 0., 0.])
-    f.P *= 20  # initial uncertainty
-    f.R *= 0.5
-    # f.Q = Q_discrete_white_noise(dim=4, dt=0.5, var=0.03)
-
-    mu, cov = f.batch_filter(observations)
-    (xs, Ps, Ks) = f.rts_smoother(mu, cov)
-    for ind, x in enumerate(xs):
-        angles[inds[ind]] = x
-
-    # estimate state with filtering and smoothing
-    pl.figure()
-    ori = pl.plot(angles_spline, color='b')
-    rot_smooth_all = pl.plot( b_spline_smooth(angles), color='r')
-
-    pl.legend(
-        (ori[0], rot_smooth_all[0]),
-        ("ori", 'kalman'),
-        loc='best'
-    )
-    pl.show()
+    for x in range(1, len(path1)):
+        possible_comp = [path1[x], path2[x], path1[x]-90, path2[x]-90, path1[x]+90, path2[x]+90]
+        solution1.append(min(possible_comp, key=lambda du: abs(du-solution1[x-1])))
+        solution2.append(min(possible_comp, key=lambda du: abs(du - solution2[x - 1])))
+        print(solution2[x - 1], solution2[-1], possible_comp)
+    grad1 = np.sum(np.abs(np.gradient(solution1)))
+    grad2 = np.sum(np.abs(np.gradient(solution2)))
+    if grad1 < grad2:
+        print("solution1")
+        print(f"from {np.sum(np.abs(np.gradient(np.gradient(path1))))}"
+              f" and {np.sum(np.abs(np.gradient(np.gradient(path2))))}, we select {grad1}")
+        return solution1
+    else:
+        print("solution2")
+        print(f"from {np.sum(np.abs(np.gradient(np.gradient(path1))))}"
+              f" and {np.sum(np.abs(np.gradient(np.gradient(path2))))}, we select {grad2}")
+        return solution2
 
 
-def curve_fit():
-    from sklearn.pipeline import make_pipeline
-    from sklearn.preprocessing import PolynomialFeatures
+def grad_diff_compute(path, idx):
+    grad = np.abs(np.diff(path))
+    return grad[idx] / np.mean(grad[:idx])
 
-    angles = [-3.4462777027866776, -2.1150250755250406, -1.8560732528568555, -1.3574491120418282, -1.9546781171926215, -3.2734472716413046, -1.0872772653182894, -3.5105807534448528, -1.630900699090774, -0.7040869824998134, -2.4389707939738656, -1.7013383263965176, -1.700699473614145, -3.2926932466343324, -2.682874266060129, -1.976978904131933, -3.255259406658046, -3.1089576073968206, -3.0907377835695913, -3.9150016407316484, -2.608541079583464, -3.1756303516994775, -3.576447407041296, -3.5430354249761327, -1.7217838073417828, -2.7387528621254464, -2.982519293322194, -1.7270068806145518, -0.14698977255068216, 3.152358527307376, 6.110672974270201, 11.282876184188087, 16.731277354001755, 19.247687601717978, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 22.688711753964206, 6.163171894580451, 5.287295527264798, 14.621030445863529, 24.241563554687293, 26.978299546281132, 27.72163226221281, -39.679278262916284, 26.182223906695505, 12.20184900439492, 17.931186169334115, 13.889772675802327, 8.420033492333705, None, 2.432931184129019, -1.7305925821014478, 0.35896367442838506, -3.6254288311620755, -11.125160058885974, -12.628546710957924, -15.747831931260873, -19.597861043749145, -22.81247066292442, -25.58436698968336, -28.538474775553823, -25.3960300152347, -16.456842931264294, 6.685207752747491, 19.488347538793196, 27.551517685662347, 26.075859374935472, 27.062517178012236, 6.011572279737814, 26.892404943686618, -63.28764972386039, 20.558372192743466, 22.993873603607625, 7.7387799841224005]
-    angles_spline = b_spline_smooth(angles)
-    observations = np.array([du for du in angles if du is not None]).reshape(-1, 1)
-    x = np.array([du for du in range(len(angles)) if angles[du] is not None]).reshape(-1, 1)
 
-    # reg = RANSACRegressor(random_state=0).fit(x, observations)
-    # reg = make_pipeline(PolynomialFeatures(3), RANSACRegressor(random_state=0))
-    # reg = make_pipeline(PolynomialFeatures(10), RANSACRegressor())
-    # reg = SVR(kernel='rbf', C=300, gamma=0.1, epsilon=.1)
-    reg = BayesianRidge(tol=1e-6, alpha_init=1., lambda_init=0.001, fit_intercept=False, compute_score=True)
+def look_for_abnormals(rot_computation):
+    total_grad1 = 0
+    total_grad2 = 0
 
-    # reg = SVR(kernel='poly', C=100, gamma='auto', degree=3, epsilon=.1)
-    reg.fit(x, observations)
-    test_x = np.linspace(0, x[-1][0], 100).reshape(-1, 1)
-    test_y = reg.predict(test_x)
+    ranges = partition_by_none(rot_computation)
+    changed = False
+    for start, end in ranges:
+        if end-start < 2:
+            continue
+        path = rot_computation[start: end]
+        ori_path = path[:]
+        total_grad1 += np.sum(np.abs(np.gradient(np.gradient(path))))
+        grad2 = np.abs(np.diff(path))
+        avg_grad = []
+        for idx in range(len(path[:-1])):
+            if idx == 0:
+                continue
+            grad_diff = grad_diff_compute(path, idx)
+            if path[idx] != ori_path[idx]:
+                print(" changed", path[idx], ori_path[idx])
 
-    plt.plot(test_x, test_y, "g")
-    plt.plot(x, observations, "ob")
-    plt.show()
+            if grad_diff > 2:
+                new_path = path[:]
+                new_path[idx+1] = path[idx+1]-90
+                new_grad_diff = grad_diff_compute(new_path, idx)
+                if new_grad_diff < grad_diff:
+                    path[idx + 1] = path[idx + 1] - 90
+                    changed = True
+            avg_grad.append(grad2[idx])
+        total_grad2 += np.sum(np.abs(np.gradient(np.gradient(path))))
+        rot_computation[start: end] = path
+    if changed:
+        print(f"reducing grad from {total_grad1} to {total_grad2}")
+    return rot_computation
+
+
+def partition_by_none(path):
+    ind = 0
+    start = None
+    ranges = []
+    while ind < len(path):
+        if path[ind] is not None and start is None:
+            start = ind
+        elif path[ind] is None and start is not None:
+            end = ind
+            ranges.append((start, end))
+            start = None
+        ind += 1
+    if start is not None:
+        ranges.append((start, ind))
+    return ranges
 
 
 def b_spline_smooth(_trajectory, vis=False, name="test2.png", return_params=False, removed=None):
@@ -334,7 +298,6 @@ def visualize_point_cloud(json_file="data_heavy/sfm_data/reconstruction.json"):
         coord.append(xyz)
 
         print(xyz[0], xyz[1], xyz[2], rgb[0]/255, rgb[1]/255, rgb[2]/255, file=pc_out)
-    ic(np.mean(np.array(coord)))
     pcd = open3d.io.read_point_cloud("data_heavy/point_cloud.txt", format='xyzrgb')
 
     def rotate_view(vis):
@@ -387,7 +350,6 @@ def draw_image(array):
 
 def remove_condition(path):
     grad = np.gradient(path, 2)
-    # grad = np.gradient(np.gradient(path))
     clusters, centroids = kmeans1d.cluster(grad, 2)
     if clusters.count(0) > clusters.count(1):
         remove_label = 1
@@ -403,21 +365,7 @@ def remove_condition(path):
 
 
 def refine_path_computation(path, return_removed=False):
-
-    ind = 0
-    start = None
-    end = None
-    ranges = []
-    while ind < len(path):
-        if path[ind] is not None and start is None:
-            start = ind
-        elif path[ind] is None and start is not None:
-            end = ind
-            ranges.append((start, end))
-            start = None
-        ind += 1
-    if start is not None:
-        ranges.append((start, ind))
+    ranges = partition_by_none(path)
     res = path[:]
     removed_instances_all = []
     for start, end in ranges:
@@ -482,7 +430,21 @@ def smooth_1d(x, window_len=4, window='hanning'):
 
 
 if __name__ == '__main__':
-    kalman_smooth()
+    comp1 = [-3.331811436631019, -2.370992247085103, -2.3369010783300346, -1.746864269251612, -2.542238367619816, -1.3075301728787483, 0.01162379659686222, -3.1439884355419943, -0.885553967662569, -0.6206479659601194, -1.9334674258980526, -0.24625291474438868, -1.374377562862289, -0.17674498712054387, -1.1109950332312468, -0.8371164603186343, -3.235297973998725, -2.1538464777100548, -2.1060506237437466, -2.434094822758995, -1.780015115078935, -2.6837248159212135, -1.2434516201909307, -1.0396915711889108, -0.39597611776322167, 0.11827018267437443, -0.8839504363124505, 0.026236362036187996, -1.1814544402506588, 4.0079521250550485, 7.551482601517014, 12.286478371313683, 17.432671515492515, 18.842151937913624, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 22.983762124043338, 33.701765515515056, -46.733126516573776, 37.043928158947246, 32.40435501920804, 35.52221484448409, 26.404080565144227, 26.795890481818184, 26.453917353949954, 23.402516180227998, 17.155962725344512, 14.486018250729956, 12.927769103251538, None, 3.268536818422602, 0.7696964903960787, -0.21839683191743775, -3.382156521092589, -8.236834967063082, -13.102014730568778, -15.517319135243058, -22.859052970208623, -25.31896165592243, -31.170305363428184, -33.61130751156506, -38.133515998109914, -4.885349093352581, 7.472414838150087, -47.70963153772957, 37.83015578639968, 34.67715587982051, 35.003441546484844, -52.11348881650302, -50.36738529417156, 35.41833135353911, 38.83675216582057, 41.20879127967122, 42.54207329306298]
+    comp2 = [100.08816978339003, 99.8060927598971, 100.08816978339003, 99.8060927598971, 100.08816978339003, 99.06285611434294, 99.06285611434294, 100.42852847743808, 100.08816978339003, 100.4914770123316, 100.42852847743808, 100.14915179896826, 99.8060927598971, 99.4053115009569, 99.06285611434294, 99.11786275379579, 96.64864518326891, 97.34122581136417, 95.95410743116503, 95.95410743116503, 95.95410743116503, 96.64864518326891, 99.4053115009569, 99.4053115009569, 98.71974650623733, 97.4314079711725, 97.73359809902286, 98.47855197356995, 96.37924816761314, 92.45904399010462, 90.0, 84.70295189540322, 61.15733986458794, 62.604633336664, 61.6725577992615, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 51.60483549675397, 55.30484646876604, 57.50135405552036, 59.15763264967725, 59.743562836470744, 64.81715251961899, 66.98243820311863, 68.98791985595881, 70.7923225847816, 74.3991621933845, 76.30128299291555, 77.50959428209082, 81.06438615741824, 84.64417495714481, 87.83892051177364, 88.90530940814698, 90.0, 96.77215996611356, 100.08816978339003, 103.36021844476448, 91.44109929212215, 108.32326128502405, 114.22774531795417, 117.07967008819517, 119.12405349477743, 126.94089609712906, 92.68977032315048, 93.05288251479243, 95.51491159124505, 95.1944289077348, 99.01320435564273, 93.67823872199338, 59.88626684901757, 74.11986122292473, 93.31778116833485, 58.360218444764485, 96.64151913801155, 94.76364169072617, 91.17714488598206]
+    s1 = neutralize_head_rot(comp1, comp2)
+
+    s1 = b_spline_smooth(s1)
+    s2 = neutralize_head_rot(b_spline_smooth(comp1), b_spline_smooth(comp2))
+    plt.plot(s1, "r")
+    plt.plot(s2, "b")
+    plt.legend(["s1", "s2"])
+    plt.savefig("neutral2.png")
+    plt.close()
+
+    # comp_view2 = comp = [-2.7430823888528497, -2.3871419216915166, -2.6525135364839527, -2.7710530732902616, -2.3328848344287905, -2.6867270874501865, -2.7173049828551155, -2.3048933111668135, -2.320021241518628, -2.7633239075989766, -2.5109960493297985, -2.5294591047542587, -1.9519517513821982, -0.33529335017819983, -0.7827002205083188, -1.1392232511848064, -1.7332324932649146, -2.113860126233615, -1.736338308713227, -1.9519517513821982, -1.590656146436118, -2.9804508542138386, -3.702264176049598, -3.1405633568288334, -1.9398017055652115, 0.4439732621709637, -1.9519517513821982, -0.5761361260520776, 2.7303567338867785, 6.696931140305691, 10.182689222715931, 14.789627611973323, 24.5095558632201, 17.7013531356012, 56.10383343663609, None, None, None, None, None, None, None, None, None, None, 45.44414443311193, 53.43690413140591, 33.48616881551299, 32.5825542099237, 29.789573783597895, 31.024774378561823, 21.602236084073937, 16.288774030059443, 12.490405717909184, 9.462322208025611, 4.08561677997487, 0.0, -4.763641690726175, -8.365886124032599, -9.246112745563252, -15.368463321796114, -18.735974667018382, -22.499394605148836, -26.003345844511443, -29.357753542791272, -33.34749594591361, -36.139279062169805, -40.763605200941186, -45.0, -49.62415132842909, -51.525764471951106, -55.08059798754235, -56.63968871512978, 32.680554743363395, 30.724693470790633, 29.63153667820388, -54.462322208025626, -56.22579776281441, -55.79454206189527, -52.0703448201576]
+    # look_for_abnormals(comp)
+
     # kalman_smooth2()
     # dump_into_tracks_osfm()
     # visualize_point_cloud()

@@ -2,7 +2,6 @@ import os
 from os import listdir
 from os.path import isfile, join
 from edge_detection import process as edge_process_func
-from pp_utils import k_means_smoothing as smoothing_func
 from pp_utils import kmeans_mask as smoothing_func2
 from pp_utils import keep_one_biggest_contour
 from tqdm import tqdm
@@ -11,6 +10,8 @@ from cpd import process_cpd_fast
 import cv2
 import pickle
 import numpy as np
+
+DEBUG = False
 
 
 def edge_detection():
@@ -24,6 +25,8 @@ def edge_detection():
     os.makedirs(transform_path, exist_ok=True)
 
     for im_name in tqdm(frames, desc="Extracting edges"):
+        if DEBUG and im_name != "1-48.png":
+            continue
         with open(join(pixels_path, im_name), "rb") as fp:
             pixels_list = pickle.load(fp)
         if len(pixels_list) == 0:
@@ -33,6 +36,11 @@ def edge_detection():
         
         # filter to keep only one biggest contour
         img_ori, mask = keep_one_biggest_contour(img_ori)
+
+        if DEBUG:
+            cv2.imshow("t", img_ori)
+            cv2.waitKey()
+            cv2.destroyAllWindows()
 
         if mask is not None:
             pixels_list = np.argwhere(mask > 0)
@@ -48,6 +56,13 @@ def edge_detection():
             for i in range(nonzero_indices[0].shape[0]):
                 print(nonzero_indices[0][i],
                       nonzero_indices[1][i], file=fp)
+
+        if DEBUG:
+            cv2.imshow("t", img)
+            cv2.imshow("t2", img_ori)
+
+            cv2.waitKey()
+            cv2.destroyAllWindows()
 
         cv2.imwrite("%s/%s" % (edge_saving_dir, im_name), res)
 
@@ -94,9 +109,9 @@ def fit_ellipse():
 
 
 if __name__ == '__main__':
-    # extract_frame()
-    edge_detection()
-    process_cpd_fast(True)
-    fit_ellipse()
-    # prepare_pixels_set()
-    # simple_preprocess()
+    if not DEBUG:
+        edge_detection()
+        process_cpd_fast(False)
+        fit_ellipse()
+    else:
+        edge_detection()

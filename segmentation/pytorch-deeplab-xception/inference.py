@@ -1,11 +1,8 @@
 from collections import namedtuple
 from utils.metrics import Evaluator
-import torch
 from modeling.deeplab import *
 from torch.utils.data import DataLoader, Dataset
-from dataloaders.datasets import cityscapes, coco
 from dataloaders import custom_transforms as tr
-from torchvision.utils import make_grid
 from torchvision import transforms
 from dataloaders.utils import decode_seg_map_sequence
 from PIL import Image
@@ -14,7 +11,6 @@ import glob
 import numpy as np
 import os
 import cv2
-import sys
 import post_process
 from tqdm import tqdm
 
@@ -31,7 +27,6 @@ class TestDataset(Dataset):
 
     def __getitem__(self, ind):
         _img = np.array(Image.open(self.all_path_files[ind]).convert('RGB'))
-        # original_img = cv2.resize(np.array(_img), (513, 513))
         original_img = np.array(_img)
         _img = Image.fromarray(original_img)
         sample = {'image': _img, "label": _img, "name": self.all_path_files[ind]}
@@ -63,6 +58,7 @@ def check_contour(_image, _color):
     cnts, _ = cv2.findContours(gray_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     angle = None
     center = None
+    x1, y1, x2, y2 = 0, 0, 0, 0
     if len(cnts) > 0:
         cv2.drawContours(_image, cnts, -1, (255, 0, 0), 3)
         largest_cnt = max(cnts, key=lambda du1: cv2.contourArea(du1))
@@ -93,11 +89,11 @@ def check_contour(_image, _color):
         # cv2.waitKey()
         # cv2.destroyAllWindows()
 
-    return _new_image, center, angle
+    return _new_image, center, angle, x1, y1, x2, y2
 
 
-def main():
-    Args = namedtuple("Args", ["base_size", "crop_size"])
+def main(has_labels=False):
+    args_tuple = namedtuple("Args", ["base_size", "crop_size"])
     model = DeepLab(num_classes=21,
                             backbone="resnet",
                             output_stride=16,
@@ -106,11 +102,10 @@ def main():
     checkpoint = torch.load("../../data_const/model_best.pth.tar")
     model.cuda().eval()
     model.load_state_dict(checkpoint['state_dict'])
-    HAS_LABELS = False
-    args = Args(513, 513)
+    args = args_tuple(513, 513)
 
     test_set = TestDataset()
-    if HAS_LABELS:
+    if has_labels:
         val_set = coco.COCOSegmentation(args, split="val")
         test_loader = DataLoader(val_set, batch_size=8, shuffle=False)
     else:
@@ -126,69 +121,71 @@ def main():
                            [0, 64, 0], [128, 64, 0], [0, 192, 0], [128, 192, 0],
                            [0, 64, 128]])
     count = 0
-    with open("../../data_heavy/frame2ab.txt", "w") as fp:
-        for bid, sample in enumerate(tqdm(test_loader, desc="Extracting semantic masks")):
+    with open("../../data_heavy/head_masks.txt", "w") as fp2:
+        with open("../../data_heavy/frame2ab.txt", "w") as fp:
+            for bid, sample in enumerate(tqdm(test_loader, desc="Extracting semantic masks")):
 
-            if HAS_LABELS:
-                image, target, ori_img = sample['image'], sample['label'], sample["ori_img"]
+                if has_labels:
+                    image, target, ori_img = sample['image'], sample['label'], sample["ori_img"]
+                    image = image.cuda()
+                    target = target.cuda()
+                    with torch.no_grad():
+                        output = model(image)
+                    pred = output.data.cpu().numpy()
+                    target = target.cpu().numpy()
+                    pred = np.argmax(pred, axis=1)
+                    for ind in range(pred.shape[0]):
+                        count+=1
+                        post_process.post_process(pred[ind],
+                                                  sample["ori_img"][ind].numpy(),
+                                                  count)
+                    evaluator.add_batch(target, pred)
+                    continue
+
+                image, target, im_name = sample['image'], sample['label'], sample["name"]
+                original_frames = sample["ori_img"]
                 image = image.cuda()
-                target = target.cuda()
                 with torch.no_grad():
                     output = model(image)
-                pred = output.data.cpu().numpy()
-                target = target.cpu().numpy()
-                pred = np.argmax(pred, axis=1)
-                for ind in range(pred.shape[0]):
-                    count+=1
-                    post_process.post_process(pred[ind],
-                                              sample["ori_img"][ind].numpy(),
-                                              count)
-                evaluator.add_batch(target, pred)
-                continue
+                    seg = decode_seg_map_sequence(torch.max(output, 1)[1].detach().cpu().numpy(), dataset="coco")*255
+                    output = output.cpu()
+                    pred2 = torch.max(output, 1)[1]
+                    for idx in range(seg.shape[0]):
+                        img = seg[idx].permute(1, 2, 0).cpu().numpy().astype(np.uint8)
 
-            image, target, im_name = sample['image'], sample['label'], sample["name"]
-            original_frames = sample["ori_img"]
-            image = image.cuda()
-            target = target.cuda()
-            with torch.no_grad():
-                output = model(image)
-                seg = decode_seg_map_sequence(torch.max(output, 1)[1].detach().cpu().numpy(), dataset="coco")*255
-                output = output.cpu()
-                pred2 = torch.max(output, 1)[1]
-                for idx in range(seg.shape[0]):
-                    img = seg[idx].permute(1, 2, 0).cpu().numpy().astype(np.uint8)
+                        new_img_ab = np.zeros(img.shape, dtype=np.uint8)
+                        new_img_head = np.zeros(img.shape, dtype=np.uint8)
 
-                    new_img_ab = np.zeros(img.shape, dtype=np.uint8)
-                    new_img_head = np.zeros(img.shape, dtype=np.uint8)
+                        new_img_head[(img == classid2color[14]).all(axis=2)] = classid2color[14]
+                        new_img_ab[(img == classid2color[15]).all(axis=2)] = classid2color[15]
+                        im1, center1, rot1, x1, y1, x2, y2 = check_contour(new_img_head, classid2color[14].astype(np.uint8))
+                        im2, center2, rot2, _, _, _, _ = check_contour(new_img_ab, classid2color[15].astype(np.uint8))
+                        im_final = merge_2images(im1, im2,
+                                                 classid2color[14].astype(np.uint8), classid2color[15].astype(np.uint8))
 
-                    new_img_head[(img == classid2color[14]).all(axis=2)] = classid2color[14]
-                    new_img_ab[(img == classid2color[15]).all(axis=2)] = classid2color[15]
-                    im1, center1, rot1 = check_contour(new_img_head, classid2color[14].astype(np.uint8))
-                    im2, center2, rot2 = check_contour(new_img_ab, classid2color[15].astype(np.uint8))
-                    im_final = merge_2images(im1, im2,
-                                             classid2color[14].astype(np.uint8), classid2color[15].astype(np.uint8))
+                        # cv2.imshow("test", np.hstack([img, new_img_ab, new_img_head]))
+                        # cv2.waitKey()
+                        # cv2.destroyAllWindows()
 
-                    # cv2.imshow("test", np.hstack([img, new_img_ab, new_img_head]))
-                    # cv2.waitKey()
-                    # cv2.destroyAllWindows()
+                        dist_x = -1
+                        dist_y = -1
+                        if center2 is not None and center1 is not None:
+                            dist_x = center2[0]-center1[0]
+                            dist_y = center2[1]-center1[1]
 
-                    dist_x = -1
-                    dist_y = -1
-                    if center2 is not None and center1 is not None:
-                        dist_x = center2[0]-center1[0]
-                        dist_y = center2[1]-center1[1]
+                        imn = im_name[idx].split("/")[-1]
+                        ab_pixels = np.sum((pred2[idx]==15).numpy())
+                        head_pixels = np.sum((pred2[idx]==14).numpy())
+                        print(imn, ab_pixels, head_pixels, dist_x, dist_y, rot1, rot2, file=fp)
+                        print(imn, x1, y1, x2, y2, file=fp2)
 
-                    imn = im_name[idx].split("/")[-1]
-                    ab_pixels = np.sum((pred2[idx]==15).numpy())
-                    head_pixels = np.sum((pred2[idx]==14).numpy())
-                    print(imn, ab_pixels, head_pixels, dist_x, dist_y, rot1, rot2, file=fp)
-                    Image.fromarray(im_final).save("../../data_heavy/frames_seg_abh/%s" % imn)
-                    original_frame = original_frames[idx].cpu().numpy().astype(np.uint8)
-                    blend2 = cv2.addWeighted(original_frame, 0.3, im_final, 0.7, 0)
-                    Image.fromarray(blend2).save("../../data_heavy/frames_seg_abh_vis/%s" % imn)
+                        Image.fromarray(im_final).save("../../data_heavy/frames_seg_abh/%s" % imn)
+                        original_frame = original_frames[idx].cpu().numpy().astype(np.uint8)
+                        blend2 = cv2.addWeighted(original_frame, 0.3, im_final, 0.7, 0)
+                        Image.fromarray(blend2).save("../../data_heavy/frames_seg_abh_vis/%s" % imn)
 
     # Fast test during the training
-    if HAS_LABELS:
+    if has_labels:
         Acc = evaluator.Pixel_Accuracy()
         Acc_class = evaluator.Pixel_Accuracy_Class()
         mIoU = evaluator.Mean_Intersection_over_Union()

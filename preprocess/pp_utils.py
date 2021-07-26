@@ -1,16 +1,12 @@
-import os
-
 import cv2
 import numpy as np
 import os
-import sys
+import pickle
 from os import listdir
 from os.path import isfile, join
+import skimage.filters
 from sklearn.cluster import KMeans
 from sklearn.utils import shuffle
-from sklearn.datasets import load_sample_image
-from time import time
-from pathlib import Path
 from tqdm import tqdm
 
 
@@ -57,6 +53,8 @@ def extract_frame(mypath='../data_const/run', output='../data_heavy/frames'):
                 if count % 3 == 0:
                     frame_idx += 1
                     scale = np.min(frame.shape[:2]) // 500
+                    if scale < 1:
+                        scale = 1
                     frame = cv2.resize(frame, (frame.shape[1]//scale, frame.shape[0]//scale))
                     cv2.imwrite(f'{output}/%d-%d.png' % (c, frame_idx), frame)
                     counts.append(frame_idx)
@@ -75,7 +73,15 @@ def extract_frame(mypath='../data_const/run', output='../data_heavy/frames'):
             print(c, file=text_file)
 
 
-def kmeans_mask(pixels, image):
+def kmeans_mask(pixels, image_inp):
+    image = np.copy(image_inp)
+    image = skimage.filters.gaussian(image, sigma=1, multichannel=True)*255
+    image = image.astype(np.uint8)
+
+    # cv2.imshow("tt", image)
+    # cv2.waitKey()
+    # cv2.destroyAllWindows()
+
     n_colors = 2
     image_array = np.zeros((pixels.shape[0], 3), dtype=np.float)
     for i, (u, v) in enumerate(pixels):
@@ -91,10 +97,6 @@ def kmeans_mask(pixels, image):
     for i, (u, v) in enumerate(pixels):
         image[u, v] = label2color[labels[i]]*255
     return image
-    # cv2.imshow("t", image)
-    # cv2.waitKey()
-    # cv2.destroyAllWindows()
-    # sys.exit()
 
 
 def k_means_smoothing(rgb):
@@ -144,6 +146,7 @@ def k_means_smoothing(rgb):
     # cv2.imshow("test", np.hstack([edge1, edge2, res]))
     # cv2.waitKey()
     # cv2.destroyAllWindows()
+
 
 def prepare_pixels_set():
     """

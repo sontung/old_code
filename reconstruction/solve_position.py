@@ -7,13 +7,15 @@ import numpy as np
 import open3d as o3d
 import cv2
 from scipy.spatial.transform import Rotation as rot_mat_compute
-from rec_utils import b_spline_smooth, normalize, draw_text_to_image, refine_path_computation, get_translation_scale
+from rec_utils import b_spline_smooth, normalize, draw_text_to_image, refine_path_computation, neutralize_head_rot
 from tqdm import tqdm
-from kalman_filter import kalman_smooth
+from laplacian_fairing_1d import laplacian_fairing
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
-from pycpd import RigidRegistration
+from custom_rigid_cpd import RigidRegistration
+from functools import partial
 import matplotlib.pyplot as plt
 import time
+import shutil
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -25,11 +27,50 @@ DEBUG_MODE = args['debug']
 FAST_MODE = args['fast']
 
 if DEBUG_MODE:
+    shutil.rmtree("test", ignore_errors=True)
+    shutil.rmtree("test2", ignore_errors=True)
     os.makedirs("test", exist_ok=True)
     os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
 if FAST_MODE:
     print("running in fast mode (not recommended)")
+
+
+def visualize_rigid_registration(iteration, error, X, Y, ax):
+
+    plt.cla()
+    ax.scatter(X[:, 0],  X[:, 1], color='red', label='Target')
+    ax.scatter(Y[:, 0],  Y[:, 1], color='blue', label='Source')
+    plt.text(0.87, 0.92, 'Iteration: {:d}\nQ: {:06.4f}'.format(
+        iteration, error), horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize='x-large')
+    ax.legend(loc='upper left', fontsize='x-large')
+    plt.draw()
+    plt.pause(0.001)
+
+
+def compute_translation_axis_z():
+    sys.stdin = open("../data_heavy/frames/info.txt")
+    lines = [du[:-1] for du in sys.stdin.readlines()]
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {du.split(" ")[0]: du for du in lines2}
+
+    distance_x = [0] * len(lines)
+    for i, line in enumerate(lines):
+        akey = '2-%s.png' % line
+        dx = int(frame2ab[akey].split()[3])
+        distance_x[i] = None if dx == -1 else dx
+
+    for i in range(len(distance_x)-1, -1, -1):
+        if distance_x[i] is None:
+            distance_x[i] = distance_x[i+1]
+    print(distance_x)
+
+    # trajectories = []
+    # for i in range(1, len(lines)):
+    #     diff = distance_x[i] - distance_x[i-1]
+    #     trajectories.append(diff)
+    return distance_x
 
 
 def compute_translation(debugging=DEBUG_MODE):
@@ -59,14 +100,9 @@ def compute_translation(debugging=DEBUG_MODE):
     if debugging:
         b_spline_smooth(x_traj, vis=True, name=f"trans_x_ori.png")
         b_spline_smooth(y_traj, vis=True, name=f"trans_y_ori.png")
-
-        # x_traj = refine_path_computation(x_traj)
-        # y_traj = refine_path_computation(y_traj)
         x_traj = b_spline_smooth(x_traj, vis=True, name=f"trans_x_refined.png")
         y_traj = b_spline_smooth(y_traj, vis=True, name=f"trans_y_refined.png")
     else:
-        # x_traj = refine_path_computation(x_traj)
-        # y_traj = refine_path_computation(y_traj)
         x_traj = b_spline_smooth(x_traj)
         y_traj = b_spline_smooth(y_traj)
 
@@ -102,9 +138,23 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         for i in range(nonzero_indices[0].shape[0]):
             target_matrix[i] = [nonzero_indices[0][i], nonzero_indices[1][i]]
         source_matrix = np.loadtxt('../data/ear.txt')
-
         source_matrix_norm = normalize(source_matrix, target_matrix)
-        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=100)
+
+        # if idx != "78":
+        #     continue
+        #
+        # if idx == "78":
+        #     reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=500)
+        #
+        #     fig = plt.figure()
+        #     fig.add_axes([0, 0, 1, 1])
+        #     callback = partial(visualize_rigid_registration, ax=fig.axes[0])
+        #     y_data_norm, (_, rot_mat, _) = reg.register(callback)
+        #
+        #     plt.show()
+        #     plt.close(fig)
+
+        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=500)
         y_data_norm, (_, rot_mat, _) = reg.register()
         rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
         all_angles.append(rot_angle)
@@ -120,18 +170,18 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         plt.savefig(f"../data_heavy/rigid_head_rotation/1-{idx}.png")
         plt.close(fig)
 
-    all_angles_before_null = []
     if debugging:
         ori_angles = all_angles[:]
-        all_angles, removed_angles = refine_path_computation(all_angles, return_removed=True)
+        all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
         all_angles_before_null = all_angles[:]
-        all_angles = b_spline_smooth(all_angles, vis=True, name="rot_smooth.png")
-        b_spline_smooth(ori_angles, vis=True, name="rot_ori.png", removed=removed_angles)
-        # all_angles = kalman_smooth(ori_angles, all_angles)
+        all_angles = laplacian_fairing(all_angles, all_angles)
 
     else:
-        all_angles = refine_path_computation(all_angles)
-        all_angles = b_spline_smooth(all_angles)
+        ori_angles = all_angles[:]
+        all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
+        all_angles_before_null = all_angles[:]
+        all_angles = laplacian_fairing(all_angles, all_angles)
+
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
             move = rot_deg_overall - prev_pos
@@ -157,7 +207,7 @@ def compute_rotation(reverse_for_vis=False, view=1):
     views = [int(key.split('-')[0]) for key in all_key]
     if view not in views:
         print(f"View {view} does not exist")
-        return None
+        return None, [], []
 
     rot_all = []
     for frn in tqdm(lines, desc=f"Computing head y-z rotation by view {view}"):
@@ -282,21 +332,6 @@ def compute_head_ab_areas():
     return results
 
 
-def debug_vis_img(image, head_center, ab_center):
-    print(head_center, ab_center)
-    x1, y1 = map(int, (head_center[1], head_center[0]))
-    if np.all(ab_center != -1):
-        x2, y2 = map(int, (ab_center[1], ab_center[2]))
-        cv2.circle(image, (x2, y2), 10, (0, 0, 0), -1)
-    x1, y1 = map(int, (head_center[1], head_center[2]))
-    cv2.circle(image, (x1, y1), 10, (0, 0, 0), -1)
-    cv2.circle(image, (y1, x1), 10, (0, 0, 0), -1)
-    cv2.imshow("t", image)
-    cv2.waitKey()
-    cv2.destroyAllWindows()
-    return image
-
-
 def visualize(debug_mode=DEBUG_MODE):
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
@@ -378,6 +413,11 @@ def visualize(debug_mode=DEBUG_MODE):
 
     if debug_mode:
         from solve_airbag import compute_ab_trans
+
+        sys.stdin = open("../data_heavy/head_masks.txt")
+        lines2 = [du[:-1] for du in sys.stdin.readlines()]
+        frame2head_rect = {du.split(" ")[0]: du for du in lines2}
+        head_rotations_by_masks = compute_rotation()[-1]
         ab_trans_image_space = compute_ab_trans()
         os.makedirs("test", exist_ok=True)
         os.makedirs("test2", exist_ok=True)
@@ -390,6 +430,9 @@ def visualize(debug_mode=DEBUG_MODE):
         ab_trans_image_space_y = ab_trans_image_space[1][1:]
         lines = lines[1:]
         all_angles_before_null = all_angles_before_null[1:]
+        ne_rot_traj = ne_rot_traj[1:]
+        # vis_rotated_trajectory_z = rotated_trajectory_z[1:]
+        head_rotations_by_masks = head_rotations_by_masks[1:]
         assert len(lines) == len(trajectory)
         for counter, ind in enumerate(lines):
             line_img = cv2.imread("%s/1-%s.png" % (images_dir, ind))
@@ -401,8 +444,8 @@ def visualize(debug_mode=DEBUG_MODE):
                 img_size = max([ear_img, line_img, rigid_img], key=lambda x: x.shape[0]*x.shape[1])
 
                 ear_img = cv2.resize(ear_img, (img_size.shape[1], img_size.shape[0]))
-                line_img = cv2.resize(line_img, [img_size.shape[1], img_size.shape[0]])
-                rigid_img = cv2.resize(rigid_img, [img_size.shape[1], img_size.shape[0]])
+                line_img = cv2.resize(line_img, (img_size.shape[1], img_size.shape[0]))
+                rigid_img = cv2.resize(rigid_img, (img_size.shape[1], img_size.shape[0]))
 
                 cv2.imwrite(f"test/ear-{ind}.png", np.hstack([ear_img, line_img, rigid_img]))
             im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)
@@ -412,13 +455,31 @@ def visualize(debug_mode=DEBUG_MODE):
                 ear = pickle.load(ear_file)
             ear_im1[ear[:, 0], ear[:, 1]] = [125, 60, 80]
             seg_im1 = cv2.addWeighted(seg_im1, 0.3, ear_im1, 0.7, 0)
+            x1, y1, x2, y2 = map(int, frame2head_rect[f"1-{ind}.png"].split(" ")[1:])
+            cv2.circle(seg_im1, (x1, y1), 3, (255, 255, 255), -1)
+            cv2.circle(seg_im1, (x2, y2), 3, (255, 255, 255), -1)
+            cv2.line(seg_im1, (x1, y1), (x2, y2), (255, 255, 255), 5)
             seg_im1 = cv2.resize(seg_im1, (im1.shape[1], im1.shape[0]))
 
             try:
+                # im2 = cv2.imread("../data_heavy/saved/v2-%s.png" % counter)
                 im_view2 = cv2.imread("../data_heavy/frames/2-%s.png" % ind).astype(np.uint8)
                 seg_view2 = cv2.imread('../data_heavy/frames_seg_abh/2-%s.png' % ind).astype(np.uint8)
                 seg_im2 = cv2.addWeighted(im_view2, 0.3, seg_view2, 0.7, 0)
+                x12, y12, x22, y22 = map(int, frame2head_rect[f"2-{ind}.png"].split(" ")[1:])
+                cv2.circle(seg_im1, (x12, y12), 3, (255, 255, 255), -1)
+                cv2.circle(seg_im2, (x22, y22), 3, (255, 255, 255), -1)
+                cv2.line(seg_im2, (x12, y12), (x22, y22), (255, 255, 255), 5)
                 seg_im2 = cv2.resize(seg_im2, (im1.shape[1], im1.shape[0]))
+
+                # info_img2 = np.ones_like(im2) * 255
+                # info_img2 = draw_text_to_image(info_img2, "rot=%3f" % (rotated_trajectory_z[counter]), (100, 100))
+                # img_part2 = np.vstack([im2, info_img2])
+                # print(img_part2.shape, im2.shape, counter)
+                # img_part1 = seg_im2.resize(seg_im2, (img_part2.shape[1], img_part2.shape[0]))
+                # res_img_2 = np.hstack([img_part1, img_part2])
+                # cv2.imwrite(f"test2/view2-res-{ind}.png", res_img_2)
+
             except AttributeError:
                 print(f"../data_heavy/frames/2-{counter}.png does not exist")
                 seg_im2 = np.zeros_like(seg_im1)
@@ -434,6 +495,9 @@ def visualize(debug_mode=DEBUG_MODE):
                                           (100, 400))
             info_img = draw_text_to_image(info_img, "ab rot=%.3f (%.3f)" % (ab_rot, ab_rot-90), (100, 500))
             info_img = draw_text_to_image(info_img, "dist1 =%.2f %.2f" % (ab_trans_image_space_x[counter], ab_trans_image_space_y[counter]), (100, 600))
+            if head_rotations_by_masks[counter] is not None:
+                info_img = draw_text_to_image(info_img, "rot. (head mask) =%.2f" % (-head_rotations_by_masks[counter]+90), (100, 900))
+
             if all_angles_before_null[counter] is None:
                 info_img = draw_text_to_image(info_img, "missing comp.", (100, 800))
 
@@ -447,3 +511,4 @@ def visualize(debug_mode=DEBUG_MODE):
 
 if __name__ == '__main__':
     visualize()
+    # compute_translation_axis_z()

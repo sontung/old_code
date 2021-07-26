@@ -2,23 +2,22 @@ import glob
 import pickle
 import sys
 from argparse import ArgumentParser
-from pathlib import Path
 
 import cv2
 import cv2 as cv
 import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
-from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
-from mmseg.core.evaluation import get_palette
-from icecream import ic
+from mmseg.apis import inference_segmentor, init_segmentor
 import os
 from PIL import Image
 
 parser = ArgumentParser()
 parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
+parser.add_argument('-v', '--visualize', type=bool, default=False, help="Visulization mode")
 args = vars(parser.parse_args())
 DEBUG_MODE = args['debug']
+VISUALIZE_MODE = args["visualize"]
 
 # section Runtime Arguments
 CONFIG_FILE = 'configs/AB__SwinBase__2_local__no_TTA.py'
@@ -113,10 +112,11 @@ def check_contour(_image, _color):
     return _new_image, center, angle
 
 
-def compute_postion_and_rotation(mask, rgb_mask, contours, vis=False):
+def compute_postion_and_rotation(mask, rgb_mask, contours, vis=VISUALIZE_MODE):
     assert mask.shape == rgb_mask.shape[:2]
+    x1, y1, x2, y2 = 0, 0, 0, 0
     if len(contours) < 1:
-        return 0, None, None
+        return 0, None, None, x1, y1, x2, y2
     elif len(contours) > 1:
         points = contours[0]
         for i in range(1, len(contours)):
@@ -161,7 +161,7 @@ def compute_postion_and_rotation(mask, rgb_mask, contours, vis=False):
         text_img = draw_text_to_image(text_img, f"area: {area}", (10, text_img.shape[0]//2 + 200))
         opencv_show_image('vis', np.hstack([rgb_mask, text_img]))
 
-    return area, center, angle
+    return area, center, angle, x1, y1, x2, y2
 
 
 def opencv_show_image(image, name='vis'):
@@ -212,7 +212,7 @@ def get_seg_head_from_prediction(class_predict):
     return mask, rgb_mask, max_contours
 
 
-def get_seg_airbag_from_prediction(class_predict, head_contour, view=None, kept_area=1000):
+def get_seg_airbag_from_prediction(class_predict, view=None, kept_area=1000):
     ab_mask = np.zeros(class_predict.shape, dtype=np.uint8)
     ab_mask[class_predict == AIRBAG] = 255
     rgb_mask = np.zeros((class_predict.shape[0], class_predict.shape[1], 3), dtype=np.uint8)
@@ -275,8 +275,66 @@ def segment_all_video(root='/media/hblab/01D5F2DD5173DEA0/AirBag/3d-air-bag-p2/d
 
     return
 
+
+def compute_2d_x_asix(ab_contours, head_contour, origin_img, img_name, debuging=DEBUG_MODE):
+
+    def bb_box(contour):
+        top_left = np.min(contour, axis=0)[0]
+        bottom_right = np.max(contour, axis=0)[0]
+        center = ((top_left[0] + bottom_right[0])/2, (top_left[1] + bottom_right[1])/2)
+        return top_left, bottom_right, center
+
+    def draw_rectange(_image, top_left, bottom_right, center):
+        cv2.rectangle(_image, top_left, bottom_right, (0, 255, 0), 2)
+        cv2.circle(_image, center, 2, (0, 255, 0), 2)
+        return _image
+
+    def float2int(rect):
+        tl, br, center = rect
+        tl = (int(tl[0]), int(tl[1]))
+        br = (int(br[0]), int(br[1]))
+        center = (int(center[0]), int(center[1]))
+        return tl, br, center
+
+    if len(ab_contours) < 1 or len(head_contour) < 1 :
+        return None
+
+    if len(ab_contours) == 1:
+        new_ab_contour = ab_contours
+    else:
+        points = ab_contours[0]
+        for i in range(len(ab_contours)):
+            points = np.append(points, ab_contours[i], axis=0)
+
+        new_ab_contour = [cv2.convexHull(points)]
+
+    ab_rect = bb_box(new_ab_contour[0])
+    head_rect = bb_box(head_contour[0])
+
+    if debuging:
+        os.makedirs('debugs', exist_ok=True)
+        mask = np.zeros(origin_img.shape, dtype=np.uint8)
+        cv2.fillPoly(mask, pts=new_ab_contour, color=AIRBAG_COLOR)
+        cv2.fillPoly(mask, pts=head_contour, color=HEAD_COLOR)
+
+        blend = cv2.addWeighted(origin_img, 0.3, mask, 0.7, 0)
+
+        ab_rect = float2int(ab_rect)
+        blend = draw_rectange(blend, ab_rect[0], ab_rect[1], ab_rect[2])
+
+        head_rect = float2int(head_rect)
+        blend = draw_rectange(blend, head_rect[0], head_rect[1], head_rect[2])
+
+        Image.fromarray(blend).save(f'debugs/{img_name}')
+
+    # sys.exit()
+
+    return
+
+
 def main(debuging=DEBUG_MODE,
          txt_file='../data_heavy/frame2ab.txt',
+         txt_file_2 = '../data_heavy/head_masks.txt',
          input_images='../data_heavy/frames',
          save_seg_abh='../data_heavy/frames_seg_abh',
          save_seg_abh_vis='../data_heavy/frames_seg_abh_vis',
@@ -290,50 +348,61 @@ def main(debuging=DEBUG_MODE,
 
     # section Predict
     file_paths = glob.glob(f"{input_images}/*.png")
-    with open(txt_file, "w") as fp:
-        for path in tqdm(file_paths, desc='2D Segmentation:'):
-            inp_img = cv.imread(path, 1)
-            result    = inference_segmentor(MODEL, inp_img)
-            pred    = result[0]
 
-            img_name = os.path.basename(path)
-            view = int(img_name.split('-')[0])
+    with open(txt_file_2, "w") as fp2:
+        with open(txt_file, "w") as fp:
 
-            head_mask, head_rgb_mask, head_contour = get_seg_head_from_prediction(pred)
-            ab_mask, ab_rgb_mask, ab_contours = get_seg_airbag_from_prediction(pred, head_contour, view=view)
+            for path in tqdm(file_paths, desc='2D Segmentation:'):
 
-            if view == 2:
-                refine = refine_airbag_segmentation(ab_mask, head_mask)
-                if refine is not None:
-                    ab_mask, ab_contours = refine
-                    ab_rgb_mask = np.zeros_like(ab_rgb_mask)
-                    ab_rgb_mask[ab_mask == 255] = AIRBAG_COLOR
+                img_name = os.path.basename(path)
+                view = int(img_name.split('-')[0])
+                # if view !=2:
+                #     continue
 
-            head_pixels, head_center, head_rot = compute_postion_and_rotation(head_mask, head_rgb_mask, head_contour, vis=debuging)
-            ab_pixels, ab_center, ab_rot = compute_postion_and_rotation(ab_mask, ab_rgb_mask, ab_contours, vis=debuging)
+                inp_img = cv.imread(path, 1)
+                result    = inference_segmentor(MODEL, inp_img)
+                pred    = result[0]
 
-            dist_x = -1
-            dist_y = -1
-            if ab_center is not None and head_center is not None:
-                dist_x = ab_center[0] - head_center[0]
-                dist_y = ab_center[1] - head_center[1]
+                head_mask, head_rgb_mask, head_contour = get_seg_head_from_prediction(pred)
+                ab_mask, ab_rgb_mask, ab_contours = get_seg_airbag_from_prediction(pred, view=view)
 
-            print(img_name, ab_pixels, head_pixels, dist_x, dist_y, head_rot, ab_rot, file=fp)
+                if view == 2:
+                    refine = refine_airbag_segmentation(ab_mask, head_mask)
+                    if refine is not None:
+                        ab_mask, ab_contours = refine
+                        ab_rgb_mask = np.zeros_like(ab_rgb_mask)
+                        ab_rgb_mask[ab_mask == 255] = AIRBAG_COLOR
 
-            seg_final = merge_2images(head_rgb_mask, ab_rgb_mask, HEAD_COLOR, AIRBAG_COLOR)
-            Image.fromarray(seg_final).save(f"{save_seg_abh}/{img_name}")
-            blend = cv2.addWeighted(inp_img, 0.3, seg_final, 0.7, 0)
-            Image.fromarray(blend).save(f"{save_seg_abh_vis}/{img_name}")
+                        # compute_2d_x_asix(ab_contours, head_contour, inp_img, img_name)
 
-            if view == 1:
-                ear_mask = get_seg_ear_from_prediction(pred, head_contour)
-                orgin_img_copy = inp_img.copy()
-                orgin_img_copy[ear_mask == 0] *= 0
-                cv.imwrite(f'{save_ear_vis}/{img_name}', orgin_img_copy)
+                head_pixels, head_center, head_rot, x1, y1, x2, y2 = compute_postion_and_rotation(
+                    head_mask, head_rgb_mask, head_contour)
+                ab_pixels, ab_center, ab_rot, _, _, _, _ = compute_postion_and_rotation(
+                    ab_mask, ab_rgb_mask, ab_contours)
 
-                pixels = np.argwhere(ear_mask > 0)
-                with open(f'{save_ear_coor}/{img_name}', 'wb') as ear_fp:
-                    pickle.dump(pixels, ear_fp)
+                dist_x = -1
+                dist_y = -1
+                if ab_center is not None and head_center is not None:
+                    dist_x = ab_center[0] - head_center[0]
+                    dist_y = ab_center[1] - head_center[1]
+
+                print(img_name, ab_pixels, head_pixels, dist_x, dist_y, head_rot, ab_rot, file=fp)
+                print(img_name, x1, y1, x2, y2, file=fp2)
+
+                seg_final = merge_2images(head_rgb_mask, ab_rgb_mask, HEAD_COLOR, AIRBAG_COLOR)
+                Image.fromarray(seg_final).save(f"{save_seg_abh}/{img_name}")
+                blend = cv2.addWeighted(inp_img, 0.3, seg_final, 0.7, 0)
+                Image.fromarray(blend).save(f"{save_seg_abh_vis}/{img_name}")
+
+                if view == 1:
+                    ear_mask = get_seg_ear_from_prediction(pred, head_contour)
+                    origin_img_copy = inp_img.copy()
+                    origin_img_copy[ear_mask == 0] *= 0
+                    cv.imwrite(f'{save_ear_vis}/{img_name}', origin_img_copy)
+
+                    pixels = np.argwhere(ear_mask > 0)
+                    with open(f'{save_ear_coor}/{img_name}', 'wb') as ear_fp:
+                        pickle.dump(pixels, ear_fp)
 
 
 if __name__ == '__main__':

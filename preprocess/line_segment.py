@@ -1,9 +1,4 @@
-import os
-import sys
-
-import cv2
 import numpy as np
-from glob import glob
 
 
 def sample_ellipse(rcenter, rw, rh, angle):

@@ -61,6 +61,10 @@ int main(int argc, char *argv[])
   string save_smooth_mesh = "../../mc_solutions_smoothed/";
 
   all_files = list_all_files(obj_folder);
+  float progress = 0.0;
+  int files_done = 0;
+  int barWidth = 70;
+  int nb_files = all_files.size();
 
   for (auto file: all_files)
   {
@@ -73,9 +77,23 @@ int main(int argc, char *argv[])
       up_sample(V3, F3, 2, V4, F4);
       igl::writeOBJ(out_path,V4,F4);
 
+      progress += 1/(float)nb_files;
+      files_done+=1;
+
+      cout << "processing mesh with libigl [";
+      int pos = barWidth * progress;
+      for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) cout << "=";
+        else if (i == pos) cout << ">";
+        else cout << " ";
+      }
+      cout << "] " <<files_done<<"/"<<nb_files<<"\r";
+      cout.flush();
+
 //      viewer.data().set_mesh(V3, F3);
 //      viewer.callback_key_down = key_down;
 //      viewer.launch();
   }
+  cout<<""<<endl;
 
 }
