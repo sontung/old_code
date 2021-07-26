@@ -6,17 +6,16 @@ import sys
 import numpy as np
 import open3d as o3d
 import cv2
+import matplotlib.pyplot as plt
+import shutil
+import argparse
 from scipy.spatial.transform import Rotation as rot_mat_compute
-from rec_utils import b_spline_smooth, normalize, draw_text_to_image, refine_path_computation, neutralize_head_rot
+from rec_utils import b_spline_smooth, normalize, draw_text_to_image, neutralize_head_rot
 from tqdm import tqdm
 from laplacian_fairing_1d import laplacian_fairing
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from custom_rigid_cpd import RigidRegistration
 from functools import partial
-import matplotlib.pyplot as plt
-import time
-import shutil
-import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
@@ -46,31 +45,6 @@ def visualize_rigid_registration(iteration, error, X, Y, ax):
     ax.legend(loc='upper left', fontsize='x-large')
     plt.draw()
     plt.pause(0.001)
-
-
-def compute_translation_axis_z():
-    sys.stdin = open("../data_heavy/frames/info.txt")
-    lines = [du[:-1] for du in sys.stdin.readlines()]
-    sys.stdin = open("../data_heavy/frame2ab.txt")
-    lines2 = [du[:-1] for du in sys.stdin.readlines()]
-    frame2ab = {du.split(" ")[0]: du for du in lines2}
-
-    distance_x = [0] * len(lines)
-    for i, line in enumerate(lines):
-        akey = '2-%s.png' % line
-        dx = int(frame2ab[akey].split()[3])
-        distance_x[i] = None if dx == -1 else dx
-
-    for i in range(len(distance_x)-1, -1, -1):
-        if distance_x[i] is None:
-            distance_x[i] = distance_x[i+1]
-    print(distance_x)
-
-    # trajectories = []
-    # for i in range(1, len(lines)):
-    #     diff = distance_x[i] - distance_x[i-1]
-    #     trajectories.append(diff)
-    return distance_x
 
 
 def compute_translation(debugging=DEBUG_MODE):
@@ -118,7 +92,7 @@ def compute_translation(debugging=DEBUG_MODE):
     return trajectories, x_traj, y_traj
 
 
-def compute_rotation_accurate(debugging=DEBUG_MODE):
+def compute_rotation_accurate():
     sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]
     images_dir = "../data_heavy/line_images"
@@ -170,17 +144,10 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         plt.savefig(f"../data_heavy/rigid_head_rotation/1-{idx}.png")
         plt.close(fig)
 
-    if debugging:
-        ori_angles = all_angles[:]
-        all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
-        all_angles_before_null = all_angles[:]
-        all_angles = laplacian_fairing(all_angles, all_angles)
-
-    else:
-        ori_angles = all_angles[:]
-        all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
-        all_angles_before_null = all_angles[:]
-        all_angles = laplacian_fairing(all_angles, all_angles)
+    ori_angles = all_angles[:]
+    all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
+    all_angles_before_null = all_angles[:]
+    all_angles = laplacian_fairing(all_angles)
 
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
@@ -462,7 +429,6 @@ def visualize(debug_mode=DEBUG_MODE):
             seg_im1 = cv2.resize(seg_im1, (im1.shape[1], im1.shape[0]))
 
             try:
-                # im2 = cv2.imread("../data_heavy/saved/v2-%s.png" % counter)
                 im_view2 = cv2.imread("../data_heavy/frames/2-%s.png" % ind).astype(np.uint8)
                 seg_view2 = cv2.imread('../data_heavy/frames_seg_abh/2-%s.png' % ind).astype(np.uint8)
                 seg_im2 = cv2.addWeighted(im_view2, 0.3, seg_view2, 0.7, 0)
@@ -471,14 +437,6 @@ def visualize(debug_mode=DEBUG_MODE):
                 cv2.circle(seg_im2, (x22, y22), 3, (255, 255, 255), -1)
                 cv2.line(seg_im2, (x12, y12), (x22, y22), (255, 255, 255), 5)
                 seg_im2 = cv2.resize(seg_im2, (im1.shape[1], im1.shape[0]))
-
-                # info_img2 = np.ones_like(im2) * 255
-                # info_img2 = draw_text_to_image(info_img2, "rot=%3f" % (rotated_trajectory_z[counter]), (100, 100))
-                # img_part2 = np.vstack([im2, info_img2])
-                # print(img_part2.shape, im2.shape, counter)
-                # img_part1 = seg_im2.resize(seg_im2, (img_part2.shape[1], img_part2.shape[0]))
-                # res_img_2 = np.hstack([img_part1, img_part2])
-                # cv2.imwrite(f"test2/view2-res-{ind}.png", res_img_2)
 
             except AttributeError:
                 print(f"../data_heavy/frames/2-{counter}.png does not exist")
@@ -511,4 +469,3 @@ def visualize(debug_mode=DEBUG_MODE):
 
 if __name__ == '__main__':
     visualize()
-    # compute_translation_axis_z()

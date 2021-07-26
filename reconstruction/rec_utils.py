@@ -1,7 +1,5 @@
 import sys
-import csv
 import cv2
-import os
 import json
 import open3d
 import numpy as np
@@ -17,7 +15,6 @@ def neutralize_head_rot(cpd_computations, head_mask_computations):
 
     ranges = partition_by_none(cpd_computations)
     for start, end in ranges:
-        print(start, end)
         cpd_path = cpd_computations[start:end]
         head_path = head_mask_computations[start:end]
         best_solution[start:end] = smooth_enforce(cpd_path, head_path)
@@ -50,7 +47,7 @@ def smooth_enforce(path1, path2):
         possible_comp = [path1[x], path2[x], path1[x]-90, path2[x]-90, path1[x]+90, path2[x]+90]
         solution1.append(min(possible_comp, key=lambda du: abs(du-solution1[x-1])))
         solution2.append(min(possible_comp, key=lambda du: abs(du - solution2[x - 1])))
-        print(solution2[x - 1], solution2[-1], possible_comp)
+        # print(solution2[x - 1], solution2[-1], possible_comp)
     grad1 = np.sum(np.abs(np.gradient(solution1)))
     grad2 = np.sum(np.abs(np.gradient(solution2)))
     if grad1 < grad2:
@@ -183,9 +180,6 @@ def compute_zncc(x, y, x2, y2, f, g, f_, g_, window_size, using_global_mean=True
     du3 = np.multiply(g-g_, g-g_)
     s2 = np.sum(du1) / (np.sqrt(np.sum(du2) * np.sum(du3)) + 0.00001)
 
-    # from PIL import Image
-    # Image.fromarray(np.hstack([f, g])).save("debugs/%d%d%d%d.png" % (x, y, x2, y2))
-
     return s2, f, g
 
 
@@ -223,63 +217,6 @@ def read_correspondence_from_dump(txt_dir="data/corr-3.txt"):
     lines = sys.stdin.readlines()
     pairs = [tuple(map(float, line[:-1].split(" "))) for line in lines]
     return pairs
-
-
-def complement_point_cloud():
-    """
-    complement the tracks.csv to remove bad matches (e.g. outside of the seg mask)
-    :return:
-    """
-
-    data = {}
-    with open('data_heavy/sfm_data/tracks.csv', newline='') as csvfile:
-        lines = csv.reader(csvfile, delimiter='\t', quotechar='|')
-        next(lines)
-
-        for row in lines:
-            im_name, trackid, _, x, y, _, r, g, b = row[:9]
-            if trackid not in data:
-                data[trackid] = [(im_name, trackid, x, y, r, g, b)]
-            else:
-                data[trackid].append((im_name, trackid, x, y, r, g, b))
-
-    im_dict = {f: cv2.imread(os.path.join("data_heavy/sfm_data/images/", f))
-               for f in os.listdir("data_heavy/sfm_data/images/")
-               if os.path.isfile(os.path.join("data_heavy/sfm_data/images/", f))}
-    mask_dict = {f: cv2.imread(os.path.join("data_heavy/sfm_data/masks/", f))
-                 for f in os.listdir("data_heavy/sfm_data/masks/")
-                 if os.path.isfile(os.path.join("data_heavy/sfm_data/masks/", f))}
-    good_tracks = []
-    for trackid in data:
-        good_track = True
-        for im_name, trackid, x, y, r, g, b in data[trackid]:
-            im = im_dict[im_name]
-            mask = mask_dict[im_name]
-            h, w, _ = im.shape
-            size = max(w, h)
-            x, y = map(float, (x, y))
-            x = int(x * size - 0.5 + w / 2.0)
-            y = int(y * size - 0.5 + h / 2.0)
-
-            if sum(mask[y, x]) == 0:
-                good_track = False
-                break
-        if good_track:
-            good_tracks.append(trackid)
-    row_new = []
-    with open('data_heavy/sfm_data/tracks.csv', newline='') as csvfile:
-        lines = csv.reader(csvfile, delimiter='\t', quotechar='|')
-        first_line = next(lines)
-        for row in lines:
-            if row[1] in good_tracks and row[0] in ["opencv_frame_0.png", "opencv_frame_1.png"]:
-                row_new.append(row)
-    sys.stdout = open('data_heavy/sfm_data/tracks2.csv', "w")
-    print(first_line[0])
-    for row in row_new:
-        # row[5] = '1'
-        # row[2] = "1794"
-        print("\t".join(row))
-    return "tracks2.csv"
 
 
 def visualize_point_cloud(json_file="data_heavy/sfm_data/reconstruction.json"):
