@@ -11,7 +11,8 @@ from rec_utils import b_spline_smooth, normalize, draw_text_to_image, refine_pat
 from tqdm import tqdm
 from laplacian_fairing_1d import laplacian_fairing
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
-from pycpd import RigidRegistration
+from custom_rigid_cpd import RigidRegistration
+from functools import partial
 import matplotlib.pyplot as plt
 import time
 import shutil
@@ -33,6 +34,18 @@ if DEBUG_MODE:
     print("running in debug mode")
 if FAST_MODE:
     print("running in fast mode (not recommended)")
+
+
+def visualize_rigid_registration(iteration, error, X, Y, ax):
+
+    plt.cla()
+    ax.scatter(X[:, 0],  X[:, 1], color='red', label='Target')
+    ax.scatter(Y[:, 0],  Y[:, 1], color='blue', label='Source')
+    plt.text(0.87, 0.92, 'Iteration: {:d}\nQ: {:06.4f}'.format(
+        iteration, error), horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize='x-large')
+    ax.legend(loc='upper left', fontsize='x-large')
+    plt.draw()
+    plt.pause(0.001)
 
 
 def compute_translation_axis_z():
@@ -125,9 +138,23 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         for i in range(nonzero_indices[0].shape[0]):
             target_matrix[i] = [nonzero_indices[0][i], nonzero_indices[1][i]]
         source_matrix = np.loadtxt('../data/ear.txt')
-
         source_matrix_norm = normalize(source_matrix, target_matrix)
-        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=150)
+
+        # if idx != "78":
+        #     continue
+        #
+        # if idx == "78":
+        #     reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=500)
+        #
+        #     fig = plt.figure()
+        #     fig.add_axes([0, 0, 1, 1])
+        #     callback = partial(visualize_rigid_registration, ax=fig.axes[0])
+        #     y_data_norm, (_, rot_mat, _) = reg.register(callback)
+        #
+        #     plt.show()
+        #     plt.close(fig)
+
+        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=500)
         y_data_norm, (_, rot_mat, _) = reg.register()
         rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
         all_angles.append(rot_angle)
@@ -154,6 +181,7 @@ def compute_rotation_accurate(debugging=DEBUG_MODE):
         all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
         all_angles_before_null = all_angles[:]
         all_angles = laplacian_fairing(all_angles, all_angles)
+
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
             move = rot_deg_overall - prev_pos

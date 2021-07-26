@@ -57,6 +57,8 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
 
         # clean
         shutil.rmtree("data_const/final_vis", ignore_errors=True)
+        if debug_mode and len(sub_folders) < 4:
+            continue
         clean_stuffs()
 
 
