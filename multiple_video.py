@@ -7,10 +7,14 @@ from glob import glob
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
+parser.add_argument('-s', '--seg', type=int, default=0,
+                                  help='Index of model to run segmentation\n0:  Swin\n1: DeepLab')
 
 args = vars(parser.parse_args())
 DEBUG_MODE = args['debug']
+MODEL_INDEX = args['seg']
 
+existing_models = (0, 1)
 
 def clean_stuffs():
     shutil.rmtree('data_heavy', ignore_errors=True)
@@ -21,6 +25,18 @@ def clean_stuffs():
 def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='data_const/final_vis',
                debug_mode=DEBUG_MODE):
     clean_stuffs()
+
+    if MODEL_INDEX not in existing_models:
+        print("Index of model not exist")
+        return
+
+    if DEBUG_MODE:
+        command = './debug_run.sh'
+    else:
+        if MODEL_INDEX == 0:
+            command = './run.sh'
+        else:
+            command = './run_with_deeplab.sh'
 
     sub_folders = os.walk(folder_input).__next__()[1]
     sub_out_folders = os.walk(folder_output).__next__()[1]
@@ -38,12 +54,9 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
         shutil.copytree(src_fd, dst_fd, dirs_exist_ok=True)
 
         # start run
-        if debug_mode:
-            subprocess.call('./debug_run.sh')
-        else:
-            subprocess.call('./run.sh')
+        subprocess.call(command)
 
-        if len(glob(f"{result_df}/*")) < 5:
+        if len(glob(f"{result_df}/*")) < len(sub_folders):
             print(f"{folder} doesn't complete")
             if debug_mode:
                 return
