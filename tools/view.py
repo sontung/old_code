@@ -57,7 +57,7 @@ def visualize():
         du_outputs3 = pickle.load(pickle_file)
     with open(AB_FRAMES_DIR, "rb") as pickle_file:
         du_outputs4 = pickle.load(pickle_file)
-    ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
+    ab_mesh_dir = f"{RESULTS_DIR}/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
@@ -171,7 +171,6 @@ def visualize():
 
                 vis.update_geometry(pcd)
                 vis.update_renderer()
-
 
         elif RENDER_MODE == 1:
             vis.poll_events()

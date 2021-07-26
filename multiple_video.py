@@ -54,6 +54,7 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
         # move result
         save_result = os.path.join(folder_output, folder)
         shutil.move(result_df, save_result)
+        shutil.move("sph_data/mc_solutions_smoothed", save_result)
 
         # clean
         shutil.rmtree("data_const/final_vis", ignore_errors=True)
