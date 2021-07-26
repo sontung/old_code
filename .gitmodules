@@ -1,6 +1,3 @@
-[submodule "libraries/OpenSfM"]
-	path = libraries/OpenSfM
-	url = https://github.com/mapillary/OpenSfM
 [submodule "libraries/Ambrosio-Tortorelli-Minimizer"]
 	path = libraries/Ambrosio-Tortorelli-Minimizer
 	url = https://github.com/jacobgil/Ambrosio-Tortorelli-Minimizer.git
