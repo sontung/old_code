@@ -1,10 +1,8 @@
 from functools import partial
 import matplotlib.pyplot as plt
-from pycpd import DeformableRegistration, AffineRegistration
-from fast_registration import register, register_fast
+from pycpd import AffineRegistration
+from fast_registration import register_fast
 import numpy as np
-import time
-import sys
 from tqdm import tqdm
 import glob
 import cv2

@@ -1,6 +1,3 @@
-[submodule "libraries/Ambrosio-Tortorelli-Minimizer"]
-	path = libraries/Ambrosio-Tortorelli-Minimizer
-	url = https://github.com/jacobgil/Ambrosio-Tortorelli-Minimizer.git
 [submodule "libraries/correspondence-discrete-optim"]
 	path = libraries/correspondence-discrete-optim
 	url = https://github.com/sontung/correspondence-discrete-optim.git
