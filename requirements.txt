@@ -8,7 +8,6 @@ pysplishsplash
 microdict
 meshio
 pykdtree
-cmake
 numba
 kmeans1d
 icecream

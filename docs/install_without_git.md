@@ -94,7 +94,7 @@ There is two options to download source code.
 4. Install MMSegmentation
    
    ```
-   cd segmentation_Swin && pip install -e . && cd ..
+   cd segmentation_swin && pip install -e . && cd ..
    ```
 
 # Step 4: Install 3D-Reconstruction requirements
@@ -107,6 +107,9 @@ There is two options to download source code.
    sudo apt-get install -y freeglut3-dev
    sudo apt-get install libssl-dev
    sudo apt-get install xorg-dev libglu1-mesa-dev
+   
+   sudo apt remove --purge --auto-remove cmake
+   sudo snap install cmake --classic
    ```
 
 2. Build Partio library
