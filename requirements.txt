@@ -11,7 +11,8 @@ pykdtree
 cmake
 numba
 kmeans1d
+
+numpy==1.20.2
 tqdm
 pycocotools
-numpy
 tbb

@@ -59,6 +59,7 @@ class LoadImage:
         else:
             results['filename'] = None
             results['ori_filename'] = None
+
         img = mmcv.imread(results['img'])
         results['img'] = img
         results['img_shape'] = img.shape
@@ -85,7 +86,7 @@ def inference_segmentor(model, img):
     # prepare data
     data = dict(img=img)
     data = test_pipeline(data)
-    data = collate([data], samples_per_gpu=1)
+    data = collate([data], samples_per_gpu=2)
     if next(model.parameters()).is_cuda:
         # scatter to specified GPU
         data = scatter(data, [device])[0]

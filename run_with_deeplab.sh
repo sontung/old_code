@@ -14,6 +14,7 @@ cd ../../../../../
 cd ../sph_data/
 python main.py
 
+
 set -euxo pipefail
 
 cd ../preprocess/

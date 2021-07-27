@@ -281,7 +281,6 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
         with open(frame2ab_info, "w") as fp:
 
             for path in tqdm(file_paths, desc='2D Segmentation:'):
-
                 img_name = os.path.basename(path)
                 view = int(img_name.split('-')[0])
 
@@ -298,7 +297,6 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
                         ab_mask, ab_contours = refine
                         ab_rgb_mask = np.zeros_like(ab_rgb_mask)
                         ab_rgb_mask[ab_mask == 255] = AIRBAG_COLOR
-                        # compute_2d_x_axis(ab_contours, head_contour, inp_img, img_name, debugging=)
 
                 head_pixels, head_center, head_rot, x1, y1, x2, y2 = compute_position_and_rotation(
                     head_mask, head_rgb_mask, head_contour)
