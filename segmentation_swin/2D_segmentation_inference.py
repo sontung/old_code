@@ -275,7 +275,7 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
     os.makedirs(save_ear_coor, exist_ok=True)
 
     # section Predict
-    file_paths = glob.glob(f"{input_images}/*.png")
+    file_paths = glob.glob(f"{input_images}/[1|2]-*.png")
 
     with open(head_masks_info, "w") as fp2:
         with open(frame2ab_info, "w") as fp:

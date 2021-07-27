@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import argparse
+from distutils.dir_util import copy_tree
 from tqdm import tqdm
 from glob import glob
 
@@ -25,7 +26,12 @@ def clean_stuffs():
 
 def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='data_const/final_vis',
                debug_mode=DEBUG_MODE):
-    clean_stuffs()
+
+    sub_folders = os.walk(folder_input).__next__()[1]
+    sub_out_folders = os.walk(folder_output).__next__()[1]
+
+    if len(sub_folders) > 4:
+        clean_stuffs()
 
     if MODEL_INDEX not in existing_models:
         print("Index of model not exist")
@@ -36,8 +42,6 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
     else:
         command = './run_with_deeplab.sh'
 
-    sub_folders = os.walk(folder_input).__next__()[1]
-    sub_out_folders = os.walk(folder_output).__next__()[1]
     for folder in tqdm(sub_folders, desc="Running all video"):
 
         # delete all file in data_const/run
@@ -65,7 +69,7 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
         # move result
         save_result = os.path.join(folder_output, folder)
         shutil.move(result_df, save_result)
-        shutil.move("sph_data/mc_solutions_smoothed", save_result)
+        copy_tree("sph_data/mc_solutions_smoothed", f"{save_result}/mc_solutions_smoothed")
 
         # clean
         shutil.rmtree("data_const/final_vis", ignore_errors=True)

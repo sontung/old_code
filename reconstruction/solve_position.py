@@ -15,6 +15,7 @@ from tqdm import tqdm
 from laplacian_fairing_1d import laplacian_fairing
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from custom_rigid_cpd import RigidRegistration
+from translation_bound_processing import check_translation_bound
 from functools import partial
 
 parser = argparse.ArgumentParser()
@@ -47,7 +48,7 @@ def visualize_rigid_registration(iteration, error, X, Y, ax):
     plt.pause(0.001)
 
 
-def compute_translation(debugging=DEBUG_MODE):
+def compute_translation(ab_transx, ab_transy):
     """
     translation of the head
     """
@@ -58,28 +59,22 @@ def compute_translation(debugging=DEBUG_MODE):
     trajectories = []
     x_traj = []
     y_traj = []
-    prev_pos = None
     for idx in lines:
         with open("%s/1-%s.png" % (all_pixel_dir, idx), "rb") as fp:
             right_pixels_all = pickle.load(fp)
         if len(right_pixels_all) == 0:
-            print(f"did not detect ear in 1-{idx}.png")
+            print(f" did not detect ear in 1-{idx}.png")
             mean = [None, None]
         else:
             mean = np.mean(np.array(right_pixels_all), axis=0)
         x_traj.append(mean[0])
         y_traj.append(mean[1])
 
-    # b spline interpolation
-    if debugging:
-        b_spline_smooth(x_traj, vis=True, name=f"trans_x_ori.png")
-        b_spline_smooth(y_traj, vis=True, name=f"trans_y_ori.png")
-        x_traj = b_spline_smooth(x_traj, vis=True, name=f"trans_x_refined.png")
-        y_traj = b_spline_smooth(y_traj, vis=True, name=f"trans_y_refined.png")
-    else:
-        x_traj = b_spline_smooth(x_traj)
-        y_traj = b_spline_smooth(y_traj)
+    x_traj = laplacian_fairing(x_traj)
+    y_traj = laplacian_fairing(y_traj)
 
+    # main
+    prev_pos = None
     for idx in tqdm(range(len(x_traj)), desc="Computing head x-y translation"):
         mean = np.array([x_traj[idx], y_traj[idx]])
         if prev_pos is not None:
@@ -89,6 +84,8 @@ def compute_translation(debugging=DEBUG_MODE):
             trans[1] = -move[0]
             trajectories.append(trans)
         prev_pos = mean
+    trajectories = check_translation_bound(trajectories, ab_transx, ab_transy)
+
     return trajectories, x_traj, y_traj
 
 
@@ -100,7 +97,6 @@ def compute_rotation_accurate():
     prev_pos = None
     all_angles = []
     os.makedirs("../data_heavy/rigid_head_rotation", exist_ok=True)
-    cost_arr = []
     for idx in tqdm(lines[:], desc="Computing head x-y rotation using rigid CPD"):
         img = cv2.imread(f"{images_dir}/1-{idx}.png")
         if img is None or np.sum(img) == 0:
@@ -133,8 +129,6 @@ def compute_rotation_accurate():
         rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
         all_angles.append(rot_angle)
 
-        cost_arr.append(reg.q)
-
         fig = plt.figure()
         fig.add_axes([0, 0, 1, 1])
         ax = fig.axes[0]
@@ -147,10 +141,13 @@ def compute_rotation_accurate():
     ori_angles = all_angles[:]
     all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
     all_angles_before_null = all_angles[:]
+    print("head rotation angles =", all_angles)
     try:
         all_angles = laplacian_fairing(all_angles)
+        print("using laplacian =", all_angles)
     except IndexError:
         all_angles = b_spline_smooth(all_angles)
+        print("using b-spline =", all_angles)
 
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
@@ -194,7 +191,7 @@ def compute_rotation(reverse_for_vis=False, view=1):
             rot_all.append(None)
 
     all_angles_before_null = rot_all[:]
-    all_angles = b_spline_smooth(rot_all)
+    all_angles = laplacian_fairing(rot_all)
 
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
@@ -222,8 +219,8 @@ def compute_head_ab_areas():
         scale1 = pcd.get_surface_area() / ab.get_surface_area()
         global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
     global_scale_ab = np.mean(global_scale_ab_list)
+    trajectory, ne_trans_x_traj, ne_trans_y_traj = compute_translation(ab_transx, ab_transy)
 
-    trajectory, ne_trans_x_traj, ne_trans_y_traj = compute_translation()
     rotated_trajectory_z, _, _ = compute_rotation(view=2)
     if not FAST_MODE:
         rotated_trajectory, ne_rot_traj, all_angles_before_null = compute_rotation_accurate()
@@ -374,9 +371,7 @@ def visualize(debug_mode=DEBUG_MODE):
         vis.capture_screen_image("../data_heavy/saved/v1-%s.png" % counter, do_render=True)
 
         vis.get_view_control().rotate(500, 0)
-        vis.get_view_control().rotate(-200, 0)
         vis.capture_screen_image("../data_heavy/saved/v2-%s.png" % counter, do_render=True)
-        vis.get_view_control().rotate(200, 0)
         if ab_added:
             vis.remove_geometry(ab, reset_bounding_box=False)
     vis.destroy_window()
@@ -454,8 +449,15 @@ def visualize(debug_mode=DEBUG_MODE):
                                           "act. trans=%.3f %.3f" % (trans_actual_traj[counter][1],
                                                                     trans_actual_traj[counter][2]),
                                           (100, 400))
-            info_img = draw_text_to_image(info_img, "ab rot=%.3f (%.3f)" % (ab_rot, ab_rot-90), (100, 500))
-            info_img = draw_text_to_image(info_img, "dist1 =%.2f %.2f" % (ab_trans_image_space_x[counter], ab_trans_image_space_y[counter]), (100, 600))
+            # info_img = draw_text_to_image(info_img, "ab rot=%.3f (%.3f)" % (ab_rot, ab_rot-90), (100, 500))
+            # info_img = draw_text_to_image(info_img, "dist1 =%.2f %.2f" % (ab_trans_image_space_x[counter], ab_trans_image_space_y[counter]), (100, 600))
+
+            info_img = draw_text_to_image(info_img, f"head pos=(%.2f %.2f)" % (head_centers[counter][1],
+                                                                               head_centers[counter][2]), (100, 500))
+            if ab_centers[counter] is not None:
+                info_img = draw_text_to_image(info_img, f"ab pos=(%.2f %.2f)" % (ab_centers[counter][1],
+                                                                                 ab_centers[counter][2]), (100, 600))
+
             if head_rotations_by_masks[counter] is not None:
                 info_img = draw_text_to_image(info_img, "rot. (head mask) =%.2f" % (-head_rotations_by_masks[counter]+90), (100, 900))
 
