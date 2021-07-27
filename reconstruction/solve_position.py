@@ -206,6 +206,17 @@ def compute_rotation(reverse_for_vis=False, view=1):
     return trajectories, all_angles, all_angles_before_null
 
 
+def apply_limited(ab_position, head_traj, axis):
+    total_move = 0
+    for i in range(len(head_traj)):
+        total_move += head_traj[i][axis]
+        if total_move < ab_position:
+            total_move = total_move - head_traj[i][axis]
+            head_traj[i][axis] = 0
+
+    return head_traj
+
+
 def compute_head_ab_areas():
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/area_compute/", exist_ok=True)
@@ -241,6 +252,10 @@ def compute_head_ab_areas():
     vis.add_geometry(pcd)
     vis.get_view_control().set_zoom(1.5)
     arr = []
+
+    trajectory = apply_limited(-ab_transx, trajectory, axis=1)
+    trajectory = apply_limited(-ab_transx, trajectory, axis=2)
+
     for counter in tqdm(range(len(trajectory)), desc="Prior sim to compute view areas"):
         ab_added = False
         pcd.translate(trajectory[counter % len(trajectory)])
@@ -336,6 +351,10 @@ def visualize(debug_mode=DEBUG_MODE):
     pcd.scale(global_head_scale, pcd.get_center())
     head_centers = []
     ab_centers = []
+
+    trajectory = apply_limited(-ab_transx, trajectory, axis=1)
+    trajectory = apply_limited(-ab_transx, trajectory, axis=2)
+
     for counter in tqdm(range(len(trajectory)), desc="Completing simulation"):
         ab_added = False
         pcd.translate(trajectory[counter % len(trajectory)])
