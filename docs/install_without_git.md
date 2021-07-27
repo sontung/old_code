@@ -159,7 +159,6 @@ mkdir -p data_video/all_video
 
 Each video folder has only 3 videos with SHOULDER view, DRV view, REAR view.
 Rename 3 required videos to corresponding name:
-
 * SHOULDER view -> 0
 * DRV view -> 1
 * REAR view -> 2
