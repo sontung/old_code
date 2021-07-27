@@ -1,17 +1,14 @@
 # Step 1: Download source code
 
-There is two options to download source code.
+There are two options to download source code.
 
 * The first is for end-user, downloading from our server, is recommended.
 
 * The latter is for developer, cloning from our private GitLab, is not recommended.
 1. Our server
    
-   Download then extract source code as its original name.
-   
-   ```
-   https://files.xxxxx
-   ```
+   We send you the source code as a 3d-air-bag-p2.zip file, please download and extract it with original name.
+
 
 2. Git cloning 
    
@@ -152,14 +149,22 @@ There is two options to download source code.
    Move Swin-transformer checkpoint into `segmentation_swin/checkpoints`
 
 # Step 6: Prepare videos to analyze
+Create a directory `data_video` at root directory and subdirectory `all_video` to save all folder videos you want to run:
+```
+(In the root directory)
 
-First, rename 3 required videos to corresponding name:
+mkdir -p data_video
+mkdir -p data_video/all_video
+```
+
+Each video folder has only 3 videos with SHOULDER view, DRV view, REAR view.
+Rename 3 required videos to corresponding name:
 
 * SHOULDER view -> 0
 * DRV view -> 1
 * REAR view -> 2
 
-Then, copy only these 3 videos folder to `data_video/all_video`.
+Then, copy video folder to `data_video/all_video`.
 
 # Step 7: Start analyzing
 
@@ -169,6 +174,12 @@ Go back to the root directory and run:
 (In the root directory)
 
 python multiple_video.py
+```
+When you run this command, the part of 2d-segmentation using Swin-transformer model.
+
+If you want to use DeepLab model for 2d-segmentation, run:
+```
+python multiple_video.py -s 1
 ```
 
 # Step 8: Visualizing
