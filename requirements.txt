@@ -8,9 +8,9 @@ pysplishsplash
 microdict
 meshio
 pykdtree
-cmake
 numba
 kmeans1d
+icecream
 
 numpy==1.20.2
 tqdm

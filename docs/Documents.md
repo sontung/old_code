@@ -1,9 +1,3 @@
-# PUT VIDEOS INTO RUN FOLDER OF DATA_CONST, AND LABEL 1 FOR DRV VIDEO, LABEL 0 FOR SHOULDER
-# DONT PUT ANYTHING ELSE
-0 shoulder
-1 drv
-2 rear
-
 # Introduction
 
 The Airbag is software to compute 3D coordinations of airbags and dummy heads based on videos of crashing car tests.
@@ -16,14 +10,13 @@ It provides the following functionalities:
 
 * Visualize 3D illustration.
 
-
 # Installation
 
-Please read `docs/install.md`
+Please read `install.md` or `install_without_git.md`.
 
 # Understand Calculation Processing
 
-Please read `docs/3D-Reconstruction.pdf`.
+Please read `3D-Reconstruction.pdf`.
 
 # Source Code Explanation
 
@@ -38,4 +31,3 @@ Please read `docs/3D-Reconstruction.pdf`.
 * `reconstruction`: perform 3D reconstruction.
 
 * The rest folders: buffer or intermediate computation for 3D reconstruction.
->>>>>>> f68158c0dd470992a60e055dd89f209bb55ad153
