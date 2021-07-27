@@ -4,7 +4,7 @@ There is two options to download source code.
 
 * The first is for end-user, downloading from our server, is recommended.
 
-* The latter is for developer, cloning from our private gitlab, is not recommended.
+* The latter is for developer, cloning from our private GitLab, is not recommended.
 1. Our server
    
    Download then extract source code as its original name.
