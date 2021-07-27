@@ -38,4 +38,3 @@ Please read `docs/3D-Reconstruction.pdf`.
 * `reconstruction`: perform 3D reconstruction.
 
 * The rest folders: buffer or intermediate computation for 3D reconstruction.
->>>>>>> f68158c0dd470992a60e055dd89f209bb55ad153
