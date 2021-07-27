@@ -153,13 +153,17 @@ There is two options to download source code.
 
 # Step 6: Prepare videos to analyze
 
-First, rename 3 required videos to corresponding name:
+1. Create input directories
+   
+   ```
+   mkdir -p data_video/all_video
+   ```
 
+2. Rename 3 required videos to corresponding name:
 * SHOULDER view -> 0
 * DRV view -> 1
 * REAR view -> 2
-
-Then, copy only these 3 videos folder to `data_video/all_video`.
+3. Copy only these 3 videos folder to `data_video/all_video`.
 
 # Step 7: Start analyzing
 
