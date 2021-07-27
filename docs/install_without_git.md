@@ -65,7 +65,7 @@ There is two options to download source code.
     pip install torch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2
    ```
    
-   CUDA 11.0 or 11.1
+   CUDA 11.0 or higher
    
    ```
    pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
@@ -85,7 +85,7 @@ There is two options to download source code.
    pip install mmcv-full==1.3.0 -f https://download.openmmlab.com/mmcv/dist/cu102/torch1.7.0/index.html
    ```
    
-   CUDA 11.0 or 11.1
+   CUDA 11.0 or higher
    
    ```
    pip install mmcv-full==1.3.0 -f https://download.openmmlab.com/mmcv/dist/cu110/torch1.7.0/index.html
@@ -140,13 +140,13 @@ There is two options to download source code.
    
    Extract then move DeepLab checkpoint into `data_const`.
 
-3. Download Swin checkpoint
+3. Download Swin-transformer checkpoint
    
    ```
    https://drive.google.com/file/d/1RZQOussrDXTAIwCJ4VsyIBMXKggbwLmZ/view?usp=sharinghttps://drive.google.com/file/d/1RZQOussrDXTAIwCJ4VsyIBMXKggbwLmZ/view?usp=sharing
    ```
    
-   Move Swin checkpoint into `segmentation_swin/checkpoints`
+   Move Swin-transformer checkpoint into `segmentation_swin/checkpoints`
 
 # Step 6: Prepare videos to analyze
 
