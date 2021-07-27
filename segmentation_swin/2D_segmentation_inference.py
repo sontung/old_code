@@ -1,12 +1,10 @@
 import glob
 import pickle
-import sys
 from argparse import ArgumentParser
 
 import cv2
 import cv2 as cv
 import numpy as np
-from matplotlib import pyplot as plt
 from tqdm import tqdm
 from mmseg.apis import inference_segmentor, init_segmentor
 import os
@@ -14,15 +12,15 @@ from PIL import Image
 
 parser = ArgumentParser()
 parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
-parser.add_argument('-v', '--visualize', type=bool, default=False, help="Visulization mode")
+parser.add_argument('-v', '--visualize', type=bool, default=False, help="Visualization mode")
 args = vars(parser.parse_args())
 DEBUG_MODE = args['debug']
 VISUALIZE_MODE = args["visualize"]
 
 # section Runtime Arguments
 CONFIG_FILE = 'configs/AB__SwinBase__2_local__no_TTA.py'
-CHECKPOINT  = 'checkpoints/config_2_16000iter.pth'
-DEVICE      = 'cuda:0'
+CHECKPOINT = 'checkpoints/config_2_16000iter.pth'
+DEVICE = 'cuda:0'
 
 MODEL = init_segmentor(CONFIG_FILE, CHECKPOINT, device=DEVICE)
 
@@ -34,17 +32,18 @@ EAR_COLOR = [255, 153, 51]
 
 def draw_text_to_image(img, text, pos):
     # Write some Text
-    font                   = cv.FONT_HERSHEY_SIMPLEX
-    fontScale              = 4
-    fontColor              = (255,255,255)
-    lineType               = 2
+    font = cv.FONT_HERSHEY_SIMPLEX
+    font_scale = 4
+    font_color = (255, 255, 255)
+    line_type = 2
 
-    cv.putText(img,text,
-        pos,
-        font,
-        fontScale,
-        fontColor,
-        lineType)
+    cv.putText(img,
+               text,
+               pos,
+               font,
+               font_scale,
+               font_color,
+               line_type)
     return img
 
 
@@ -60,64 +59,14 @@ def merge_2images(_im1, _im2, c1, c2):
     return output
 
 
-def check_contour(_image, _color):
-    '''
-    Arguments
-    ---------
-    _image: 3-channel image, background = [0,0,0]
-    _color: color to fill the largest object in _image
-
-    Returns
-    -------
-        _new_image: visualize input image with fillPoly
-        center: center of the largest contours
-        angle: rotation of the object, in degree
-    '''
-    _new_image = np.zeros(_image.shape, dtype=np.uint8)
-
-    # gray_img = cv.cvtColor(_image, cv.COLOR_BGR2GRAY)
-    cnts, _ = cv.findContours(_image, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-    angle = None
-    center = None
-
-    if len(cnts) > 0:
-        # Draw cnt for all cnts
-        cv.drawContours(_image, cnts, -1, (255, 0, 0), 3)
-
-        # Fill only the largest cnt
-        largest_cnt = max(cnts, key=lambda du1: cv.contourArea(du1))
-        cv.fillPoly(_new_image, pts=[largest_cnt], color=_color)
-
-        # Compute center of the largest cnt
-        ori_rect = cv.minAreaRect(largest_cnt)
-        center = (int(ori_rect[0][0]), int(ori_rect[0][1]))
-
-        # Compute cangle of the largest cnt
-        oriented_rect = cv.boxPoints(ori_rect)
-        oriented_rect = np.int0(oriented_rect)
-
-        ind_by_x = np.argsort(oriented_rect[:, 1])
-        top_points = oriented_rect[ind_by_x[:2]]
-        bot_points = oriented_rect[ind_by_x[2:]]
-        left_top_point = top_points[np.argmax(top_points[:, 0])]
-        left_bot_point = bot_points[np.argmax(bot_points[:, 0])]
-
-        x1, y1 = left_top_point
-        x2, y2 = left_bot_point
-
-        angle = np.rad2deg(np.arctan2(y2-y1, x1-x2))
-        if angle < 0:
-            angle += 180
-
-    return _new_image, center, angle
-
-
-def compute_postion_and_rotation(mask, rgb_mask, contours, vis=VISUALIZE_MODE):
+def compute_position_and_rotation(mask, rgb_mask, contours):
     assert mask.shape == rgb_mask.shape[:2]
     x1, y1, x2, y2 = 0, 0, 0, 0
+
     if len(contours) < 1:
         return 0, None, None, x1, y1, x2, y2
-    elif len(contours) > 1:
+
+    if len(contours) > 1:
         points = contours[0]
         for i in range(1, len(contours)):
             points = np.append(points, contours[i], axis=0)
@@ -151,25 +100,7 @@ def compute_postion_and_rotation(mask, rgb_mask, contours, vis=VISUALIZE_MODE):
     if angle < 0:
         angle += 180
 
-    if vis:
-        cv.drawContours(rgb_mask, contours, -1, (255, 0, 0), 2)
-        cv.drawContours(rgb_mask, [hull], -1, (0, 255, 0), 2)
-        cv.drawContours(rgb_mask, [bb_box], -1, (0, 0, 255), 2)
-
-        text_img = np.zeros(rgb_mask.shape, dtype=np.uint8)
-        text_img = draw_text_to_image(text_img, f"angle: {angle}", (10, text_img.shape[0]//2))
-        text_img = draw_text_to_image(text_img, f"area: {area}", (10, text_img.shape[0]//2 + 200))
-        opencv_show_image('vis', np.hstack([rgb_mask, text_img]))
-
     return area, center, angle, x1, y1, x2, y2
-
-
-def opencv_show_image(image, name='vis'):
-    cv.namedWindow(name, cv.WINDOW_NORMAL)
-    cv.imshow(name, image)
-    cv.waitKey()
-    cv.destroyAllWindows()
-    return
 
 
 def refine_airbag_segmentation(ab_mask, head_mask):
@@ -180,9 +111,9 @@ def refine_airbag_segmentation(ab_mask, head_mask):
     for cnt in test_cnts:
         dum_mask = np.zeros(head_mask.shape, dtype=np.uint8)
         cv2.fillPoly(dum_mask, [cnt], [255])
-        intersec = cv2.bitwise_and(head_mask, dum_mask)
-        intersec_pixel = np.sum(intersec)
-        if intersec_pixel > 0:
+        intersection = cv2.bitwise_and(head_mask, dum_mask)
+        intersect_pixel = np.sum(intersection)
+        if intersect_pixel > 0:
             overlap_mask = dum_mask
             break
     if overlap_mask is None:
@@ -264,19 +195,19 @@ def segment_all_video(root='/media/hblab/01D5F2DD5173DEA0/AirBag/3d-air-bag-p2/d
         if f in sub_segs_folder:
             print(f"Skipping {f}")
         else:
-            dir = os.path.join(root, segs, f)
-            os.makedirs(dir, exist_ok=True)
-            main(txt_file=os.path.join(dir, 'frame2ab.txt'),
+            directory = os.path.join(root, segs, f)
+            os.makedirs(directory, exist_ok=True)
+            main(frame2ab_info=os.path.join(directory, 'frame2ab.txt'),
                  input_images=os.path.join(root, frames, f),
-                 save_seg_abh=os.path.join(dir, "frames_seg_abh"),
-                 save_seg_abh_vis=os.path.join(dir, "frames_seg_abh_vis"),
-                 save_ear_vis=os.path.join(dir, "frames_ear_only"),
-                 save_ear_coor=os.path.join(dir, "frames_ear_coord_only"))
+                 save_seg_abh=os.path.join(directory, "frames_seg_abh"),
+                 save_seg_abh_vis=os.path.join(directory, "frames_seg_abh_vis"),
+                 save_ear_vis=os.path.join(directory, "frames_ear_only"),
+                 save_ear_coor=os.path.join(directory, "frames_ear_coord_only"))
 
     return
 
 
-def compute_2d_x_asix(ab_contours, head_contour, origin_img, img_name, debuging=DEBUG_MODE):
+def compute_2d_x_axis(ab_contours, head_contour, origin_img, img_name, debuging=DEBUG_MODE):
 
     def bb_box(contour):
         top_left = np.min(contour, axis=0)[0]
@@ -296,7 +227,7 @@ def compute_2d_x_asix(ab_contours, head_contour, origin_img, img_name, debuging=
         center = (int(center[0]), int(center[1]))
         return tl, br, center
 
-    if len(ab_contours) < 1 or len(head_contour) < 1 :
+    if len(ab_contours) < 1 or len(head_contour) < 1:
         return None
 
     if len(ab_contours) == 1:
@@ -327,14 +258,11 @@ def compute_2d_x_asix(ab_contours, head_contour, origin_img, img_name, debuging=
 
         Image.fromarray(blend).save(f'debugs/{img_name}')
 
-    # sys.exit()
-
     return
 
 
-def main(debuging=DEBUG_MODE,
-         txt_file='../data_heavy/frame2ab.txt',
-         txt_file_2 = '../data_heavy/head_masks.txt',
+def main(frame2ab_info='../data_heavy/frame2ab.txt',
+         head_masks_info='../data_heavy/head_masks.txt',
          input_images='../data_heavy/frames',
          save_seg_abh='../data_heavy/frames_seg_abh',
          save_seg_abh_vis='../data_heavy/frames_seg_abh_vis',
@@ -347,21 +275,18 @@ def main(debuging=DEBUG_MODE,
     os.makedirs(save_ear_coor, exist_ok=True)
 
     # section Predict
-    file_paths = glob.glob(f"{input_images}/*.png")
+    file_paths = glob.glob(f"{input_images}/[1|2]-*.png")
 
-    with open(txt_file_2, "w") as fp2:
-        with open(txt_file, "w") as fp:
+    with open(head_masks_info, "w") as fp2:
+        with open(frame2ab_info, "w") as fp:
 
             for path in tqdm(file_paths, desc='2D Segmentation:'):
-
                 img_name = os.path.basename(path)
                 view = int(img_name.split('-')[0])
-                # if view !=2:
-                #     continue
 
                 inp_img = cv.imread(path, 1)
-                result    = inference_segmentor(MODEL, inp_img)
-                pred    = result[0]
+                result = inference_segmentor(MODEL, inp_img)
+                pred = result[0]
 
                 head_mask, head_rgb_mask, head_contour = get_seg_head_from_prediction(pred)
                 ab_mask, ab_rgb_mask, ab_contours = get_seg_airbag_from_prediction(pred, view=view)
@@ -373,11 +298,9 @@ def main(debuging=DEBUG_MODE,
                         ab_rgb_mask = np.zeros_like(ab_rgb_mask)
                         ab_rgb_mask[ab_mask == 255] = AIRBAG_COLOR
 
-                        # compute_2d_x_asix(ab_contours, head_contour, inp_img, img_name)
-
-                head_pixels, head_center, head_rot, x1, y1, x2, y2 = compute_postion_and_rotation(
+                head_pixels, head_center, head_rot, x1, y1, x2, y2 = compute_position_and_rotation(
                     head_mask, head_rgb_mask, head_contour)
-                ab_pixels, ab_center, ab_rot, _, _, _, _ = compute_postion_and_rotation(
+                ab_pixels, ab_center, ab_rot, _, _, _, _ = compute_position_and_rotation(
                     ab_mask, ab_rgb_mask, ab_contours)
 
                 dist_x = -1
@@ -406,6 +329,4 @@ def main(debuging=DEBUG_MODE,
 
 
 if __name__ == '__main__':
-    # segment_all_video()
     main()
-

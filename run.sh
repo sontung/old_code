@@ -14,6 +14,7 @@ cd ../../../../../
 cd ../sph_data/
 python main.py
 
+
 set -euxo pipefail
 
 cd ../preprocess/
@@ -26,7 +27,7 @@ cd ../preprocess/
 python main.py
 
 cd ../reconstruction/
-python solve_airbag.py
+python solve_airbag.py -d True
 
 cd ../sph_data
 python txt2mesh.py
