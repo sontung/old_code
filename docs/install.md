@@ -164,9 +164,9 @@ Each video folder has only 3 videos with SHOULDER view, DRV view, REAR view.
 To get the best results, make sure that the movements in these views are similar or sync.  
 
 Rename 3 required videos to corresponding name:
-* SHOULDER view -> 0.mp4 (mp4 is just example).
-* DRV view      -> 1.mp4
-* REAR view     -> 2.mp4
+* SHOULDER view -> `0.mp4` (mp4 is just example).
+* DRV view      -> `1.mp4`
+* REAR view     -> `2.mp4`
 
 Then, copy video folder to `data_video/all_video`.
 
