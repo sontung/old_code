@@ -160,11 +160,13 @@ mkdir -p data_video
 mkdir -p data_video/all_video
 ```
 
-Each video folder has only 3 videos with SHOULDER view, DRV view, REAR view. To get the best results, make sure that the similarity between 3 views is the same.
+Each video folder has only 3 videos with SHOULDER view, DRV view, REAR view.  
+To get the best results, make sure that the movements in these views are similar or sync.  
+
 Rename 3 required videos to corresponding name:
-* SHOULDER view -> 0
-* DRV view -> 1
-* REAR view -> 2
+* SHOULDER view -> 0.mp4 (mp4 is just example).
+* DRV view      -> 1.mp4
+* REAR view     -> 2.mp4
 
 Then, copy video folder to `data_video/all_video`.
 
@@ -186,7 +188,7 @@ python multiple_video.py -s 1
 
 # Step 8: Visualizing
 
-Once completed, results are stored in `data_video/all_final_vis` as `.png` images. 
+Once completed, results store in `data_video/all_final_vis` as `.png` images. 
 
 There are 2 options to visualize results:
 
@@ -200,7 +202,7 @@ There are 2 options to visualize results:
 python3 tools/view.py ./data_video/all_final_vis/<<v1>>
 ```
 
-Replace <<v1>> with the folder of resuls you want to visualize.
+Replace <<v1>> with the folder of results you want to visualize.
 
 Then, you can press:
 
