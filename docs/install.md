@@ -42,6 +42,9 @@ There are two options to download source code.
 
 1. Check CUDA version.
    
+   Please make sure the nvidia driver in your computer is available. 
+   If not exist, please go to https://www.nvidia.com/Download/index.aspx to download driver and install it. 
+   
    ```
    nvidia-smi
    ```
@@ -157,7 +160,7 @@ mkdir -p data_video
 mkdir -p data_video/all_video
 ```
 
-Each video folder has only 3 videos with SHOULDER view, DRV view, REAR view.
+Each video folder has only 3 videos with SHOULDER view, DRV view, REAR view. To get the best results, make sure that the similarity between 3 views is the same.
 Rename 3 required videos to corresponding name:
 * SHOULDER view -> 0
 * DRV view -> 1
