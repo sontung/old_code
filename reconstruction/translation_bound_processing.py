@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import sys
 import open3d as o3d
 import matplotlib.pyplot as plt
 from solve_airbag import compute_ab_frames
@@ -63,23 +62,21 @@ def check_translation_bound(head_traj, ab_transx, ab_transy):
         prev_pos = mean
 
     # re-simulate
-    new_head_x_pos = []
-    new_head_y_pos = []
-    pcd.translate(original_pos-pcd.get_center())
     if DEBUG_MODE:
-        print("at", pcd.get_center(), original_pos)
-    for counter in range(len(trajectories)):
-        pcd.translate(trajectories[counter % len(head_traj)])
-        vis.update_geometry(pcd)
-        vis.poll_events()
-        vis.update_renderer()
-        new_head_x_pos.append(pcd.get_center()[1])
-        new_head_y_pos.append(pcd.get_center()[2])
-    if DEBUG_MODE:
+        new_head_x_pos = []
+        new_head_y_pos = []
+        pcd.translate(original_pos-pcd.get_center())
+        if DEBUG_MODE:
+            print("at", pcd.get_center(), original_pos)
+        for counter in range(len(trajectories)):
+            pcd.translate(trajectories[counter % len(head_traj)])
+            vis.update_geometry(pcd)
+            vis.poll_events()
+            vis.update_renderer()
+            new_head_x_pos.append(pcd.get_center()[1])
+            new_head_y_pos.append(pcd.get_center()[2])
         print("after", np.min(new_head_y_pos), np.max(new_head_y_pos), -ab_transy)
 
-    vis.destroy_window()
-    if DEBUG_MODE:
         plt.subplot(211)
         plt.plot(head_x_pos_old)
         plt.plot(new_head_x_pos)
@@ -93,6 +90,8 @@ def check_translation_bound(head_traj, ab_transx, ab_transy):
         plt.legend(["ori", "scaled", "bound"])
         plt.savefig("trans_bound.png")
         plt.close()
+
+    vis.destroy_window()
     return trajectories
 
 
