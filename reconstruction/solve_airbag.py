@@ -166,13 +166,7 @@ def compute_ab_pose():
             rot_all.append(rot)
 
     abam1, ham1 = np.mean(ab_area_all), np.mean(head_area_all)
-    for frn in lines:
-        akey = "1-%s.png" % frn
-        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
-        ab_area, head_area = map(float, [ab_area, head_area])
-        if ab_area > abam1 and head_area > ham1:
-            scale_all.append(head_area / ab_area)
-    results = [np.mean(scale_all), np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all), abam1, ham1]
+    results = [ham1/abam1, np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all), abam1, ham1]
 
     os.makedirs("../data_const/final_vis", exist_ok=True)
     with open("../data_const/final_vis/ab_poses.pkl", "wb") as pickle_file:

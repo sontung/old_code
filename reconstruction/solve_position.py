@@ -9,6 +9,7 @@ import cv2
 import matplotlib.pyplot as plt
 import shutil
 import argparse
+from icecream import ic
 from scipy.spatial.transform import Rotation as rot_mat_compute
 from rec_utils import b_spline_smooth, normalize, draw_text_to_image, neutralize_head_rot
 from tqdm import tqdm
@@ -72,7 +73,6 @@ def compute_translation(ab_transx, ab_transy):
     x_traj = laplacian_fairing(x_traj)
     y_traj = laplacian_fairing(y_traj)
 
-    print(x_traj[0], y_traj[0])
     # main
     prev_pos = None
     for idx in tqdm(range(len(x_traj)), desc="Computing head x-y translation"):
@@ -304,6 +304,7 @@ def visualize(debug_mode=DEBUG_MODE):
     pcd.compute_vertex_normals()
     du_outputs, du_outputs2, (ab_transx_ori, ab_transy_ori) = compute_head_ab_areas()
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
+
     sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
     rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null = du_outputs
     img_ab_area, img_head_area = compute_head_ab_areas_image_space()
