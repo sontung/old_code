@@ -16,6 +16,7 @@ def neutralize_head_rot(cpd_computations, head_mask_computations):
     print("begin to enforce smoothness")
     ranges = partition_by_none(cpd_computations)
     for start, end in ranges:
+        # print(start, end, cpd_computations[start:end], head_path[start:end])
         cpd_path = cpd_computations[start:end]
         head_path = head_mask_computations[start:end]
         best_solution[start:end] = smooth_enforce(cpd_path, head_path)

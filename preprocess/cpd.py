@@ -2,6 +2,8 @@ from functools import partial
 import matplotlib.pyplot as plt
 from pycpd import AffineRegistration
 from fast_registration import register_fast
+from numba import config, njit, threading_layer
+
 import numpy as np
 from tqdm import tqdm
 import glob
@@ -119,6 +121,7 @@ def process_cpd(debug=False):
 
 
 def process_cpd_fast(debug=False):
+
     ear = cv2.imread("../data/ear.png")
     ear = cv2.resize(ear, (ear.shape[1]//4, ear.shape[0]//4))
     all_files = glob.glob("../data_heavy/edge_pixels/*")

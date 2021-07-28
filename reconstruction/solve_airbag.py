@@ -172,9 +172,11 @@ def compute_ab_pose():
             head_area_all.append(head_area)
         if ab_area > 1000:
             dist_x, dist_y, rot = map(float, [dist_x, dist_y, rot])
-            dist_all_x.append(dist_x)
-            dist_all_y.append(dist_y)
+            if dist_x > 0 and dist_y > 0:
+                dist_all_x.append(dist_x)
+                dist_all_y.append(dist_y)
             rot_all.append(rot)
+
     abam1, ham1 = np.mean(ab_area_all), np.mean(head_area_all)
     for frn in lines:
         akey = "1-%s.png" % frn
@@ -183,6 +185,7 @@ def compute_ab_pose():
         if ab_area > abam1 and head_area > ham1:
             scale_all.append(head_area / ab_area)
     results = [np.mean(scale_all), np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all), abam1, ham1]
+
     os.makedirs("../data_const/final_vis", exist_ok=True)
     with open("../data_const/final_vis/ab_poses.pkl", "wb") as pickle_file:
         pickle.dump(results, pickle_file)

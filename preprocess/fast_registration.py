@@ -1,5 +1,5 @@
 import numpy as np
-from numba import jit, guvectorize, njit, prange
+from numba import jit, njit, prange
 
 
 @jit("f8[:, :](f8[:, :, :], f8[:, :, :])", nopython=True)
