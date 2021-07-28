@@ -165,7 +165,7 @@ def main(has_labels=False):
 
                         dist_x = -1
                         dist_y = -1
-                        if center2 is not None and center1 is not None:
+                        if center2 is not None:
                             dist_x = center2[0]
                             dist_y = center2[1]
 
