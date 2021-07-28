@@ -57,17 +57,6 @@ def sample_accordingly(new_time_step=27):
         new_particles_matrix[i, start_idx:, 1] = y
         new_particles_matrix[i, start_idx:, 2] = z
 
-        # import matplotlib.pyplot as plt
-        # print(x)
-        # print(particles_matrix[i, :, 0])
-        # print(len(x), particles_matrix[i, :, 0].shape)
-        # print(np.linspace(0, last_time_step, new_time_step, endpoint=True))
-        # plt.plot(np.linspace(0, last_time_step, new_time_step, endpoint=True), x)
-        # plt.plot(range(particles_matrix[i, :, 0].shape[0]), particles_matrix[i, :, 0])
-        #
-        # plt.plot()
-        # plt.show()
-
     return new_particles_matrix
 
 
@@ -104,7 +93,6 @@ def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_
                 else:
                     break
             f.close()
-    return
 
 
 def compute_head_ab_areas_image_space():
@@ -193,8 +181,6 @@ def compute_ab_pose():
 
 
 if __name__ == "__main__":
-    # compute_ab_trans()
-    # compute_ab_pose()
     start, nb_frames = compute_ab_frames()
     a = sample_accordingly(nb_frames)
     write_to_pcd(a)

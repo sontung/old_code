@@ -16,7 +16,6 @@ from laplacian_fairing_1d import laplacian_fairing
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from custom_rigid_cpd import RigidRegistration
 from translation_bound_processing import check_translation_bound
-from functools import partial
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
@@ -86,8 +85,10 @@ def compute_translation(ab_transx, ab_transy):
             trajectories.append(trans)
         prev_pos = mean
     ab_transx_new = ab_transx-y_traj[0]
-    trajectories = check_translation_bound(trajectories, ab_transy, ab_transx_new)
-    return trajectories, x_traj, y_traj, ab_transx_new
+    ab_transy_new = ab_transy-x_traj[0]
+
+    trajectories = check_translation_bound(trajectories, ab_transy_new, ab_transx_new)
+    return trajectories, x_traj, y_traj, ab_transx_new, ab_transy_new
 
 
 def compute_rotation_accurate():
@@ -206,7 +207,7 @@ def compute_head_ab_areas():
     os.makedirs("../data_heavy/area_compute/", exist_ok=True)
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
-    print("ab", ab_transx, ab_transy)
+
     # scale the AB to match the scale head/ab in image space
     global_scale_ab_list = []
     for ab_dir in glob.glob(f"{ab_mesh_dir}/*"):
@@ -214,7 +215,7 @@ def compute_head_ab_areas():
         scale1 = pcd.get_surface_area() / ab.get_surface_area()
         global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
     global_scale_ab = np.mean(global_scale_ab_list)
-    trajectory, ne_trans_x_traj, ne_trans_y_traj, ab_transx = compute_translation(ab_transx, ab_transy)
+    trajectory, ne_trans_x_traj, ne_trans_y_traj, ab_transx2, ab_transy2 = compute_translation(ab_transx, ab_transy)
 
     rotated_trajectory_z, _, _ = compute_rotation(view=2)
     if not FAST_MODE:
@@ -289,11 +290,11 @@ def compute_head_ab_areas():
     ab_area = np.max(arr)
     results = [head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z,
                ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null]
-    results2 = [ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area]
+    results2 = [ab_scale, ab_transx2, ab_transy2, ab_rot, ab_area, head_area]
     os.makedirs("../data_const/final_vis", exist_ok=True)
     with open("../data_const/final_vis/trajectory.pkl", "wb") as pickle_file:
         pickle.dump(results, pickle_file)
-    return results, results2
+    return results, results2, (ab_transx, ab_transy)
 
 
 def visualize(debug_mode=DEBUG_MODE):
@@ -301,7 +302,7 @@ def visualize(debug_mode=DEBUG_MODE):
     os.makedirs("../data_heavy/saved/", exist_ok=True)
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
-    du_outputs, du_outputs2 = compute_head_ab_areas()
+    du_outputs, du_outputs2, (ab_transx_ori, ab_transy_ori) = compute_head_ab_areas()
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
     sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
     rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null = du_outputs
@@ -375,13 +376,11 @@ def visualize(debug_mode=DEBUG_MODE):
     vis.destroy_window()
 
     if debug_mode:
-        from solve_airbag import compute_ab_trans
 
         sys.stdin = open("../data_heavy/head_masks.txt")
         lines2 = [du[:-1] for du in sys.stdin.readlines()]
         frame2head_rect = {du.split(" ")[0]: du for du in lines2}
         head_rotations_by_masks = compute_rotation()[-1]
-        ab_trans_image_space = compute_ab_trans()
         os.makedirs("test", exist_ok=True)
         os.makedirs("test2", exist_ok=True)
         sys.stdin = open("../data_heavy/frames/info.txt")
@@ -418,12 +417,10 @@ def visualize(debug_mode=DEBUG_MODE):
             ear_im1[ear[:, 0], ear[:, 1]] = [125, 60, 80]
             seg_im1 = cv2.addWeighted(seg_im1, 0.3, ear_im1, 0.7, 0)
             x1, y1, x2, y2 = map(int, frame2head_rect[f"1-{ind}.png"].split(" ")[1:])
-            cv2.circle(seg_im1, (x1, y1), 3, (255, 255, 255), -1)
-            cv2.circle(seg_im1, (x2, y2), 3, (255, 255, 255), -1)
-            cv2.circle(seg_im1, (int(ab_transx), int(ab_transy)), 5, (255, 128, 255), -1)
-            cv2.circle(seg_im1, (280, 98), 5, (255, 128, 255), -1)
-
+            cv2.circle(seg_im1, (int(ab_transx_ori), int(ab_transy_ori)), 5, (255, 128, 255), -1)
             cv2.line(seg_im1, (x1, y1), (x2, y2), (255, 255, 255), 5)
+            cv2.imwrite(f"../data_heavy/frames_seg_abh/1-{ind}.png", seg_im1)
+
             seg_im1 = cv2.resize(seg_im1, (im1.shape[1], im1.shape[0]))
 
             try:
@@ -431,10 +428,9 @@ def visualize(debug_mode=DEBUG_MODE):
                 seg_view2 = cv2.imread('../data_heavy/frames_seg_abh/2-%s.png' % ind).astype(np.uint8)
                 seg_im2 = cv2.addWeighted(im_view2, 0.3, seg_view2, 0.7, 0)
                 x12, y12, x22, y22 = map(int, frame2head_rect[f"2-{ind}.png"].split(" ")[1:])
-
-                cv2.circle(seg_im2, (x12, y12), 3, (255, 255, 255), -1)
-                cv2.circle(seg_im2, (x22, y22), 3, (255, 255, 255), -1)
                 cv2.line(seg_im2, (x12, y12), (x22, y22), (255, 255, 255), 5)
+                cv2.imwrite(f"../data_heavy/frames_seg_abh/2-{ind}.png", seg_im2)
+
                 seg_im2 = cv2.resize(seg_im2, (im1.shape[1], im1.shape[0]))
 
             except AttributeError:
@@ -443,16 +439,6 @@ def visualize(debug_mode=DEBUG_MODE):
 
             info_img = np.ones_like(im1)*255
             info_img = draw_text_to_image(info_img, "rot=%.3f" % (ne_rot_traj[counter]), (100, 100))
-            info_img = draw_text_to_image(info_img, "trans=%.3f %.3f" % (ne_trans_x_traj[counter],
-                                                                         ne_trans_y_traj[counter]), (100, 200))
-            info_img = draw_text_to_image(info_img, "act. rot=%.3f" % (rot_actual_traj[counter]), (100, 300))
-            info_img = draw_text_to_image(info_img,
-                                          "act. trans=%.3f %.3f" % (trans_actual_traj[counter][1],
-                                                                    trans_actual_traj[counter][2]),
-                                          (100, 400))
-            # info_img = draw_text_to_image(info_img, "ab rot=%.3f (%.3f)" % (ab_rot, ab_rot-90), (100, 500))
-            # info_img = draw_text_to_image(info_img, "dist1 =%.2f %.2f" % (ab_trans_image_space_x[counter], ab_trans_image_space_y[counter]), (100, 600))
-
             info_img = draw_text_to_image(info_img, f"head pos=(%.2f %.2f)" % (head_centers[counter][1],
                                                                                head_centers[counter][2]), (100, 500))
             if ab_centers[counter] is not None:
@@ -465,9 +451,6 @@ def visualize(debug_mode=DEBUG_MODE):
             if all_angles_before_null[counter] is None:
                 info_img = draw_text_to_image(info_img, "missing comp.", (100, 800))
 
-            if ab_centers[counter] is not None:
-                dist = head_centers[counter] - ab_centers[counter]
-                info_img = draw_text_to_image(info_img, "dist2 =%.2f %.2f" % (dist[1], dist[2]), (100, 700))
             res_im = np.vstack([np.hstack([seg_im1, im1]), np.hstack([seg_im2, info_img])])
             res_im = cv2.resize(res_im, (res_im.shape[1]//2, res_im.shape[0]//2))
             cv2.imwrite(f"test2/res-{ind}.png", res_im)
