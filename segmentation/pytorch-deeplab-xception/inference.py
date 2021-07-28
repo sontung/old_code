@@ -163,15 +163,11 @@ def main(has_labels=False):
                         im_final = merge_2images(im1, im2,
                                                  classid2color[14].astype(np.uint8), classid2color[15].astype(np.uint8))
 
-                        # cv2.imshow("test", np.hstack([img, new_img_ab, new_img_head]))
-                        # cv2.waitKey()
-                        # cv2.destroyAllWindows()
-
                         dist_x = -1
                         dist_y = -1
                         if center2 is not None and center1 is not None:
-                            dist_x = center2[0]-center1[0]
-                            dist_y = center2[1]-center1[1]
+                            dist_x = center2[0]
+                            dist_y = center2[1]
 
                         imn = im_name[idx].split("/")[-1]
                         ab_pixels = np.sum((pred2[idx]==15).numpy())

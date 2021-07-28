@@ -27,10 +27,10 @@ DEBUG_MODE = args['debug']
 FAST_MODE = args['fast']
 
 if DEBUG_MODE:
-    shutil.rmtree("test", ignore_errors=True)
-    shutil.rmtree("test2", ignore_errors=True)
-    os.makedirs("test", exist_ok=True)
-    os.makedirs("test2", exist_ok=True)
+    # shutil.rmtree("test", ignore_errors=True)
+    # shutil.rmtree("test2", ignore_errors=True)
+    # os.makedirs("test", exist_ok=True)
+    # os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
 if FAST_MODE:
     print("running in fast mode (not recommended)")
@@ -73,6 +73,7 @@ def compute_translation(ab_transx, ab_transy):
     x_traj = laplacian_fairing(x_traj)
     y_traj = laplacian_fairing(y_traj)
 
+    print(x_traj[0], y_traj[0])
     # main
     prev_pos = None
     for idx in tqdm(range(len(x_traj)), desc="Computing head x-y translation"):
@@ -84,9 +85,9 @@ def compute_translation(ab_transx, ab_transy):
             trans[1] = -move[0]
             trajectories.append(trans)
         prev_pos = mean
-    trajectories = check_translation_bound(trajectories, ab_transx, ab_transy)
-
-    return trajectories, x_traj, y_traj
+    ab_transx_new = ab_transx-y_traj[0]
+    trajectories = check_translation_bound(trajectories, ab_transy, ab_transx_new)
+    return trajectories, x_traj, y_traj, ab_transx_new
 
 
 def compute_rotation_accurate():
@@ -154,11 +155,10 @@ def compute_rotation_accurate():
             move = rot_deg_overall - prev_pos
             trajectories.append(-move)
         prev_pos = rot_deg_overall
-
     return trajectories, all_angles, all_angles_before_null
 
 
-def compute_rotation(reverse_for_vis=False, view=1):
+def compute_rotation(view=1):
     sys.stdin = open("../data_heavy/frames/info.txt")
     trajectories = []
     prev_pos = None
@@ -198,11 +198,6 @@ def compute_rotation(reverse_for_vis=False, view=1):
             move = rot_deg_overall - prev_pos
             trajectories.append(-move)
         prev_pos = rot_deg_overall
-    if reverse_for_vis:
-        new_list = []
-        for i in reversed(trajectories):
-            new_list.append(i*-1)
-        trajectories.extend(new_list)
     return trajectories, all_angles, all_angles_before_null
 
 
@@ -211,7 +206,7 @@ def compute_head_ab_areas():
     os.makedirs("../data_heavy/area_compute/", exist_ok=True)
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
-
+    print("ab", ab_transx, ab_transy)
     # scale the AB to match the scale head/ab in image space
     global_scale_ab_list = []
     for ab_dir in glob.glob(f"{ab_mesh_dir}/*"):
@@ -219,7 +214,7 @@ def compute_head_ab_areas():
         scale1 = pcd.get_surface_area() / ab.get_surface_area()
         global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
     global_scale_ab = np.mean(global_scale_ab_list)
-    trajectory, ne_trans_x_traj, ne_trans_y_traj = compute_translation(ab_transx, ab_transy)
+    trajectory, ne_trans_x_traj, ne_trans_y_traj, ab_transx = compute_translation(ab_transx, ab_transy)
 
     rotated_trajectory_z, _, _ = compute_rotation(view=2)
     if not FAST_MODE:
@@ -242,7 +237,6 @@ def compute_head_ab_areas():
     vis.get_view_control().set_zoom(1.5)
     arr = []
 
-
     for counter in tqdm(range(len(trajectory)), desc="Prior sim to compute view areas"):
         ab_added = False
         pcd.translate(trajectory[counter % len(trajectory)])
@@ -263,7 +257,7 @@ def compute_head_ab_areas():
             ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
             arr.append(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
             ab.scale(global_scale_ab, ab.get_center())
-            ab.translate([0, -ab_transx, -ab_transy])
+            ab.translate([0, -ab_transy, -ab_transx])
             ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
             ab.rotate(rot_mat_compute.from_euler("x", -90+ab_rot, degrees=True).as_matrix())
             ab_added = True
@@ -295,10 +289,11 @@ def compute_head_ab_areas():
     ab_area = np.max(arr)
     results = [head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z,
                ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null]
+    results2 = [ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area]
     os.makedirs("../data_const/final_vis", exist_ok=True)
     with open("../data_const/final_vis/trajectory.pkl", "wb") as pickle_file:
         pickle.dump(results, pickle_file)
-    return results
+    return results, results2
 
 
 def visualize(debug_mode=DEBUG_MODE):
@@ -306,8 +301,8 @@ def visualize(debug_mode=DEBUG_MODE):
     os.makedirs("../data_heavy/saved/", exist_ok=True)
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd.compute_vertex_normals()
-    ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
-    du_outputs = compute_head_ab_areas()
+    du_outputs, du_outputs2 = compute_head_ab_areas()
+    ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
     sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
     rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null = du_outputs
     img_ab_area, img_head_area = compute_head_ab_areas_image_space()
@@ -338,7 +333,6 @@ def visualize(debug_mode=DEBUG_MODE):
     pcd.scale(global_head_scale, pcd.get_center())
     head_centers = []
     ab_centers = []
-
 
     for counter in tqdm(range(len(trajectory)), desc="Completing simulation"):
         ab_added = False
@@ -395,13 +389,12 @@ def visualize(debug_mode=DEBUG_MODE):
         ear_dir = "../data_heavy/frames_ear_only"
         rigid_dir = "../data_heavy/rigid_head_rotation"
         images_dir = "../data_heavy/line_images"
-        ab_trans_image_space_x = ab_trans_image_space[0][1:]
-        ab_trans_image_space_y = ab_trans_image_space[1][1:]
+
         lines = lines[1:]
         all_angles_before_null = all_angles_before_null[1:]
         ne_rot_traj = ne_rot_traj[1:]
-        # vis_rotated_trajectory_z = rotated_trajectory_z[1:]
         head_rotations_by_masks = head_rotations_by_masks[1:]
+
         assert len(lines) == len(trajectory)
         for counter, ind in enumerate(lines):
             line_img = cv2.imread("%s/1-%s.png" % (images_dir, ind))
@@ -427,6 +420,9 @@ def visualize(debug_mode=DEBUG_MODE):
             x1, y1, x2, y2 = map(int, frame2head_rect[f"1-{ind}.png"].split(" ")[1:])
             cv2.circle(seg_im1, (x1, y1), 3, (255, 255, 255), -1)
             cv2.circle(seg_im1, (x2, y2), 3, (255, 255, 255), -1)
+            cv2.circle(seg_im1, (int(ab_transx), int(ab_transy)), 5, (255, 128, 255), -1)
+            cv2.circle(seg_im1, (280, 98), 5, (255, 128, 255), -1)
+
             cv2.line(seg_im1, (x1, y1), (x2, y2), (255, 255, 255), 5)
             seg_im1 = cv2.resize(seg_im1, (im1.shape[1], im1.shape[0]))
 
@@ -435,7 +431,8 @@ def visualize(debug_mode=DEBUG_MODE):
                 seg_view2 = cv2.imread('../data_heavy/frames_seg_abh/2-%s.png' % ind).astype(np.uint8)
                 seg_im2 = cv2.addWeighted(im_view2, 0.3, seg_view2, 0.7, 0)
                 x12, y12, x22, y22 = map(int, frame2head_rect[f"2-{ind}.png"].split(" ")[1:])
-                cv2.circle(seg_im1, (x12, y12), 3, (255, 255, 255), -1)
+
+                cv2.circle(seg_im2, (x12, y12), 3, (255, 255, 255), -1)
                 cv2.circle(seg_im2, (x22, y22), 3, (255, 255, 255), -1)
                 cv2.line(seg_im2, (x12, y12), (x22, y22), (255, 255, 255), 5)
                 seg_im2 = cv2.resize(seg_im2, (im1.shape[1], im1.shape[0]))

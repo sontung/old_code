@@ -305,17 +305,25 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
 
                 dist_x = -1
                 dist_y = -1
-                if ab_center is not None and head_center is not None:
-                    dist_x = ab_center[0] - head_center[0]
-                    dist_y = ab_center[1] - head_center[1]
+                if ab_center is not None:
+                    dist_x = ab_center[0]
+                    dist_y = ab_center[1]
 
                 print(img_name, ab_pixels, head_pixels, dist_x, dist_y, head_rot, ab_rot, file=fp)
                 print(img_name, x1, y1, x2, y2, file=fp2)
 
                 seg_final = merge_2images(head_rgb_mask, ab_rgb_mask, HEAD_COLOR, AIRBAG_COLOR)
+
                 Image.fromarray(seg_final).save(f"{save_seg_abh}/{img_name}")
                 blend = cv2.addWeighted(inp_img, 0.3, seg_final, 0.7, 0)
                 Image.fromarray(blend).save(f"{save_seg_abh_vis}/{img_name}")
+
+                # if "1" in img_name:
+                #     print(img_name, dist_x, dist_y)
+                #     cv2.circle(blend, (dist_x, dist_y), 3, (255, 255, 255), -1)
+                #     cv2.imshow("t", blend)
+                #     cv2.waitKey()
+                #     cv2.destroyAllWindows()
 
                 if view == 1:
                     ear_mask = get_seg_ear_from_prediction(pred, head_contour)
