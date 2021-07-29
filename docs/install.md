@@ -9,7 +9,6 @@ There are two options to download source code.
    
    We send you the source code as a 3d-air-bag-p2.zip file, please download and extract it with original name.
 
-
 2. Git cloning 
    
    ```
@@ -31,7 +30,7 @@ There are two options to download source code.
 2. Create and activate environment
    
    ```
-   conda create -n airbag_phase_2 python=3.8 -y                                                                                           ✔  open-mmlab 🐍 
+   conda create -n airbag_phase_2 python=3.8 -y   
    
    conda activate airbag_phase_2
    ```
@@ -107,6 +106,7 @@ There are two options to download source code.
    sudo apt-get install -y freeglut3-dev
    sudo apt-get install libssl-dev
    sudo apt-get install xorg-dev libglu1-mesa-dev
+   sudo apt-get install libomp-dev
    
    sudo apt remove --purge --auto-remove cmake
    sudo snap install cmake --classic
@@ -152,11 +152,12 @@ There are two options to download source code.
    Move Swin-transformer checkpoint into `segmentation_swin/checkpoints`
 
 # Step 6: Prepare videos to analyze
+
 Create a directory `data_video` at root directory and subdirectory `all_video` to save all folder videos you want to run:
+
 ```
 (In the root directory)
 
-mkdir -p data_video
 mkdir -p data_video/all_video
 ```
 
@@ -164,6 +165,7 @@ Each video folder has only 3 videos with SHOULDER view, DRV view, REAR view.
 To get the best results, make sure that the movements in these views are similar or sync.  
 
 Rename 3 required videos to corresponding name:
+
 * SHOULDER view -> `0.mp4` (mp4 is just example).
 * DRV view      -> `1.mp4`
 * REAR view     -> `2.mp4`
@@ -172,19 +174,25 @@ Then, copy video folder to `data_video/all_video`.
 
 # Step 7: Start analyzing
 
-Go back to the root directory and run:
+1. Activate Conda environment.
+   
+   ```
+   conda activate airbag_phase_2
+   ```
 
-```
-(In the root directory)
-
-python multiple_video.py
-```
-When you run this command, the part of 2d-segmentation using Swin-transformer model.
-
-If you want to use DeepLab model for 2d-segmentation, run:
-```
-python multiple_video.py -s 1
-```
+2. Go back to the root directory and run:
+   
+   ```
+   (In the root directory)
+   
+   python multiple_video.py
+   ```
+   
+   Above command will use Swin-transformer model. If you want to use DeepLab  instead, run:
+   
+   ```
+   python multiple_video.py -s 1
+   ```
 
 # Step 8: Visualizing
 
@@ -199,7 +207,11 @@ There are 2 options to visualize results:
 ```
 (In the root directory)
 
-python3 tools/view.py ./data_video/all_final_vis/<<v1>>
+conda activate airbag_phase_2
+
+cd tools
+
+python3 view.py ../data_video/all_final_vis/<<v1>>
 ```
 
 Replace <<v1>> with the folder of results you want to visualize.
