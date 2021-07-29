@@ -196,11 +196,11 @@ Then, copy video folder to `data_video/all_video`.
 
 # Step 8: Visualizing
 
-Once completed, results store in `data_video/all_final_vis` as `.png` images. 
+Once completed, results store in `data_video/all_final_vis` as images in `.png` and computed data in `.pkl`. 
 
 There are 2 options to visualize results:
 
-* Just open as normal image.
+* Just open as normal image in `data_video/all_final_vis`.
 
 * Using an app to simulate 3D views with the following program.
 
