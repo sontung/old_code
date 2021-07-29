@@ -1,21 +1,24 @@
-import os
-import math
+import argparse
 import glob
+import math
+import os
 import pickle
+import shutil
 import sys
-import numpy as np
-import open3d as o3d
+
 import cv2
 import matplotlib.pyplot as plt
-import shutil
-import argparse
-from icecream import ic
+import numpy as np
+import open3d as o3d
 from scipy.spatial.transform import Rotation as rot_mat_compute
-from rec_utils import b_spline_smooth, normalize, draw_text_to_image, neutralize_head_rot
 from tqdm import tqdm
-from laplacian_fairing_1d import laplacian_fairing
-from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
+
 from custom_rigid_cpd import RigidRegistration
+from laplacian_fairing_1d import laplacian_fairing
+from rec_utils import b_spline_smooth, normalize, draw_text_to_image
+from anomaly_detetion import look_for_abnormals_based_on_ear_sizes, neutralize_head_rot
+from anomaly_detetion import look_for_abnormals_based_on_ear_sizes_tight
+from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from translation_bound_processing import check_translation_bound
 
 parser = argparse.ArgumentParser()
@@ -70,9 +73,11 @@ def compute_translation(ab_transx, ab_transy):
         x_traj.append(mean[0])
         y_traj.append(mean[1])
 
+    x_traj = look_for_abnormals_based_on_ear_sizes(x_traj)
+    y_traj = look_for_abnormals_based_on_ear_sizes(y_traj)
     x_traj = laplacian_fairing(x_traj)
     y_traj = laplacian_fairing(y_traj)
-
+    
     # main
     prev_pos = None
     for idx in tqdm(range(len(x_traj)), desc="Computing head x-y translation"):
@@ -101,9 +106,13 @@ def compute_rotation_accurate():
     prev_pos = None
     all_angles = []
     os.makedirs("../data_heavy/rigid_head_rotation", exist_ok=True)
+
+    ear_size_filtering = look_for_abnormals_based_on_ear_sizes_tight([0 for _ in lines], return_selections=True)
+    counter = -1
     for idx in tqdm(lines[:], desc="Computing head x-y rotation using rigid CPD"):
         img = cv2.imread(f"{images_dir}/1-{idx}.png")
-        if img is None or np.sum(img) == 0:
+        counter += 1
+        if img is None or np.sum(img) == 0 or not ear_size_filtering[counter]:
             all_angles.append(None)
             continue
 
@@ -161,7 +170,7 @@ def compute_rotation_accurate():
             move = rot_deg_overall - prev_pos
             trajectories.append(-move)
         prev_pos = rot_deg_overall
-    return trajectories, all_angles, all_angles_before_null, cpd_angles
+    return trajectories, all_angles, all_angles_before_null, cpd_angles, ear_size_filtering
 
 
 def compute_rotation(view=1):
@@ -224,7 +233,7 @@ def compute_head_ab_areas():
 
     rotated_trajectory_z, _, _ = compute_rotation(view=2)
     if not FAST_MODE:
-        rotated_trajectory, ne_rot_traj, all_angles_before_null, cpd_angles = compute_rotation_accurate()
+        rotated_trajectory, ne_rot_traj, all_angles_before_null, cpd_angles, ear_size_filtering = compute_rotation_accurate()
     else:
         rotated_trajectory, ne_rot_traj, all_angles_before_null = compute_rotation()
 
@@ -294,7 +303,8 @@ def compute_head_ab_areas():
         arr.append(np.sum(im != 255))
     ab_area = np.max(arr)
     results = [head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z,
-               ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null, cpd_angles]
+               ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null,
+               cpd_angles, ear_size_filtering]
     results2 = [ab_scale, ab_transx2, ab_transy2, ab_rot, ab_area, head_area]
     os.makedirs("../data_const/final_vis", exist_ok=True)
     with open("../data_const/final_vis/trajectory.pkl", "wb") as pickle_file:
@@ -311,7 +321,8 @@ def visualize(debug_mode=DEBUG_MODE):
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
 
     sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
-    rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null, cpd_angles = du_outputs
+    rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, \
+    ne_trans_y_traj, all_angles_before_null, cpd_angles, ear_size_filtering = du_outputs
     img_ab_area, img_head_area = compute_head_ab_areas_image_space()
 
     # scale both head and ab to match image space
@@ -400,6 +411,7 @@ def visualize(debug_mode=DEBUG_MODE):
         ne_rot_traj = ne_rot_traj[1:]
         head_rotations_by_masks = head_rotations_by_masks[1:]
         cpd_angles = cpd_angles[1:]
+        ear_size_filtering = ear_size_filtering[1:]
 
         assert len(lines) == len(trajectory)
         for counter, ind in enumerate(lines):
@@ -461,6 +473,7 @@ def visualize(debug_mode=DEBUG_MODE):
 
             if all_angles_before_null[counter] is None:
                 info_img = draw_text_to_image(info_img, "missing comp.", (100, 800))
+            info_img = draw_text_to_image(info_img, "trusted="+str(ear_size_filtering[counter]), (100, 200))
 
             res_im = np.vstack([np.hstack([seg_im1, im1]), np.hstack([seg_im2, info_img])])
             res_im = cv2.resize(res_im, (res_im.shape[1]//2, res_im.shape[0]//2))

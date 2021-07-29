@@ -6,88 +6,6 @@ import numpy as np
 import kmeans1d
 from scipy import interpolate
 from matplotlib import pyplot as plt
-from laplacian_fairing_1d import laplacian_fairing
-
-
-def take_care_near_nones(cpd_computations):
-    print("taking care near nones")
-    best_solution = cpd_computations[:]
-    ranges = partition_by_none(cpd_computations)
-    start, end = ranges[0]
-    path = cpd_computations[start:end]
-    grad = np.diff(path)
-    if abs(grad[len(path)-2]/grad[len(path)-3]) > 2:
-        print(f" detecting unusual gradient of {round(grad[len(path)-2], 2)}"
-              f" which is {round(abs(grad[len(path)-2]/grad[len(path)-3]))} times more"
-              f" of prev grad {round(grad[len(path)-3], 2)}")
-        path[-1] = None
-        best_solution[start:end] = path
-    if len(ranges) > 1:
-        start, end = ranges[1]
-        path = cpd_computations[start:end]
-        grad1 = path[0]-path[1]
-        grad2 = path[1]-path[2]
-        if abs(grad1/grad2) > 2:
-            print(f" detecting unusual gradient of {round(grad1, 2)}"
-                  f" which is {round(abs(grad1/grad2))} times more"
-                  f" of prev grad {round(grad2, 2)}")
-            path[0] = None
-            best_solution[start:end] = path
-    return best_solution
-
-
-def neutralize_head_rot(cpd_computations, head_mask_computations):
-    cpd_computations = take_care_near_nones(cpd_computations)
-    for idx, val in enumerate(cpd_computations):
-        if val is None:
-            head_mask_computations[idx] = None
-    head_mask_computations = [90-du if du is not None else None for du in head_mask_computations]
-    head_mask_computations = look_for_abnormals(head_mask_computations)
-
-    best_solution = cpd_computations[:]
-    print("begin to enforce smoothness")
-    ranges = partition_by_none(cpd_computations)
-    for start, end in ranges:
-        cpd_path = cpd_computations[start:end]
-        head_path = head_mask_computations[start:end]
-        best_solution[start:end] = smooth_enforce(cpd_path, head_path)
-
-    plt.plot(cpd_computations, "r")
-    plt.plot(best_solution, "b")
-    plt.plot(head_mask_computations, "g")
-    plt.legend(["cpd", "best", "head mask"])
-    plt.savefig("neutral.png")
-    plt.close()
-    return best_solution
-
-
-def smooth_enforce(path1, path2):
-    """
-    select the smoothest solution
-    Args:
-        path1:
-        path2:
-
-    Returns:
-
-    """
-    assert None not in path1 and None not in path2
-    assert len(path2) == len(path1)
-    solution1 = [path1[0]]
-    solution2 = [path2[0]]
-
-    for x in range(1, len(path1)):
-        possible_comp = [path1[x], path2[x], path1[x]-90, path2[x]-90, path1[x]+90, path2[x]+90]
-        solution1.append(min(possible_comp, key=lambda du: abs(du-solution1[x-1])))
-        solution2.append(min(possible_comp, key=lambda du: abs(du - solution2[x - 1])))
-    grad1 = np.sum(np.abs(np.gradient(np.gradient(solution1))))
-    grad2 = np.sum(np.abs(np.gradient(np.gradient(solution2))))
-    if grad1 < grad2:
-        print(f" solution1: using cpd, from {grad1} and {grad2}, we select {grad1}")
-        return solution1
-    else:
-        print(f" solution2: using head mask, from {grad1} and {grad2}, we select {grad2}")
-        return solution2
 
 
 def grad_diff_compute(path, idx):
@@ -95,47 +13,6 @@ def grad_diff_compute(path, idx):
     if grad[idx] <= 0.0001 or np.mean(grad[:idx]) <= 0.0001:
         return grad[idx]
     return grad[idx] / np.mean(grad[:idx])
-
-
-def look_for_abnormals(rot_computation):
-    total_grad1 = 0
-    total_grad2 = 0
-    ori_comp = rot_computation[:]
-    ranges = partition_by_none(rot_computation)
-    changed = False
-    for start, end in ranges:
-        if end-start < 2:
-            continue
-        path = rot_computation[start: end]
-        ori_path = path[:]
-        total_grad1 += np.sum(np.abs(np.gradient(np.gradient(path))))
-        grad2 = np.abs(np.diff(path))
-        avg_grad = []
-        for idx in range(len(path[:-1])):
-            if idx == 0 or path[idx] is None:
-                continue
-            grad_diff = grad_diff_compute(path, idx)
-            if path[idx] != ori_path[idx]:
-                print(" changed", idx, path[idx], ori_path[idx], ori_path[idx-1], grad_diff)
-
-            if grad_diff > 2:
-                new_path = path[:]
-                new_path[idx+1] = path[idx+1]-90
-                new_grad_diff = grad_diff_compute(new_path, idx)
-                if new_grad_diff < grad_diff:
-                    path[idx + 1] = path[idx + 1] - 90
-                    changed = True
-            avg_grad.append(grad2[idx])
-        total_grad2 += np.sum(np.abs(np.gradient(np.gradient(path))))
-        rot_computation[start: end] = path
-    if changed:
-        print(f"reducing grad from {total_grad1} to {total_grad2}")
-        plt.plot(ori_comp)
-        plt.plot(rot_computation)
-        plt.legend(["ori", "new"])
-        plt.savefig("abnormal_head.png")
-        plt.close()
-    return rot_computation
 
 
 def partition_by_none(path):
@@ -400,7 +277,3 @@ def smooth_1d(x, window_len=4, window='hanning'):
     y = y[int(window_len/2-1):-int(window_len/2)]
     return list(y)
 
-
-if __name__ == '__main__':
-    comp = [-0.9423589331120863, -1.061323141561521, -0.4817083861581547, -1.0607292262811319, -2.374943394341507, -2.9247544398051897, -2.7226664004464936, -1.7812174668655851, -1.6646302280506404, -2.1718140047749857, -2.545234851650651, -1.728235111323555, -0.6063853369051814, -1.5063452634551158, -1.170761955143116, -0.5433326241408118, -0.26520265104887975, -1.6340720757853344, -1.4102797288891196, -2.0718780222134376, -0.4643702920153006, 1.200890140942879, 0.24455293234167705, -5.03241909577697, -1.2548472579609489, -1.2259716625006312, -0.2893166233784473, -0.060799810425414894, -0.43978791683085133, -1.673523751678178, -1.131805160822326, 1.663723833335142, 0.7978246450488325, 5.5178393456481665, -21.81743457564633, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
-    take_care_near_nones(comp)
