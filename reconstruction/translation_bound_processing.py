@@ -41,7 +41,6 @@ def check_translation_bound(head_traj, ab_transx, ab_transy):
     scale_x = abs((abs(ab_transx))/np.min(head_x_pos))
     scale_y = abs((abs(ab_transy))/np.min(head_y_pos))
 
-    plt.subplot(211)
     head_x_pos_old = head_x_pos[:]
     head_y_pos_old = head_y_pos[:]
 

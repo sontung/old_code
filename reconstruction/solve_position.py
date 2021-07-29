@@ -86,6 +86,8 @@ def compute_translation(ab_transx, ab_transy):
         prev_pos = mean
     ab_transx_new = ab_transx-y_traj[0]
     ab_transy_new = ab_transy-x_traj[0]
+    if abs(ab_transx_new) > 180:
+        ab_transx_new = ab_transx_new/(abs(ab_transx_new)/180)
 
     trajectories = check_translation_bound(trajectories, ab_transy_new, ab_transx_new)
     return trajectories, x_traj, y_traj, ab_transx_new, ab_transy_new
@@ -443,8 +445,10 @@ def visualize(debug_mode=DEBUG_MODE):
             info_img = draw_text_to_image(info_img, f"head pos=(%.2f %.2f)" % (head_centers[counter][1],
                                                                                head_centers[counter][2]), (100, 500))
             if ab_centers[counter] is not None:
-                info_img = draw_text_to_image(info_img, f"ab pos=(%.2f %.2f)" % (ab_centers[counter][1],
+                info_img = draw_text_to_image(info_img, f"ab pos2=(%.2f %.2f)" % (ab_centers[counter][1],
                                                                                  ab_centers[counter][2]), (100, 600))
+            info_img = draw_text_to_image(info_img, f"ab pos1=(%.2f %.2f)" % (int(ab_transx_ori),
+                                                                              int(ab_transy_ori)), (100, 700))
 
             if head_rotations_by_masks[counter] is not None:
                 info_img = draw_text_to_image(info_img, "rot. (head mask) =%.2f" % (-head_rotations_by_masks[counter]+90), (100, 900))
