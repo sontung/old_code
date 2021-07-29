@@ -27,10 +27,10 @@ DEBUG_MODE = args['debug']
 FAST_MODE = args['fast']
 
 if DEBUG_MODE:
-    # shutil.rmtree("test", ignore_errors=True)
-    # shutil.rmtree("test2", ignore_errors=True)
-    # os.makedirs("test", exist_ok=True)
-    # os.makedirs("test2", exist_ok=True)
+    shutil.rmtree("test", ignore_errors=True)
+    shutil.rmtree("test2", ignore_errors=True)
+    os.makedirs("test", exist_ok=True)
+    os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
 if FAST_MODE:
     print("running in fast mode (not recommended)")
@@ -106,6 +106,7 @@ def compute_rotation_accurate():
         if img is None or np.sum(img) == 0:
             all_angles.append(None)
             continue
+
         image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         nonzero_indices = np.nonzero(image)
         target_matrix = np.zeros((nonzero_indices[0].shape[0], 2))
@@ -114,11 +115,12 @@ def compute_rotation_accurate():
         source_matrix = np.loadtxt('../data/ear.txt')
         source_matrix_norm = normalize(source_matrix, target_matrix)
 
-        # if idx != "78":
+        # if idx != "86":
         #     continue
         #
-        # if idx == "78":
-        #     reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=500)
+        # if idx == "86":
+        #     from functools import partial
+        #     reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=1000)
         #
         #     fig = plt.figure()
         #     fig.add_axes([0, 0, 1, 1])
@@ -144,6 +146,7 @@ def compute_rotation_accurate():
 
     ori_angles = all_angles[:]
     all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
+    cpd_angles = laplacian_fairing(ori_angles)
     all_angles_before_null = all_angles[:]
     print("head rotation angles =", all_angles)
     try:
@@ -158,7 +161,7 @@ def compute_rotation_accurate():
             move = rot_deg_overall - prev_pos
             trajectories.append(-move)
         prev_pos = rot_deg_overall
-    return trajectories, all_angles, all_angles_before_null
+    return trajectories, all_angles, all_angles_before_null, cpd_angles
 
 
 def compute_rotation(view=1):
@@ -221,7 +224,7 @@ def compute_head_ab_areas():
 
     rotated_trajectory_z, _, _ = compute_rotation(view=2)
     if not FAST_MODE:
-        rotated_trajectory, ne_rot_traj, all_angles_before_null = compute_rotation_accurate()
+        rotated_trajectory, ne_rot_traj, all_angles_before_null, cpd_angles = compute_rotation_accurate()
     else:
         rotated_trajectory, ne_rot_traj, all_angles_before_null = compute_rotation()
 
@@ -291,7 +294,7 @@ def compute_head_ab_areas():
         arr.append(np.sum(im != 255))
     ab_area = np.max(arr)
     results = [head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z,
-               ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null]
+               ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null, cpd_angles]
     results2 = [ab_scale, ab_transx2, ab_transy2, ab_rot, ab_area, head_area]
     os.makedirs("../data_const/final_vis", exist_ok=True)
     with open("../data_const/final_vis/trajectory.pkl", "wb") as pickle_file:
@@ -308,7 +311,7 @@ def visualize(debug_mode=DEBUG_MODE):
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
 
     sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
-    rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null = du_outputs
+    rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null, cpd_angles = du_outputs
     img_ab_area, img_head_area = compute_head_ab_areas_image_space()
 
     # scale both head and ab to match image space
@@ -396,6 +399,7 @@ def visualize(debug_mode=DEBUG_MODE):
         all_angles_before_null = all_angles_before_null[1:]
         ne_rot_traj = ne_rot_traj[1:]
         head_rotations_by_masks = head_rotations_by_masks[1:]
+        cpd_angles = cpd_angles[1:]
 
         assert len(lines) == len(trajectory)
         for counter, ind in enumerate(lines):
@@ -452,6 +456,8 @@ def visualize(debug_mode=DEBUG_MODE):
 
             if head_rotations_by_masks[counter] is not None:
                 info_img = draw_text_to_image(info_img, "rot. (head mask) =%.2f" % (-head_rotations_by_masks[counter]+90), (100, 900))
+            if cpd_angles[counter] is not None:
+                info_img = draw_text_to_image(info_img, "rot. (cpd) =%.2f" % (cpd_angles[counter]), (100, 1000))
 
             if all_angles_before_null[counter] is None:
                 info_img = draw_text_to_image(info_img, "missing comp.", (100, 800))

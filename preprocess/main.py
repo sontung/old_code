@@ -95,23 +95,30 @@ def fit_ellipse():
         w, h = ellipse[1]
         angle = ellipse[2]
 
-        bias = 0.2
+        bias = 0.5
+        dis_list = []
         for p in nz_points:
             dis = parametric_ellipse(center, w, h, angle, p)
+            dis_list.append(dis)
             if dis <= bias:
                 image[p[1], p[0]] = (0, 0, 0)
         imn = afile.split("/")[-1]
         cv2.imwrite("%s/%s" % (saved_dir, imn), image)
 
-        # cv2.imshow("t", image)
-        # cv2.waitKey()
-        # cv2.destroyAllWindows()
+
+def write_all():
+    saved_dir = "../data_heavy/line_images"
+    os.makedirs(saved_dir, exist_ok=True)
+    for afile in tqdm(glob('../data_heavy/head_rotations/*.png'), desc="Removing ellipse pixels"):
+        image = cv2.imread(afile)
+        imn = afile.split("/")[-1]
+        cv2.imwrite("%s/%s" % (saved_dir, imn), image)
 
 
 if __name__ == '__main__':
     if not DEBUG:
         edge_detection()
         process_cpd_fast(False)
-        fit_ellipse()
+        write_all()
     else:
-        edge_detection()
+        fit_ellipse()
