@@ -8,7 +8,7 @@ from solve_airbag import compute_ab_frames
 DEBUG_MODE = False
 
 
-def check_translation_bound(head_traj, ab_transx, ab_transy):
+def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval):
     """
     scale the translation to reach the bound
     """
@@ -36,15 +36,21 @@ def check_translation_bound(head_traj, ab_transx, ab_transy):
         head_y_pos.append(pcd.get_center()[2])
 
     if DEBUG_MODE:
-        print("before", np.min(head_y_pos), np.max(head_y_pos), -ab_transy)
-
-    scale_x = abs((abs(ab_transx))/np.min(head_x_pos))
-    scale_y = abs((abs(ab_transy))/np.min(head_y_pos))
+        print("before y", np.min(head_y_pos), np.max(head_y_pos), -ab_transy)
+        print("before x", np.min(head_x_pos), np.max(head_x_pos), -ab_transx)
 
     head_x_pos_old = head_x_pos[:]
     head_y_pos_old = head_y_pos[:]
+    if special_interval is None:
+        scale_x = abs((abs(ab_transx))/np.max(head_x_pos))
+        head_x_pos = [du * scale_x for du in head_x_pos]
+    else:
+        start, end = map(int, special_interval)
+        mi = np.min(head_x_pos[start:end])
+        ma = np.max(head_x_pos[start:end])
+        head_x_pos = [10*(du-mi)/(ma-mi)-ab_transx-5 for du in head_x_pos]
 
-    head_x_pos = [du*scale_x for du in head_x_pos]
+    scale_y = abs((abs(ab_transy))/np.min(head_y_pos))
     head_y_pos = [du*scale_y for du in head_y_pos]
 
     # recompute trajectory
@@ -61,12 +67,11 @@ def check_translation_bound(head_traj, ab_transx, ab_transy):
         prev_pos = mean
 
     # re-simulate
+    new_head_x_pos = []
+    new_head_y_pos = []
+    pcd.translate(original_pos-pcd.get_center())
     if DEBUG_MODE:
-        new_head_x_pos = []
-        new_head_y_pos = []
-        pcd.translate(original_pos-pcd.get_center())
-        if DEBUG_MODE:
-            print("at", pcd.get_center(), original_pos)
+        print("at", pcd.get_center(), original_pos)
         for counter in range(len(trajectories)):
             pcd.translate(trajectories[counter % len(head_traj)])
             vis.update_geometry(pcd)
@@ -74,12 +79,16 @@ def check_translation_bound(head_traj, ab_transx, ab_transy):
             vis.update_renderer()
             new_head_x_pos.append(pcd.get_center()[1])
             new_head_y_pos.append(pcd.get_center()[2])
-        print("after", np.min(new_head_y_pos), np.max(new_head_y_pos), -ab_transy)
+
+        print("after y", np.min(new_head_y_pos), np.max(new_head_y_pos), -ab_transy)
+        print("after x", np.min(new_head_x_pos), np.max(new_head_x_pos), -ab_transx)
 
         plt.subplot(211)
         plt.plot(head_x_pos_old)
         plt.plot(new_head_x_pos)
-        plt.plot([-ab_transx]*len(new_head_x_pos))
+        plt.plot([-ab_transx-5]*len(new_head_x_pos))
+        plt.plot([-ab_transx+5]*len(new_head_x_pos))
+
         plt.legend(["ori", "scaled", "bound"])
 
         plt.subplot(212)
@@ -91,6 +100,8 @@ def check_translation_bound(head_traj, ab_transx, ab_transy):
         plt.close()
 
     vis.destroy_window()
+    # import sys
+    # sys.exit()
     return trajectories
 
 

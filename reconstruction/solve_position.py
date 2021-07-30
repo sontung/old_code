@@ -59,10 +59,27 @@ def compute_translation(ab_transx, ab_transy):
     lines = [du[:-1] for du in sys.stdin.readlines()]
     all_pixel_dir = "../data_heavy/frames_ear_coord_only"
 
+    sys.stdin = open("../data_heavy/frame2ab.txt")
+    lines2 = [du[:-1] for du in sys.stdin.readlines()]
+    frame2ab = {du.split(" ")[0]: du for du in lines2}
+
     trajectories = []
     x_traj = []
     y_traj = []
+    first_disappear = None
+    start_counting = False
     for idx in lines:
+        _, _, head_pixels = frame2ab[f"1-{idx}.png"].split(" ")[:3]
+        head_pixels = int(head_pixels)
+
+        if head_pixels <= 2 and first_disappear is None:
+            first_disappear = [idx, idx]
+            start_counting = True
+        elif start_counting and head_pixels <= 2:
+            first_disappear[1] = idx
+        elif start_counting and head_pixels > 2:
+            start_counting = False
+
         with open("%s/1-%s.png" % (all_pixel_dir, idx), "rb") as fp:
             right_pixels_all = pickle.load(fp)
         if len(right_pixels_all) == 0:
@@ -72,12 +89,12 @@ def compute_translation(ab_transx, ab_transy):
             mean = np.mean(np.array(right_pixels_all), axis=0)
         x_traj.append(mean[0])
         y_traj.append(mean[1])
-
+    print(" detecting head into airbag between", first_disappear)
     x_traj = look_for_abnormals_based_on_ear_sizes(x_traj)
     y_traj = look_for_abnormals_based_on_ear_sizes(y_traj)
     x_traj = laplacian_fairing(x_traj)
     y_traj = laplacian_fairing(y_traj)
-    
+
     # main
     prev_pos = None
     for idx in tqdm(range(len(x_traj)), desc="Computing head x-y translation"):
@@ -89,12 +106,16 @@ def compute_translation(ab_transx, ab_transy):
             trans[1] = -move[0]
             trajectories.append(trans)
         prev_pos = mean
+
     ab_transx_new = ab_transx-y_traj[0]
     ab_transy_new = ab_transy-x_traj[0]
     if abs(ab_transx_new) > 180:
         ab_transx_new = ab_transx_new/(abs(ab_transx_new)/180)
 
-    trajectories = check_translation_bound(trajectories, ab_transy_new, ab_transx_new)
+    if int(first_disappear[1]) - int(first_disappear[0]) <= 5:
+        first_disappear = None
+    trajectories = check_translation_bound(trajectories, ab_transy_new, ab_transx_new, first_disappear)
+
     return trajectories, x_traj, y_traj, ab_transx_new, ab_transy_new
 
 
@@ -108,11 +129,10 @@ def compute_rotation_accurate():
     os.makedirs("../data_heavy/rigid_head_rotation", exist_ok=True)
 
     ear_size_filtering = look_for_abnormals_based_on_ear_sizes_tight([0 for _ in lines], return_selections=True)
-    counter = -1
+    last_img = None
     for idx in tqdm(lines[:], desc="Computing head x-y rotation using rigid CPD"):
         img = cv2.imread(f"{images_dir}/1-{idx}.png")
-        counter += 1
-        if img is None or np.sum(img) == 0 or not ear_size_filtering[counter]:
+        if img is None or np.sum(img) == 0:
             all_angles.append(None)
             continue
 
@@ -139,6 +159,11 @@ def compute_rotation_accurate():
         #     plt.show()
         #     plt.close(fig)
 
+        if not ear_size_filtering:
+            all_angles.append(None)
+            cv2.imwrite(f"../data_heavy/rigid_head_rotation/1-{idx}.png", last_img)
+            continue
+
         reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=500)
         y_data_norm, (_, rot_mat, _) = reg.register()
         rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
@@ -152,6 +177,7 @@ def compute_rotation_accurate():
         ax.legend(loc='upper left', fontsize='x-large')
         plt.savefig(f"../data_heavy/rigid_head_rotation/1-{idx}.png")
         plt.close(fig)
+        last_img = cv2.imread(f"../data_heavy/rigid_head_rotation/1-{idx}.png")
 
     ori_angles = all_angles[:]
     all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
@@ -462,7 +488,7 @@ def visualize(debug_mode=DEBUG_MODE):
                                                                                head_centers[counter][2]), (100, 500))
             if ab_centers[counter] is not None:
                 info_img = draw_text_to_image(info_img, f"ab pos2=(%.2f %.2f)" % (ab_centers[counter][1],
-                                                                                 ab_centers[counter][2]), (100, 600))
+                                                                                  ab_centers[counter][2]), (100, 600))
             info_img = draw_text_to_image(info_img, f"ab pos1=(%.2f %.2f)" % (int(ab_transx_ori),
                                                                               int(ab_transy_ori)), (100, 700))
 

@@ -1,5 +1,6 @@
 import numpy as np
 import numbers
+from numba import jit, njit, prange
 from warnings import warn
 
 
@@ -16,6 +17,20 @@ def initialize_sigma2(X, Y):
     diff = X[None, :, :] - Y[:, None, :]
     err = diff ** 2
     return np.sum(err) / (D * M * N)
+
+
+@jit("f8[:, :](f8[:, :, :], f8[:, :, :])", nopython=True)
+def fast_sum(x, ty):
+    res = np.sum((x - ty) ** 2, axis=2)
+    return res
+
+
+@njit(parallel=True)
+def fast_exp(p, s):
+    for i in prange(p.shape[0]):
+        for j in prange(p.shape[1]):
+            p[i, j] = np.exp(-p[i, j] / (2 * s))
+    return p
 
 
 class EMRegistration(object):
@@ -167,13 +182,14 @@ class EMRegistration(object):
         self.iteration += 1
 
     def expectation(self):
-        P = np.sum((self.X[None, :, :] - self.TY[:, None, :]) ** 2, axis=2)
+        P = fast_sum(self.X[None, :, :], self.TY[:, None, :])
 
         c = (2 * np.pi * self.sigma2) ** (self.D / 2)
         c = c * self.w / (1 - self.w)
         c = c * self.M / self.N
 
-        P = np.exp(-P / (2 * self.sigma2))
+        P = fast_exp(P, self.sigma2)
+
         den = np.sum(P, axis=0)
         den = np.tile(den, (self.M, 1))
         den[den == 0] = np.finfo(float).eps
