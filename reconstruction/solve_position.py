@@ -20,6 +20,8 @@ from anomaly_detetion import look_for_abnormals_based_on_ear_sizes, neutralize_h
 from anomaly_detetion import look_for_abnormals_based_on_ear_sizes_tight
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from translation_bound_processing import check_translation_bound
+from test_model import new_model
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--debug', type=bool, default=False, help='Debug mode')
@@ -245,7 +247,8 @@ def compute_rotation(view=1):
 def compute_head_ab_areas():
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/area_compute/", exist_ok=True)
-    pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
+    # pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
+    pcd = new_model()
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
 
     # scale the AB to match the scale head/ab in image space
@@ -341,7 +344,8 @@ def compute_head_ab_areas():
 def visualize(debug_mode=DEBUG_MODE):
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
-    pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
+    # pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
+    pcd = new_model()
     pcd.compute_vertex_normals()
     du_outputs, du_outputs2, (ab_transx_ori, ab_transy_ori) = compute_head_ab_areas()
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
