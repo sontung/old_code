@@ -30,10 +30,10 @@ DEBUG_MODE = args['debug']
 FAST_MODE = args['fast']
 
 if DEBUG_MODE:
-    shutil.rmtree("test", ignore_errors=True)
-    shutil.rmtree("test2", ignore_errors=True)
-    os.makedirs("test", exist_ok=True)
-    os.makedirs("test2", exist_ok=True)
+    # shutil.rmtree("test", ignore_errors=True)
+    # shutil.rmtree("test2", ignore_errors=True)
+    # os.makedirs("test", exist_ok=True)
+    # os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
 if FAST_MODE:
     print("running in fast mode (not recommended)")
