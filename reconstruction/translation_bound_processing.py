@@ -100,8 +100,6 @@ def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval):
         plt.close()
 
     vis.destroy_window()
-    # import sys
-    # sys.exit()
     return trajectories
 
 

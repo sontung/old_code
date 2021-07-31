@@ -32,6 +32,23 @@ def partition_by_none(path):
     return ranges
 
 
+def partition_by_not_none(path):
+    ind = 0
+    start = None
+    ranges = []
+    while ind < len(path):
+        if path[ind] is None and start is None:
+            start = ind
+        elif path[ind] is not None and start is not None:
+            end = ind
+            ranges.append((start, end))
+            start = None
+        ind += 1
+    if start is not None:
+        ranges.append((start, ind))
+    return ranges
+
+
 def b_spline_smooth(_trajectory, vis=False, name="test2.png", return_params=False, removed=None):
     """
     b spline smoothing for missing values (denoted None)

@@ -3,7 +3,6 @@ import glob
 import math
 import os
 import pickle
-import shutil
 import sys
 
 import cv2
@@ -13,11 +12,11 @@ import open3d as o3d
 from scipy.spatial.transform import Rotation as rot_mat_compute
 from tqdm import tqdm
 
-from custom_rigid_cpd import RigidRegistration
-from laplacian_fairing_1d import laplacian_fairing
-from rec_utils import b_spline_smooth, normalize, draw_text_to_image
 from anomaly_detetion import look_for_abnormals_based_on_ear_sizes, neutralize_head_rot
 from anomaly_detetion import look_for_abnormals_based_on_ear_sizes_tight
+from custom_rigid_cpd import RigidRegistration
+from laplacian_fairing_1d import laplacian_fairing
+from rec_utils import b_spline_smooth, normalize, draw_text_to_image, partition_by_none, partition_by_not_none
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from translation_bound_processing import check_translation_bound
 from test_model import new_model
@@ -91,9 +90,16 @@ def compute_translation(ab_transx, ab_transy):
             mean = np.mean(np.array(right_pixels_all), axis=0)
         x_traj.append(mean[0])
         y_traj.append(mean[1])
-    print(" detecting head into airbag between", first_disappear)
     x_traj = look_for_abnormals_based_on_ear_sizes(x_traj)
     y_traj = look_for_abnormals_based_on_ear_sizes(y_traj)
+    ranges = partition_by_not_none(x_traj)
+    longest = -1
+    for start, end in ranges:
+        if end-start > longest:
+            first_disappear = [start, end]
+            longest = end-start
+    print("detecting head into airbag between", first_disappear)
+
     x_traj = laplacian_fairing(x_traj)
     y_traj = laplacian_fairing(y_traj)
 
@@ -114,8 +120,8 @@ def compute_translation(ab_transx, ab_transy):
     if abs(ab_transx_new) > 180:
         ab_transx_new = ab_transx_new/(abs(ab_transx_new)/180)
 
-    if int(first_disappear[1]) - int(first_disappear[0]) <= 5:
-        first_disappear = None
+    # if int(first_disappear[1]) - int(first_disappear[0]) <= 5:
+    #     first_disappear = None
     trajectories = check_translation_bound(trajectories, ab_transy_new, ab_transx_new, first_disappear)
 
     return trajectories, x_traj, y_traj, ab_transx_new, ab_transy_new
