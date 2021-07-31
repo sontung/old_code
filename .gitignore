@@ -22,4 +22,5 @@ segmentation/output/
 reconstruction/*.png
 misc/
 segmentation_swin/checkpoints
+data/sph_solutions
 
