@@ -3,61 +3,59 @@ import numpy as np
 import skimage.io
 import sys
 import cv2
+import sys
+from scipy.spatial.transform import Rotation as rot_mat_compute
 
-import meshio
 
-mesh = meshio.read(
-    "../data/model/model.obj",  # string, os.PathLike, or a buffer/open file
-    # file_format="stl",  # optional if filename is a path; inferred from extension
-    # see meshio-convert -h for all possible formats
-)
+def new_model(debugging=False):
+    
+    texture = cv2.imread("../data/model/textures/Head_albedo.jpg")
+    texture = cv2.cvtColor(texture, cv2.COLOR_BGR2RGB)
 
-text_coords = mesh.point_data["obj:vt"]
-vert_coords = mesh.points
-faces = mesh.cells_dict["triangle"]
-print(text_coords.shape, vert_coords.shape, faces.shape)
+    pcd_old = o3d.io.read_triangle_mesh("../data/max-planck.obj")
+    pcd_old.compute_vertex_normals()
+    pcd_old.translate([0, 0, 0])
 
-pcd = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vert_coords), o3d.utility.Vector3iVector(faces))
-txt_img = skimage.io.imread("../data/model/textures/Head_albedo.jpg")/255.0
-pcd.compute_vertex_normals()
-#
-# pcd_vertices = np.asarray(pcd.vertices)
-# colors = np.ones((pcd_vertices.shape[0], 3))*0.5
-#
-# uv_maps = np.asarray(pcd.triangle_uvs)
-# pcd_tri = np.asarray(pcd.triangles)
-#
-# print(pcd_tri.shape)
-# print(uv_maps.shape)
-#
-# print(uv_maps[:6])
-#
-#
-def access_color(img, uv):
-    u, v = uv*1024
-    print(u, v)
-    return img[1023-int(v), 1023-int(u)]
-#
-#
-# for i in range(pcd_tri.shape[0]):
-#     v1, v2, v3 = pcd_tri[i]
-#     uv1 = uv_maps[i*3]
-#     uv2 = uv_maps[i*3+1]
-#     uv3 = uv_maps[i*3+2]
-#     colors[v1] = access_color(txt_img, uv1)
-#     colors[v2] = access_color(txt_img, uv2)
-#     colors[v3] = access_color(txt_img, uv3)
-#     print(v1, v2, v3, uv1, uv2, uv3)
-#     if i > 2:
-#         break
+    pcd = o3d.io.read_triangle_mesh("../data/model/model.obj")
+    pcd.compute_vertex_normals()
 
-colors = np.zeros_like(text_coords)
-for i in range(text_coords.shape[0]):
-    colors[i] = access_color(txt_img, text_coords[i, :2])
+    triangle_uvs = np.asarray(pcd.triangle_uvs)
+    triangle_uvs[:, 1] = 1 - triangle_uvs[:, 1]
 
-pcd.vertex_colors = o3d.utility.Vector3dVector(colors)
-vis = o3d.visualization.Visualizer()
-vis.create_window()
-vis.add_geometry(pcd)
-vis.get_view_control().set_zoom(1.5)
-vis.run()
+    pcd.textures = [o3d.geometry.Image(texture)]
+
+    # scale new_model to old_model
+    area1 = pcd.get_surface_area()
+    area_scale = 980
+    pcd.scale(area_scale, pcd.get_center())
+    print(f"Area of head model: {pcd_old.get_surface_area()}\nArea of new head model: {area1}, new head model after scale: {pcd.get_surface_area()}")
+
+    # rotation new model
+    rot_mat = rot_mat_compute.from_euler('y', -180,
+                                     degrees=True).as_matrix()
+    pcd.rotate(rot_mat, pcd.get_center())
+
+    # sync center of 2 model
+    center1 = pcd_old.get_center()
+    center2 = pcd.get_center()
+
+    diff = center1 - center2
+    pcd.translate(diff)
+    center3 = pcd.get_center()
+
+    if debugging:
+
+        vis = o3d.visualization.Visualizer()
+        vis.create_window()
+        vis.get_view_control().set_zoom(1.5)
+
+        vis.add_geometry(pcd)
+        vis.add_geometry(pcd_old)
+
+        t = 0
+        while t < 200:
+            vis.poll_events()
+            vis.update_renderer()
+            t += 1
+
+    return pcd
