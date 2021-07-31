@@ -149,7 +149,6 @@ def compute_ab_pose():
     ab_area_all = []
     head_area_all = []
     rot_all = []
-    scale_all = []
     for frn in lines:
         akey = "1-%s.png" % frn
         _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
