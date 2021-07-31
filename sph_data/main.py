@@ -37,7 +37,7 @@ def build_shape(radius=(40, 30, 35), model_file='airbag.obj', if_vis=False):
 def sph_simulation():
     print("running sph simulation")
     base = sph.Exec.SimulatorBase()
-    output_dir = os.path.abspath("../data_heavy/sph_solutions")
+    output_dir = os.path.abspath("../data/sph_solutions")
 
     root_path = pathlib.Path(__file__).parent.absolute()
     scene_file_path = os.path.join(root_path, 'EmitterModel_option_1.json')
@@ -47,7 +47,7 @@ def sph_simulation():
     base.run()
 
 
-def vtk_to_mesh(vtk_folder='../data_heavy/sph_solutions/vtk/', if_vis=False):
+def vtk_to_mesh(vtk_folder='../data/sph_solutions/vtk/', if_vis=False):
     vtk_files = glob.glob(vtk_folder + '*.vtk')
     vtk_files = sorted(vtk_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
     list_mesh = []
@@ -148,6 +148,10 @@ if __name__ == "__main__":
     os.makedirs("mc_solutions_smoothed", exist_ok=True)
     if not os.path.exists("airbag.obj"):
         build_shape()
-    sph_simulation()
-    process_bgeo2json()
+
+    if not os.path.exists("../data/sph_solutions"):
+        sph_simulation()
+        process_bgeo2json()
+    else:
+        print("Existing data as running SPH simulation")
     print("SPH simulation done in %f" % (time.time()-start))

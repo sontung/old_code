@@ -11,7 +11,7 @@ import pickle
 
 
 def sample_accordingly(new_time_step=27):
-    all_json = glob.glob("../data_heavy/sph_solutions/state/*.json")
+    all_json = glob.glob("../data/sph_solutions/state/*.json")
     all_json = sorted(all_json, key=lambda du: float(du.split("/")[-1].split("state_")[1].split("_particle")[0]))
     nb_time_step = len(all_json)
     max_nb_particles = -1
@@ -81,6 +81,7 @@ def compute_ab_frames():
 
 
 def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_state/'):
+    os.makedirs("../data_heavy/sph_solutions", exist_ok=True)
     os.makedirs("../data_heavy/sph_solutions/new_state/", exist_ok=True)
     for i in tqdm(range(particles_matrix.shape[1]), desc="Writing new vertices"):
         p_in_time_step = particles_matrix[:, i, :]
