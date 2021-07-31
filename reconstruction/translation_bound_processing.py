@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from solve_airbag import compute_ab_frames
 
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 
 def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval):
@@ -41,17 +41,24 @@ def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval):
 
     head_x_pos_old = head_x_pos[:]
     head_y_pos_old = head_y_pos[:]
-    if special_interval is None:
-        scale_x = abs((abs(ab_transx))/np.max(head_x_pos))
-        head_x_pos = [du * scale_x for du in head_x_pos]
-    else:
-        start, end = map(int, special_interval)
-        mi = np.min(head_x_pos[start:end])
-        ma = np.max(head_x_pos[start:end])
-        head_x_pos = [10*(du-mi)/(ma-mi)-ab_transx-5 for du in head_x_pos]
+    if len(head_traj) != special_interval[1]-1:
+        print("scaling head vertical trajectory:")
+        if special_interval is None:
+            print(" normal scaling")
+            scale_x = abs((abs(ab_transx))/np.max(head_x_pos))
+            head_x_pos = [du * scale_x for du in head_x_pos]
+            scale_y = abs((abs(ab_transy)) / np.min(head_y_pos))
+            head_y_pos = [du * scale_y for du in head_y_pos]
 
-    scale_y = abs((abs(ab_transy))/np.min(head_y_pos))
-    head_y_pos = [du*scale_y for du in head_y_pos]
+        else:
+            print(" scaling specifically using an interval")
+            start, end = map(int, special_interval)
+            mi = np.min(head_x_pos[start:end])
+            ma = np.max(head_x_pos[start:end])
+            head_x_pos = [10*(du-mi)/(ma-mi)-ab_transx+5 for du in head_x_pos]
+
+    scale_y = abs((abs(ab_transy)) / np.min(head_y_pos))
+    head_y_pos = [du * scale_y for du in head_y_pos]
 
     # recompute trajectory
     prev_pos = original_pos[1:]
@@ -98,7 +105,8 @@ def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval):
         plt.legend(["ori", "scaled", "bound"])
         plt.savefig("trans_bound.png")
         plt.close()
-
+    # import sys
+    # sys.exit()
     vis.destroy_window()
     return trajectories
 

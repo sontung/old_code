@@ -33,8 +33,8 @@ FAST_MODE = args['fast']
 if DEBUG_MODE:
     # shutil.rmtree("test", ignore_errors=True)
     # shutil.rmtree("test2", ignore_errors=True)
-    # os.makedirs("test", exist_ok=True)
-    # os.makedirs("test2", exist_ok=True)
+    os.makedirs("test", exist_ok=True)
+    os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
 if FAST_MODE:
     print("running in fast mode (not recommended)")
@@ -90,8 +90,8 @@ def compute_translation(ab_transx, ab_transy):
             mean = np.mean(np.array(right_pixels_all), axis=0)
         x_traj.append(mean[0])
         y_traj.append(mean[1])
-    x_traj = look_for_abnormals_based_on_ear_sizes(x_traj)
-    y_traj = look_for_abnormals_based_on_ear_sizes(y_traj)
+    x_traj = look_for_abnormals_based_on_ear_sizes_tight(x_traj)
+    y_traj = look_for_abnormals_based_on_ear_sizes_tight(y_traj)
     ranges = partition_by_not_none(x_traj)
     longest = -1
     for start, end in ranges:
@@ -120,8 +120,8 @@ def compute_translation(ab_transx, ab_transy):
     if abs(ab_transx_new) > 180:
         ab_transx_new = ab_transx_new/(abs(ab_transx_new)/180)
 
-    # if int(first_disappear[1]) - int(first_disappear[0]) <= 5:
-    #     first_disappear = None
+    if int(first_disappear[1]) - int(first_disappear[0]) <= 5:
+        first_disappear = None
     trajectories = check_translation_bound(trajectories, ab_transy_new, ab_transx_new, first_disappear)
 
     return trajectories, x_traj, y_traj, ab_transx_new, ab_transy_new
