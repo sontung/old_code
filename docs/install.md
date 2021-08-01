@@ -1,20 +1,18 @@
 # Step 1: Download source code
 
-There are two options to download source code.
-
-* The first is for end-user, downloading from our server, is recommended.
-
-* The latter is for developer, cloning from our private GitLab, is not recommended.
-1. Our server
-   
-   We send you the source code as a 3d-air-bag-p2.zip file, please download and extract it with original name.
-
-2. Git cloning 
+1. Download - Recommend.
    
    ```
-   git clone https://git.hblab.vn/ai/3d-air-bag-p2.gitClone git submodule
+   https://files.hblab.vn/s/dbLczzTapEPsomz
+   ```
+
+2. Git cloning.   
+   Only for authorized developers.
    
-   cd 3d-air-bag-p2
+   ```
+   git clone git@git.hblab.vn:ai/3d-air-bag-p2.git && cd 3d-air-bag-p2
+   
+   git checkout stable
    
    git submodule update --init --recursive
    ```
@@ -27,7 +25,7 @@ There are two options to download source code.
    https://docs.anaconda.com/anaconda/install/linux/
    ```
 
-2. Create and activate environment
+2. Create and activate environment.
    
    ```
    conda create -n airbag_phase_2 python=3.8 -y   
@@ -50,7 +48,7 @@ There are two options to download source code.
    
    Look at top-right corner for `CUDA Version: xxx`  
 
-2. Install Torch 1.7.1
+2. Install Torch 1.7.1.
    
    CUDA 10.1
    
@@ -70,7 +68,7 @@ There are two options to download source code.
    pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
    ```
 
-3. Install MMCV  
+3. Install MMCV.  
    
    CUDA 10.1
    
@@ -90,9 +88,10 @@ There are two options to download source code.
    pip install mmcv-full==1.3.0 -f https://download.openmmlab.com/mmcv/dist/cu110/torch1.7.0/index.html
    ```
 
-4. Install MMSegmentation
+4. Install MMSegmentation.
    
    ```
+   (In the root folder)
    cd segmentation_swin && pip install -e . && cd ..
    ```
 
@@ -101,24 +100,28 @@ There are two options to download source code.
 1. Install tools for compiling libraries.
    
    ```
+   (`sudo` commands will requires password.)
+   
    sudo apt-get update -y
+   
    sudo apt install swig
    sudo apt-get install -y freeglut3-dev
    sudo apt-get install libssl-dev
    sudo apt-get install xorg-dev libglu1-mesa-dev
    sudo apt-get install libomp-dev
    
+   (To ensure we got up-to-date CMake)
    sudo apt remove --purge --auto-remove cmake
    sudo snap install cmake --classic
    ```
 
-2. Build Partio library
+2. Build Partio library.
    
    ```
    cd libraries/partio && make -j prefix=./compiled install && cd ../..
    ```
 
-3. Install other libraries
+3. Install other libraries.
    
    ```
    pip install -r requirements.txt
@@ -126,61 +129,80 @@ There are two options to download source code.
 
 # Step 5: Load checkpoint
 
-1. Create checkpoints directories
+1. Create checkpoints directories.
    
    ```
-   mkdir -p data_const/run
-   mkdir segmentation_swin/checkpoints
+   mkdir -pv data_const/run
+   mkdir -v segmentation_swin/checkpoints
    ```
 
-2. Download DeepLab checkpoint
+2. Download 3D-Reconstruction checkpoint.
    
    Only admitted Google accounts can download these link.
    
    ```
-   https://drive.google.com/file/d/1IHJjiB2n9_WSOqOTGUGHdzIrjcFWNfVO/view?usp=sharing
+   https://files.hblab.vn/s/DxGmpZ8iTJMAAQt
    ```
    
-   Extract then move DeepLab checkpoint into `data_const`.
+   Extract then move the 02 files into `data_const`.
 
-3. Download Swin-transformer checkpoint
+3. Download Swin-transformer checkpoint.
    
    ```
-   https://drive.google.com/file/d/1RZQOussrDXTAIwCJ4VsyIBMXKggbwLmZ/view?usp=sharinghttps://drive.google.com/file/d/1RZQOussrDXTAIwCJ4VsyIBMXKggbwLmZ/view?usp=sharing
+   https://files.hblab.vn/s/ZNoaGm4dANijkCa
    ```
    
-   Move Swin-transformer checkpoint into `segmentation_swin/checkpoints`
+   Do not extract. Just move the file with extension of`*.pth` into `segmentation_swin/checkpoints`
 
 # Step 6: Prepare videos to analyze
 
-Create a directory `data_video` at root directory and subdirectory `all_video` to save all folder videos you want to run:
+1. Create directories of inputs.
+   
+   ```
+   (In the root directory)
+   
+   mkdir -pv data_video/all_video
+   ```
 
-```
-(In the root directory)
+2. Prepare input videos.
+   
+   For an crashing test experiment, there are 3 videos of SHOULDER view, DRV view, REAR view.  
+   
+   Rename 3 required videos to:
+   
+   * SHOULDER view -> `0.mp4` (mp4 is just example).
+   
+   * DRV view      -> `1.mp4`
+   
+   * REAR view     -> `2.mp4`.
 
-mkdir -p data_video/all_video
-```
-
-Each video folder has only 3 videos with SHOULDER view, DRV view, REAR view.  
-To get the best results, make sure that the movements in these views are similar or sync.  
-
-Rename 3 required videos to corresponding name:
-
-* SHOULDER view -> `0.mp4` (mp4 is just example).
-* DRV view      -> `1.mp4`
-* REAR view     -> `2.mp4`
-
-Then, copy video folder to `data_video/all_video`.
+3. Copy the folder contains those 3 to `data_video/all_video`.  
+   Your folders should look alike:
+   
+   ```
+   data_video
+   |---all_video
+   |---|---experiment_1
+   |---|---|---0.mp4
+   |---|---|---1.mp4
+   |---|---|---2.mp4
+   |---|---experiment_2
+   |---|---|---0.mp4
+   |---|---|---1.mp4
+   |---|---|---2.mp4
+   ...
+   ```
 
 # Step 7: Start analyzing
 
-1. Activate Conda environment.
+1. Activate Conda environment.  
+   From now on, every command must be executed in the Conda environment.
    
    ```
    conda activate airbag_phase_2
    ```
 
-2. Go back to the root directory and run:
+2. The main program.
    
    ```
    (In the root directory)
@@ -188,7 +210,7 @@ Then, copy video folder to `data_video/all_video`.
    python multiple_video.py
    ```
    
-   Above command will use Swin-transformer model. If you want to use DeepLab  instead, run:
+   Above command will use the best model -- Swin-transformer. There is an alternative in case Swin-transformer does not work -- DeepLab. 
    
    ```
    python multiple_video.py -s 1
@@ -196,7 +218,10 @@ Then, copy video folder to `data_video/all_video`.
 
 # Step 8: Visualizing
 
-Once completed, results store in `data_video/all_final_vis` as images in `.png` and computed data in `.pkl`. 
+Once completed, results store in `data_video/all_final_vis`:  
+
+* As images in `.png`,
+* As computed parameters in `.pkl`. 
 
 There are 2 options to visualize results:
 
@@ -211,10 +236,10 @@ conda activate airbag_phase_2
 
 cd tools
 
-python3 view.py ../data_video/all_final_vis/<<v1>>
+python3 view.py ../data_video/all_final_vis/<<experiment_name>>
 ```
 
-Replace <<v1>> with the folder of results you want to visualize.
+Replace <<experiment_name>> with the folder of results you want to visualize.
 
 Then, you can press:
 
