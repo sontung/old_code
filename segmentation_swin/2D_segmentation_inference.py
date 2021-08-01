@@ -364,17 +364,18 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
     res = kmeans1d.cluster(airbag_detection_results, 2)
     centroids = res.centroids
 
-    if len(ranges) > 1 or centroids[1]/centroids[0] >= 5:
-        print("unusual airbag detection, trying to handle")
-        clusters = res.clusters
-        for idx, frame_idx in enumerate(frame_indices):
-            im_name = f"1-{frame_idx}.png"
-            if clusters[idx] == 0:
-                _, ab_pixels, head_pixels, dist_x, dist_y, head_rot, ab_rot = frame2ab_info_dict[im_name]
-                if ab_pixels == 0:
-                    continue
-                frame2ab_info_dict[im_name] = [im_name, 0, head_pixels, dist_x, dist_y, head_rot, ab_rot]
-                print(f" modifying {im_name}: from {ab_pixels} to {0}, resulting key=", frame2ab_info_dict[im_name][:2])
+    if centroids[0] > 0:
+        if len(ranges) > 1 or centroids[1]/centroids[0] >= 5:
+            print("unusual airbag detection, trying to handle")
+            clusters = res.clusters
+            for idx, frame_idx in enumerate(frame_indices):
+                im_name = f"1-{frame_idx}.png"
+                if clusters[idx] == 0:
+                    _, ab_pixels, head_pixels, dist_x, dist_y, head_rot, ab_rot = frame2ab_info_dict[im_name]
+                    if ab_pixels == 0:
+                        continue
+                    frame2ab_info_dict[im_name] = [im_name, 0, head_pixels, dist_x, dist_y, head_rot, ab_rot]
+                    print(f" modifying {im_name}: from {ab_pixels} to {0}, resulting key=", frame2ab_info_dict[im_name][:2])
 
     assert len(head_masks_info_dict) == len(frame2ab_info_dict)
     with open(head_masks_info, "w") as fp2:

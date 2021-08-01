@@ -12,7 +12,7 @@ import open3d as o3d
 from scipy.spatial.transform import Rotation as rot_mat_compute
 from tqdm import tqdm
 
-from anomaly_detetion import look_for_abnormals_based_on_ear_sizes, neutralize_head_rot
+from anomaly_detetion import neutralize_head_rot
 from anomaly_detetion import look_for_abnormals_based_on_ear_sizes_tight
 from custom_rigid_cpd import RigidRegistration
 from laplacian_fairing_1d import laplacian_fairing
@@ -100,8 +100,8 @@ def compute_translation(ab_transx, ab_transy):
             longest = end-start
     print("detecting head into airbag between", first_disappear)
 
-    x_traj = laplacian_fairing(x_traj)
-    y_traj = laplacian_fairing(y_traj)
+    x_traj = laplacian_fairing(x_traj, "lapx.png", first_disappear)
+    y_traj = laplacian_fairing(y_traj, "lapy.png", first_disappear)
 
     # main
     prev_pos = None

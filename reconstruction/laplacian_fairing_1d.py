@@ -1,7 +1,20 @@
 import numpy as np
+from matplotlib import pyplot as plt
 
 
-def laplacian_fairing(angles):
+def laplacian_fairing(angles, name=None, collision_interval=None):
+
+    # fill in values in collision period
+    if collision_interval is not None:
+        start, end = collision_interval
+        path = angles[start: end]
+        if angles[start - 1] is not None:
+            if end == len(angles):
+                path = [angles[start-1] for _ in range(len(path))]
+            elif end < len(angles) and angles[end] is not None:
+                path = np.linspace(angles[start-1], angles[end], len(path))
+            angles[start: end] = path
+
     angles = check(angles)
     mat_a = np.zeros((len(angles), len(angles))).astype(np.float64)
     mat_b = np.zeros((len(angles), 1)).astype(np.float64)
@@ -26,6 +39,11 @@ def laplacian_fairing(angles):
         else:
             cost += mat_x[angle_idx-2]-4*mat_x[angle_idx-1]+6*mat_x[angle_idx]-4*mat_x[angle_idx+1]+mat_x[angle_idx+2]
     print(f"laplacian cost={cost}")
+    if name is not None:
+        plt.plot(mat_x)
+        plt.plot(angles, "bo")
+        plt.savefig(name)
+        plt.close()
     return mat_x
 
 
