@@ -47,15 +47,12 @@ def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval):
             print(" normal scaling")
             scale_x = abs((abs(ab_transx))/np.max(head_x_pos))
             head_x_pos = [du * scale_x for du in head_x_pos]
-            scale_y = abs((abs(ab_transy)) / np.min(head_y_pos))
-            head_y_pos = [du * scale_y for du in head_y_pos]
 
         else:
             print(" scaling specifically using an interval")
             start, end = map(int, special_interval)
             mi = np.min(head_x_pos[start:end])
-            ma = np.max(head_x_pos[start:end])
-            head_x_pos = [10*(du-mi)/(ma-mi)-ab_transx+5 for du in head_x_pos]
+            head_x_pos = [du - ab_transx-mi for du in head_x_pos]
 
     scale_y = abs((abs(ab_transy)) / np.min(head_y_pos))
     head_y_pos = [du * scale_y for du in head_y_pos]

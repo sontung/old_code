@@ -4,7 +4,7 @@ import math
 import os
 import pickle
 import sys
-
+import shutil
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,8 +31,8 @@ DEBUG_MODE = args['debug']
 FAST_MODE = args['fast']
 
 if DEBUG_MODE:
-    # shutil.rmtree("test", ignore_errors=True)
-    # shutil.rmtree("test2", ignore_errors=True)
+    shutil.rmtree("test", ignore_errors=True)
+    shutil.rmtree("test2", ignore_errors=True)
     os.makedirs("test", exist_ok=True)
     os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
