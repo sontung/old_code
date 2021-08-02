@@ -400,7 +400,7 @@ def visualize(debug_mode=DEBUG_MODE):
         rot_actual_traj.append(rotated_trajectory[counter % len(trajectory)])
 
         if rotated_trajectory_z is not None:
-            rot_mat_z = rot_mat_compute.from_euler('z', rotated_trajectory_z[counter % len(trajectory)],
+            rot_mat_z = rot_mat_compute.from_euler('z', -rotated_trajectory_z[counter % len(trajectory)],
                                                    degrees=True).as_matrix()
             pcd.rotate(rot_mat_z, pcd.get_center())
 
