@@ -141,7 +141,7 @@
    Only admitted Google accounts can download these link.
    
    ```
-   https://files.hblab.vn/s/DxGmpZ8iTJMAAQt
+   https://drive.google.com/file/d/1IHJjiB2n9_WSOqOTGUGHdzIrjcFWNfVO/view?usp=sharing
    ```
    
    Extract then move the 02 files into `data_const`.
@@ -149,7 +149,7 @@
 3. Download Swin-transformer checkpoint.
    
    ```
-   https://files.hblab.vn/s/ZNoaGm4dANijkCa
+   https://drive.google.com/file/d/1RZQOussrDXTAIwCJ4VsyIBMXKggbwLmZ/view?usp=sharing
    ```
    
    Do not extract. Just move the file with extension of`*.pth` into `segmentation_swin/checkpoints`
