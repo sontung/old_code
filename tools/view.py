@@ -63,7 +63,8 @@ def visualize():
     pcd.compute_vertex_normals()
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
     sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
-    rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null = du_outputs
+    rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj,\
+    all_angles_before_null, _, _ = du_outputs
     img_ab_area, img_head_area = du_outputs3
 
     # scale both head and ab to match image space
