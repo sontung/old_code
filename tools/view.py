@@ -150,6 +150,8 @@ def visualize():
     ab_added_mode1 = False
     prev_renders = []
     counter = 0
+    pcd.translate(trajectory[0])
+
     while True:
         if RENDER_MODE == 0:
             vis.poll_events()
@@ -223,6 +225,7 @@ def visualize():
                 vis.update_renderer()
 
         elif RENDER_MODE == 1:
+            counter += 1
             vis.poll_events()
             if ab_added_mode1:
                 ab_added_mode1 = False
@@ -256,7 +259,6 @@ def visualize():
 
             vis.update_geometry(pcd)
             vis.update_renderer()
-            counter += 1
         if counter >= len(trajectory):
             vis.destroy_window()
             break
