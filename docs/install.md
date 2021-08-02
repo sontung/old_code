@@ -3,7 +3,7 @@
 1. Download - Recommend.
    
    ```
-   https://files.hblab.vn/s/dbLczzTapEPsomz
+   https://drive.google.com/drive/folders/1syaZzwI2_kxOdF-_1aG1VDq4S0vML1ND?usp=sharing
    ```
 
 2. Git cloning.   
@@ -141,7 +141,7 @@
    Only admitted Google accounts can download these link.
    
    ```
-   https://files.hblab.vn/s/DxGmpZ8iTJMAAQt
+   https://drive.google.com/file/d/1IHJjiB2n9_WSOqOTGUGHdzIrjcFWNfVO/view?usp=sharing
    ```
    
    Extract then move the 02 files into `data_const`.
@@ -149,7 +149,7 @@
 3. Download Swin-transformer checkpoint.
    
    ```
-   https://files.hblab.vn/s/ZNoaGm4dANijkCa
+   https://drive.google.com/file/d/1RZQOussrDXTAIwCJ4VsyIBMXKggbwLmZ/view?usp=sharing
    ```
    
    Do not extract. Just move the file with extension of`*.pth` into `segmentation_swin/checkpoints`
@@ -236,7 +236,7 @@ conda activate airbag_phase_2
 
 cd tools
 
-python3 view.py ../data_video/all_final_vis/<<experiment_name>>
+python3 view.py -d ../data_video/all_final_vis/<<experiment_name>>
 ```
 
 Replace <<experiment_name>> with the folder of results you want to visualize.
