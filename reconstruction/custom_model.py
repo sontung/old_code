@@ -1,14 +1,11 @@
 import open3d as o3d
 import numpy as np
-import skimage.io
-import sys
 import cv2
-import sys
 from scipy.spatial.transform import Rotation as rot_mat_compute
 
 
 def new_model(debugging=False):
-    
+
     texture = cv2.imread("../data/model/textures/Head_albedo.jpg")
     texture = cv2.cvtColor(texture, cv2.COLOR_BGR2RGB)
 
@@ -28,14 +25,21 @@ def new_model(debugging=False):
     area1 = pcd.get_surface_area()
     area_scale = 980
     pcd.scale(area_scale, pcd.get_center())
-    print(f"Area of head model: {pcd_old.get_surface_area()}\nArea of new head model: {area1}, new head model after scale: {pcd.get_surface_area()}")
+    print(f"Area of head model: {pcd_old.get_surface_area()}\nArea of new head model: {area1}, "
+          f"new head model after scale: {pcd.get_surface_area()}")
 
     # rotation new model
-    rot_mat = rot_mat_compute.from_euler('y', -180, degrees=True).as_matrix()
+    rot_mat = rot_mat_compute.from_euler('y', -180,
+                                         degrees=True).as_matrix()
     pcd.rotate(rot_mat, pcd.get_center())
 
     # sync center of 2 model
-    pcd.translate(pcd_old.get_center(), relative=False)
+    center1 = pcd_old.get_center()
+    center2 = pcd.get_center()
+
+    diff = center1 - center2
+    pcd.translate(diff)
+    center3 = pcd.get_center()
 
     if debugging:
 

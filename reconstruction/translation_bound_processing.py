@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from solve_airbag import compute_ab_frames
 
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval):

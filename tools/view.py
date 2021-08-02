@@ -1,6 +1,6 @@
 import os
 import time
-
+import cv2
 import open3d as o3d
 import math
 import glob
@@ -20,6 +20,7 @@ TRAJECTORY_DIR = f"{RESULTS_DIR}/trajectory.pkl"
 AB_POSES_DIR = f"{RESULTS_DIR}/ab_poses.pkl"
 AB_AREAS_DIR = f"{RESULTS_DIR}/ab_areas.pkl"
 AB_FRAMES_DIR = f"{RESULTS_DIR}/ab_frames.pkl"
+AB_TRANS_DIR = f"{RESULTS_DIR}/ab_trans.pkl"
 
 RENDER_MODE = 0
 NEXT = False
@@ -46,6 +47,48 @@ def key_sw2(u):
         PREV = True
 
 
+def new_model(debugging=False):
+    texture = cv2.imread("data/model/textures/Head_albedo.jpg")
+    texture = cv2.cvtColor(texture, cv2.COLOR_BGR2RGB)
+
+    pcd_old = o3d.io.read_triangle_mesh("data/max-planck.obj")
+    pcd_old.compute_vertex_normals()
+
+    pcd = o3d.io.read_triangle_mesh("data/model/model.obj")
+    pcd.compute_vertex_normals()
+
+    triangle_uvs = np.asarray(pcd.triangle_uvs)
+    triangle_uvs[:, 1] = 1 - triangle_uvs[:, 1]
+
+    pcd.textures = [o3d.geometry.Image(texture)]
+
+    # scale new_model to old_model
+    area_scale = 980
+    pcd.scale(area_scale, pcd.get_center())
+
+    # rotation new model
+    rot_mat = rot_mat_compute.from_euler('y', -180, degrees=True).as_matrix()
+    pcd.rotate(rot_mat, pcd.get_center())
+    pcd.translate(pcd_old.get_center(), relative=False)
+
+    if debugging:
+
+        vis = o3d.visualization.Visualizer()
+        vis.create_window()
+        vis.get_view_control().set_zoom(1.5)
+
+        vis.add_geometry(pcd)
+        vis.add_geometry(pcd_old)
+
+        t = 0
+        while t < 200:
+            vis.poll_events()
+            vis.update_renderer()
+            t += 1
+
+    return pcd
+
+
 def visualize():
     global NEXT, PREV
 
@@ -57,11 +100,17 @@ def visualize():
         du_outputs3 = pickle.load(pickle_file)
     with open(AB_FRAMES_DIR, "rb") as pickle_file:
         du_outputs4 = pickle.load(pickle_file)
+    with open(AB_TRANS_DIR, "rb") as pickle_file:
+        ab_transx, ab_transy = pickle.load(pickle_file)
     ab_mesh_dir = f"{RESULTS_DIR}/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
-    pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
+    pcd = new_model()
     pcd.compute_vertex_normals()
-    ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
+
+    # pcd = o3d.io.read_triangle_mesh("data/max-planck.obj")
+    # pcd.compute_vertex_normals()
+
+    ab_scale, _, _, ab_rot, ab_area, head_area = du_outputs2
     sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
     rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj,\
     all_angles_before_null, _, _ = du_outputs

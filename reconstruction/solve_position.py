@@ -344,6 +344,8 @@ def compute_head_ab_areas():
     os.makedirs("../data_const/final_vis", exist_ok=True)
     with open("../data_const/final_vis/trajectory.pkl", "wb") as pickle_file:
         pickle.dump(results, pickle_file)
+    with open("../data_const/final_vis/ab_trans.pkl", "wb") as pickle_file:
+        pickle.dump([ab_transx2, ab_transy2], pickle_file)
     return results, results2, (ab_transx, ab_transy)
 
 
