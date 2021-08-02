@@ -3,7 +3,7 @@
 1. Download - Recommend.
    
    ```
-   https://files.hblab.vn/s/dbLczzTapEPsomz
+   https://drive.google.com/drive/folders/1syaZzwI2_kxOdF-_1aG1VDq4S0vML1ND?usp=sharing
    ```
 
 2. Git cloning.   
