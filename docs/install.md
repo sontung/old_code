@@ -236,7 +236,7 @@ conda activate airbag_phase_2
 
 cd tools
 
-python3 view.py ../data_video/all_final_vis/<<experiment_name>>
+python3 view.py -d ../data_video/all_final_vis/<<experiment_name>>
 ```
 
 Replace <<experiment_name>> with the folder of results you want to visualize.
