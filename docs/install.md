@@ -207,7 +207,7 @@
    ```
    (In the root directory)
    
-   python multiple_video.py
+   python multiple_video.py -d True
    ```
    
    Above command will use the best model -- Swin-transformer. There is an alternative in case Swin-transformer does not work -- DeepLab. 
