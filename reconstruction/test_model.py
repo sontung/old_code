@@ -1,9 +1,6 @@
 import open3d as o3d
 import numpy as np
-import skimage.io
-import sys
 import cv2
-import sys
 from scipy.spatial.transform import Rotation as rot_mat_compute
 
 

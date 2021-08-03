@@ -31,7 +31,8 @@ def edge_detection():
             pixels_list = pickle.load(fp)
         if len(pixels_list) == 0:
             continue
-        (xmax, ymax), (xmin, ymin) = np.max(pixels_list, axis=0)+3, np.min(pixels_list, axis=0)-3
+
+        (xmax, ymax), (xmin, ymin) = np.max(pixels_list, axis=0)+1, np.min(pixels_list, axis=0)
         img_ori = cv2.imread(join(mypath, im_name))
         
         # filter to keep only one biggest contour
@@ -46,7 +47,8 @@ def edge_detection():
             pixels_list = np.argwhere(mask > 0)
         img_ori = smoothing_func2(pixels_list, img_ori)
         img = img_ori[xmin: xmax, ymin: ymax]
-
+        if img.shape[0] == 0 or img.shape[1] == 0:
+            continue
         src_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         _, detected_edges = edge_process_func(src_gray)
         res = np.zeros((img_ori.shape[0], img_ori.shape[1]))
@@ -64,7 +66,7 @@ def edge_detection():
             cv2.waitKey()
             cv2.destroyAllWindows()
 
-        cv2.imwrite("%s/%s" % (edge_saving_dir, im_name), res)
+            cv2.imwrite("%s/%s" % (edge_saving_dir, im_name), res)
 
 
 def parametric_ellipse(rcenter, rw, rh, angle, p):
