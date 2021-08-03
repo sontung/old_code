@@ -457,15 +457,17 @@ def visualize(debug_mode=DEBUG_MODE):
             ear_img = cv2.imread("%s/1-%s.png" % (ear_dir, ind))
             rigid_img = cv2.imread("%s/1-%s.png" % (rigid_dir, ind))
             arr = np.nonzero(ear_img)
+
             if len(arr[0]) > 0:
                 ear_img = ear_img[np.min(arr[0]):np.max(arr[0]), np.min(arr[1]): np.max(arr[1])]
-                img_size = max([ear_img, line_img, rigid_img], key=lambda x: x.shape[0]*x.shape[1])
+                if ear_img.shape[0] > 0 and ear_img.shape[1] > 0:
+                    img_size = max([ear_img, line_img, rigid_img], key=lambda x: x.shape[0]*x.shape[1])
+                    ear_img = cv2.resize(ear_img, (img_size.shape[1], img_size.shape[0]))
+                    line_img = cv2.resize(line_img, (img_size.shape[1], img_size.shape[0]))
+                    rigid_img = cv2.resize(rigid_img, (img_size.shape[1], img_size.shape[0]))
 
-                ear_img = cv2.resize(ear_img, (img_size.shape[1], img_size.shape[0]))
-                line_img = cv2.resize(line_img, (img_size.shape[1], img_size.shape[0]))
-                rigid_img = cv2.resize(rigid_img, (img_size.shape[1], img_size.shape[0]))
+                    cv2.imwrite(f"test/ear-{ind}.png", np.hstack([ear_img, line_img, rigid_img]))
 
-                cv2.imwrite(f"test/ear-{ind}.png", np.hstack([ear_img, line_img, rigid_img]))
             im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)
             seg_im1 = cv2.imread('../data_heavy/frames_seg_abh_vis/1-%s.png' % ind)
             ear_im1 = np.zeros_like(seg_im1).astype(np.uint8)
