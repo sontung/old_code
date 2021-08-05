@@ -29,7 +29,7 @@ def edge_detection():
             continue
         with open(join(pixels_path, im_name), "rb") as fp:
             pixels_list = pickle.load(fp)
-        if len(pixels_list) == 0:
+        if len(pixels_list) <= 2:
             continue
 
         (xmax, ymax), (xmin, ymin) = np.max(pixels_list, axis=0)+1, np.min(pixels_list, axis=0)
@@ -45,6 +45,7 @@ def edge_detection():
 
         if mask is not None:
             pixels_list = np.argwhere(mask > 0)
+
         img_ori = smoothing_func2(pixels_list, img_ori)
         img = img_ori[xmin: xmax, ymin: ymax]
         if img.shape[0] == 0 or img.shape[1] == 0:

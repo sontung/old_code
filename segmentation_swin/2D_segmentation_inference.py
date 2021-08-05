@@ -19,11 +19,7 @@ DEBUG_MODE = args['debug']
 VISUALIZE_MODE = args["visualize"]
 
 # section Runtime Arguments
-CONFIG_FILE = 'configs/AB__SwinBase__2_local__no_TTA.py'
-CHECKPOINT = 'checkpoints/config_2_16000iter.pth'
-DEVICE = 'cuda:0'
 
-MODEL = init_segmentor(CONFIG_FILE, CHECKPOINT, device=DEVICE)
 
 BACKGROUND, AIRBAG, SIDE_AIRBAG, HEAD, EAR = 0, 1, 2, 3, 4
 HEAD_COLOR = [64, 128, 128]
@@ -170,6 +166,9 @@ def get_seg_ear_from_prediction(class_predict, head_contour):
 
 
 def partition_by_none(path):
+    """
+    get sub paths which are separated by 0
+    """
     ind = 0
     start = None
     ranges = []
@@ -199,6 +198,13 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
     os.makedirs(save_ear_vis, exist_ok=True)
     os.makedirs(save_ear_coor, exist_ok=True)
 
+    # model loading
+    config_file = 'configs/AB__SwinBase__2_local__no_TTA.py'
+    checkpoint = 'checkpoints/config_2_16000iter.pth'
+    dev = 'cuda:0'
+
+    model = init_segmentor(config_file, checkpoint, device=dev)
+
     # section Predict
     if not DEBUG:
         file_paths = glob.glob(f"{input_images}/[1|2]-*.png")
@@ -212,7 +218,7 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
         view = int(img_name.split('-')[0])
 
         inp_img = cv2.imread(path, 1)
-        result = inference_segmentor(MODEL, inp_img)
+        result = inference_segmentor(model, inp_img)
         pred = result[0]
 
         head_mask, head_rgb_mask, head_contour = get_seg_head_from_prediction(pred)
@@ -255,6 +261,7 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
             with open(f'{save_ear_coor}/{img_name}', 'wb') as ear_fp:
                 pickle.dump(pixels, ear_fp)
 
+    # using k means to clusters based on AB sizes
     sys.stdin = open("../data_heavy/frames/info.txt", "r")
     frame_indices = [line[:-1] for line in sys.stdin.readlines()]
     airbag_detection_results = []
@@ -267,6 +274,7 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
     res = kmeans1d.cluster(airbag_detection_results, 2)
     centroids = res.centroids
 
+    # if the small centroid is very small compared to the large centroid, set the cluster to null predictions
     if centroids[0] > 0:
         if len(ranges) > 1 or centroids[1]/centroids[0] >= 5:
             print("unusual airbag detection, trying to handle")
@@ -280,6 +288,7 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
                     frame2ab_info_dict[im_name] = [im_name, 0, head_pixels, dist_x, dist_y, head_rot, ab_rot]
                     print(f" modifying {im_name}: from {ab_pixels} to {0}, resulting key=", frame2ab_info_dict[im_name][:2])
 
+    # writing final predictions into files
     assert len(head_masks_info_dict) == len(frame2ab_info_dict)
     with open(head_masks_info, "w") as fp2:
         with open(frame2ab_info, "w") as fp:

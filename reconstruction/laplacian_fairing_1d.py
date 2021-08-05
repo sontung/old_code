@@ -3,6 +3,9 @@ from matplotlib import pyplot as plt
 
 
 def laplacian_fairing(angles, name=None, collision_interval=None):
+    """
+    solve for missing values by minimizing the second derivative
+    """
 
     # fill in values in collision period
     if collision_interval is not None:
@@ -48,6 +51,9 @@ def laplacian_fairing(angles, name=None, collision_interval=None):
 
 
 def check(angles):
+    """
+    check if the input has Nones in two places of its both ends
+    """
     print("final check before laplacian fairing")
     if angles[0] is None:
         for i in range(1, len(angles)):

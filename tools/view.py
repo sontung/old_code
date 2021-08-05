@@ -107,9 +107,6 @@ def visualize():
     pcd = new_model()
     pcd.compute_vertex_normals()
 
-    # pcd = o3d.io.read_triangle_mesh("data/max-planck.obj")
-    # pcd.compute_vertex_normals()
-
     ab_scale, _, _, ab_rot, ab_area, head_area = du_outputs2
     sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
     rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj,\
@@ -153,6 +150,8 @@ def visualize():
     pcd.translate(trajectory[0])
 
     while True:
+
+        # manual mode
         if RENDER_MODE == 0:
             vis.poll_events()
             vis.update_renderer()
@@ -224,6 +223,7 @@ def visualize():
                 vis.update_geometry(pcd)
                 vis.update_renderer()
 
+        # auto mode
         elif RENDER_MODE == 1:
             counter += 1
             vis.poll_events()

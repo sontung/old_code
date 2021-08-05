@@ -3,7 +3,6 @@ import cv2
 import json
 import open3d
 import numpy as np
-import kmeans1d
 from scipy import interpolate
 from matplotlib import pyplot as plt
 
@@ -52,9 +51,6 @@ def partition_by_not_none(path):
 def b_spline_smooth(_trajectory, vis=False, name="test2.png", return_params=False, removed=None):
     """
     b spline smoothing for missing values (denoted None)
-    Args:
-        _trajectory:
-
     Returns:
     """
     control_points = []
@@ -66,21 +62,15 @@ def b_spline_smooth(_trajectory, vis=False, name="test2.png", return_params=Fals
             control_points_time.append(idx)
         else:
             not_there.append(idx)
-    control_points_smoothed = smooth_1d(control_points, window_len=6)
 
-    tck_smoothed = interpolate.splrep(control_points_time, control_points_smoothed, k=2)
     tck = interpolate.splrep(control_points_time, control_points, k=3)
 
     if vis:
-        plt.plot(control_points_time, control_points_smoothed, "og")
         plt.plot(control_points_time, control_points, "ob")
         plt.plot(not_there, [interpolate.splev(du, tck) for du in not_there], "or")
 
         plt.plot(np.linspace(0, len(_trajectory), 1000),
                  [interpolate.splev(du, tck) for du in np.linspace(0, len(_trajectory), 1000)], "y")
-
-        plt.plot(np.linspace(0, len(_trajectory), 1000),
-                 [interpolate.splev(du, tck_smoothed) for du in np.linspace(0, len(_trajectory), 1000)], "green")
 
         if removed is not None:
             plt.plot([du[0] for du in removed], [du[1] for du in removed], "oy")
@@ -213,84 +203,4 @@ def draw_image(array):
         res[u, v] = (128, 128, 128)
     return res
 
-
-def remove_condition(path):
-    grad = np.gradient(path, 2)
-    clusters, centroids = kmeans1d.cluster(grad, 2)
-    if clusters.count(0) > clusters.count(1):
-        remove_label = 1
-    else:
-        remove_label = 0
-    res = path[:]
-    removed_instances = []
-    for i in range(len(path)):
-        if clusters[i] == remove_label:
-            res[i] = None
-            removed_instances.append((i, path[i]))
-    return res, removed_instances
-
-
-def refine_path_computation(path, return_removed=False):
-    ranges = partition_by_none(path)
-    res = path[:]
-    removed_instances_all = []
-    for start, end in ranges:
-        res[start: end], removed_instances = remove_condition(path[start: end])
-        for v, k in removed_instances:
-            removed_instances_all.append((v+start, k))
-    if return_removed:
-        print("removing", removed_instances_all)
-        return res, removed_instances_all
-    return res
-
-
-def get_translation_scale():
-    sys.stdin = open("../data_heavy/frame2ab.txt")
-    lines2 = [du[:-1] for du in sys.stdin.readlines()]
-    frame2ab = {du.split(" ")[0]: du for du in lines2}
-    head_area_img = float(frame2ab["1-1.png"].split(" ")[2])
-    head_im = cv2.imread("../data_heavy/area_compute/head-0.png")
-    return np.sqrt(head_area_img/np.sum(head_im[:, :, 0]!=255))
-
-
-def smooth_1d(x, window_len=4, window='hanning'):
-    """smooth the data using a window with requested size.
-
-    This method is based on the convolution of a scaled window with the signal.
-    The signal is prepared by introducing reflected copies of the signal
-    (with the window size) in both ends so that transient parts are minimized
-    in the begining and end part of the output signal.
-
-    input:
-        x: the input signal
-        window_len: the dimension of the smoothing window; should be an odd integer
-        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
-            flat window will produce a moving average smoothing.
-
-    output:
-        the smoothed signal
-
-    example:
-
-    t=linspace(-2,2,0.1)
-    x=sin(t)+randn(len(t))*0.1
-    y=smooth(x)
-
-    see also:
-
-    numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
-    scipy.signal.lfilter
-
-    TODO: the window parameter could be the window itself if an array instead of a string
-    NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
-    """
-    s = np.r_[x[window_len - 1:0:-1], x, x[-2:-window_len - 1:-1]]
-    if window == 'flat':  # moving average
-        w = np.ones(window_len, 'd')
-    else:
-        w = eval('np.' + window + '(window_len)')
-
-    y = np.convolve(w / w.sum(), s, mode='valid')
-    y = y[int(window_len/2-1):-int(window_len/2)]
-    return list(y)
 
