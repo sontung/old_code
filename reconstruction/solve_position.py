@@ -9,14 +9,14 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d as o3d
+
 from scipy.spatial.transform import Rotation as rot_mat_compute
 from tqdm import tqdm
-
 from anomaly_detetion import neutralize_head_rot
 from anomaly_detetion import look_for_abnormals_based_on_ear_sizes_tight
 from custom_rigid_cpd import RigidRegistration
 from laplacian_fairing_1d import laplacian_fairing
-from rec_utils import b_spline_smooth, normalize, draw_text_to_image, partition_by_none, partition_by_not_none
+from rec_utils import b_spline_smooth, normalize, draw_text_to_image, partition_by_not_none
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from translation_bound_processing import check_translation_bound
 from test_model import new_model
@@ -30,6 +30,9 @@ args = vars(parser.parse_args())
 DEBUG_MODE = args['debug']
 FAST_MODE = args['fast']
 
+# Global variables for directories
+FRAMES_INFO_DIR = "../data_heavy/frames/info.txt"
+
 if DEBUG_MODE:
     shutil.rmtree("test", ignore_errors=True)
     shutil.rmtree("test2", ignore_errors=True)
@@ -40,11 +43,10 @@ if FAST_MODE:
     print("running in fast mode (not recommended)")
 
 
-def visualize_rigid_registration(iteration, error, X, Y, ax):
-
+def visualize_rigid_registration(iteration, error, x, y, ax):
     plt.cla()
-    ax.scatter(X[:, 0],  X[:, 1], color='red', label='Target')
-    ax.scatter(Y[:, 0],  Y[:, 1], color='blue', label='Source')
+    ax.scatter(x[:, 0],  x[:, 1], color='red', label='Target')
+    ax.scatter(y[:, 0],  y[:, 1], color='blue', label='Source')
     plt.text(0.87, 0.92, 'Iteration: {:d}\nQ: {:06.4f}'.format(
         iteration, error), horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize='x-large')
     ax.legend(loc='upper left', fontsize='x-large')
@@ -55,8 +57,18 @@ def visualize_rigid_registration(iteration, error, X, Y, ax):
 def compute_translation(ab_transx, ab_transy):
     """
     translation of the head
+    inputs:
+    ab_transx: float
+    ab_transy: float
+
+    outputs:
+    trajectories: list,
+    x_traj: list,
+    y_traj: list,
+    ab_transx_new: float,
+    ab_transy_new: float
     """
-    sys.stdin = open("../data_heavy/frames/info.txt")
+    sys.stdin = open(FRAMES_INFO_DIR)
     lines = [du[:-1] for du in sys.stdin.readlines()]
     all_pixel_dir = "../data_heavy/frames_ear_coord_only"
 
@@ -128,7 +140,10 @@ def compute_translation(ab_transx, ab_transy):
 
 
 def compute_rotation_accurate():
-    sys.stdin = open("../data_heavy/frames/info.txt")
+    """
+    compute rotation using CPD algorithm
+    """
+    sys.stdin = open(FRAMES_INFO_DIR)
     lines = [du[:-1] for du in sys.stdin.readlines()]
     images_dir = "../data_heavy/line_images"
     trajectories = []
@@ -136,6 +151,7 @@ def compute_rotation_accurate():
     all_angles = []
     os.makedirs("../data_heavy/rigid_head_rotation", exist_ok=True)
 
+    # k-means clustering to detect unusual ear detections
     ear_size_filtering = look_for_abnormals_based_on_ear_sizes_tight([0 for _ in lines], return_selections=True)
     last_img = None
     for idx in tqdm(lines[:], desc="Computing head x-y rotation using rigid CPD"):
@@ -204,15 +220,24 @@ def compute_rotation_accurate():
             move = rot_deg_overall - prev_pos
             trajectories.append(-move)
         prev_pos = rot_deg_overall
-    return trajectories, all_angles, all_angles_before_null, cpd_angles, ear_size_filtering
+    outputs = {
+        "trajectories": trajectories,
+        "all_angles": all_angles,
+        "all_angles_before_null": all_angles_before_null,
+        "cpd_angles": cpd_angles,
+        "ear_size_filtering": ear_size_filtering,
+    }
+    return outputs
 
 
 def compute_rotation(view=1):
-    sys.stdin = open("../data_heavy/frames/info.txt")
+    """
+    compute rotation by OOB of head masks
+    """
+    sys.stdin = open(FRAMES_INFO_DIR)
     trajectories = []
     prev_pos = None
 
-    sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]
     sys.stdin = open("../data_heavy/frame2ab.txt")
     lines2 = [du[:-1] for du in sys.stdin.readlines()]
@@ -251,10 +276,12 @@ def compute_rotation(view=1):
 
 
 def compute_head_ab_areas():
+    """
+    prior simulation to compute head/ab scale ratio
+    """
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/area_compute/", exist_ok=True)
-    # pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
-    pcd = new_model()
+    pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
 
     # scale the AB to match the scale head/ab in image space
@@ -267,10 +294,13 @@ def compute_head_ab_areas():
     trajectory, ne_trans_x_traj, ne_trans_y_traj, ab_transx2, ab_transy2 = compute_translation(ab_transx, ab_transy)
 
     rotated_trajectory_z, _, _ = compute_rotation(view=2)
-    if not FAST_MODE:
-        rotated_trajectory, ne_rot_traj, all_angles_before_null, cpd_angles, ear_size_filtering = compute_rotation_accurate()
-    else:
-        rotated_trajectory, ne_rot_traj, all_angles_before_null = compute_rotation()
+    computations = compute_rotation_accurate()
+
+    rotated_trajectory = computations["trajectories"]
+    ne_rot_traj = computations["all_angles"]
+    all_angles_before_null = computations["all_angles_before_null"]
+    cpd_angles = computations["cpd_angles"]
+    ear_size_filtering = computations["ear_size_filtering"]
 
     if rotated_trajectory_z is not None:
         assert len(trajectory) == len(rotated_trajectory) == len(rotated_trajectory_z)
@@ -303,6 +333,7 @@ def compute_head_ab_areas():
 
         vis.get_view_control().rotate(-500, 0)
         vis.capture_screen_image("../data_heavy/area_compute/head-%s.png" % counter, do_render=True)
+        ab = None
         if counter >= start_ab-1:
             ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
             arr.append(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
@@ -317,7 +348,7 @@ def compute_head_ab_areas():
             vis.add_geometry(pcd, reset_bounding_box=False)
             ab_counter += 1
 
-        if ab_added:
+        if ab_added and ab is not None:
             vis.remove_geometry(ab, reset_bounding_box=False)
         vis.get_view_control().rotate(500, 0)
         vis.poll_events()
@@ -337,9 +368,15 @@ def compute_head_ab_areas():
         im = cv2.imread(name, cv2.IMREAD_GRAYSCALE)
         arr.append(np.sum(im != 255))
     ab_area = np.max(arr)
-    results = [head_area, ab_area, trajectory, rotated_trajectory, rotated_trajectory_z,
-               ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj, all_angles_before_null,
-               cpd_angles, ear_size_filtering]
+    results = {"head area": head_area,
+               "ab area": ab_area,
+               "trajectory": trajectory,
+               "rot trajectory": rotated_trajectory,
+               "rot trajectory z": rotated_trajectory_z,
+               "ne rot traj": ne_rot_traj,
+               "all angles before null": all_angles_before_null,
+               "cpd angles": cpd_angles,
+               "ear size filter": ear_size_filtering}
     results2 = [ab_scale, ab_transx2, ab_transy2, ab_rot, ab_area, head_area]
     os.makedirs("../data_const/final_vis", exist_ok=True)
     with open("../data_const/final_vis/trajectory.pkl", "wb") as pickle_file:
@@ -352,15 +389,21 @@ def compute_head_ab_areas():
 def visualize(debug_mode=DEBUG_MODE):
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
-    # pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     pcd = new_model()
     pcd.compute_vertex_normals()
     du_outputs, du_outputs2, (ab_transx_ori, ab_transy_ori) = compute_head_ab_areas()
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
 
-    sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
-    rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, \
-    ne_trans_y_traj, all_angles_before_null, cpd_angles, ear_size_filtering = du_outputs
+    sim_head_area = du_outputs["head area"]
+    sim_ab_area = du_outputs["ab area"]
+    trajectory = du_outputs["trajectory"]
+    rotated_trajectory = du_outputs["rot trajectory"]
+    rotated_trajectory_z = du_outputs["rot trajectory z"]
+    ne_rot_traj = du_outputs["ne rot traj"]
+    all_angles_before_null = du_outputs["all angles before null"]
+    cpd_angles = du_outputs["cpd angles"]
+    ear_size_filtering = du_outputs["ear size filter"]
+
     img_ab_area, img_head_area = compute_head_ab_areas_image_space()
 
     # scale both head and ab to match image space
@@ -406,6 +449,7 @@ def visualize(debug_mode=DEBUG_MODE):
 
         vis.update_geometry(pcd)
 
+        ab = None
         if counter >= start_ab-1:
             ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
             ab.compute_vertex_normals()
@@ -426,7 +470,7 @@ def visualize(debug_mode=DEBUG_MODE):
 
         vis.get_view_control().rotate(500, 0)
         vis.capture_screen_image("../data_heavy/saved/v2-%s.png" % counter, do_render=True)
-        if ab_added:
+        if ab_added and ab is not None:
             vis.remove_geometry(ab, reset_bounding_box=False)
     vis.destroy_window()
 
@@ -438,7 +482,7 @@ def visualize(debug_mode=DEBUG_MODE):
         head_rotations_by_masks = compute_rotation()[-1]
         os.makedirs("test", exist_ok=True)
         os.makedirs("test2", exist_ok=True)
-        sys.stdin = open("../data_heavy/frames/info.txt")
+        sys.stdin = open(FRAMES_INFO_DIR)
         lines = [du[:-1] for du in sys.stdin.readlines()]
         ear_dir = "../data_heavy/frames_ear_only"
         rigid_dir = "../data_heavy/rigid_head_rotation"

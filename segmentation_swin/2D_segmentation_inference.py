@@ -8,7 +8,6 @@ import numpy as np
 import kmeans1d
 from PIL import Image
 from tqdm import tqdm
-
 from mmseg.apis import inference_segmentor, init_segmentor
 
 parser = ArgumentParser()
@@ -19,8 +18,6 @@ DEBUG_MODE = args['debug']
 VISUALIZE_MODE = args["visualize"]
 
 # section Runtime Arguments
-
-
 BACKGROUND, AIRBAG, SIDE_AIRBAG, HEAD, EAR = 0, 1, 2, 3, 4
 HEAD_COLOR = [64, 128, 128]
 AIRBAG_COLOR = [192, 128, 128]
@@ -29,14 +26,14 @@ DEBUG = False
 
 
 def merge_2images(_im1, _im2, c1, c2):
+    """
+    merge two visualizations into one matrix
+    """
     output = np.zeros(_im1.shape, dtype=np.uint8)
-
     indices = np.argwhere(_im1[:, :] == c1)
     output[indices[:, 0], indices[:, 1]] = c1
-
     indices = np.argwhere(_im2[:, :] == c2)
     output[indices[:, 0], indices[:, 1]] = c2
-
     return output
 
 
@@ -56,24 +53,19 @@ def compute_position_and_rotation(mask, rgb_mask, contours):
         cv2.fillPoly(copy_mask, [hull], (255, 255, 255))
         copy_mask = copy_mask[:, :, 0]
         mask = copy_mask
-
     else:
         hull = contours[0]
 
     area = np.sum(mask == 255)
-
     orient_rect = cv2.minAreaRect(hull)
     center = (int(orient_rect[0][0]), int(orient_rect[0][1]))
-
     bb_box = cv2.boxPoints(orient_rect)
     bb_box = np.int0(bb_box)
-
     ind_by_x = np.argsort(bb_box[:, 1])
     top_points = bb_box[ind_by_x[:2]]
     bot_points = bb_box[ind_by_x[2:]]
     left_top_point = top_points[np.argmax(top_points[:, 0])]
     left_bot_point = bot_points[np.argmax(bot_points[:, 0])]
-
     x1, y1 = left_top_point
     x2, y2 = left_bot_point
 
@@ -87,7 +79,6 @@ def compute_position_and_rotation(mask, rgb_mask, contours):
 def refine_airbag_segmentation(ab_mask, head_mask):
     test_mask = cv2.bitwise_or(ab_mask, head_mask)
     test_cnts, _ = cv2.findContours(test_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
     overlap_mask = None
     for cnt in test_cnts:
         dum_mask = np.zeros(head_mask.shape, dtype=np.uint8)
@@ -110,7 +101,6 @@ def get_seg_head_from_prediction(class_predict):
     head_mask[class_predict == HEAD] = 255
     head_mask[class_predict == EAR] = 255
     rgb_mask = np.zeros((class_predict.shape[0], class_predict.shape[1], 3), dtype=np.uint8)
-
     contours, _ = cv2.findContours(head_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if len(contours) > 0:
         max_contours = [max(contours, key=lambda x: cv2.contourArea(x))]
@@ -120,7 +110,6 @@ def get_seg_head_from_prediction(class_predict):
 
     mask = rgb_mask[:, :, 0]
     mask[mask > 0] = 255
-
     return mask, rgb_mask, max_contours
 
 
@@ -128,7 +117,6 @@ def get_seg_airbag_from_prediction(class_predict, view=None, kept_area=1000):
     ab_mask = np.zeros(class_predict.shape, dtype=np.uint8)
     ab_mask[class_predict == AIRBAG] = 255
     rgb_mask = np.zeros((class_predict.shape[0], class_predict.shape[1], 3), dtype=np.uint8)
-
     contours, _ = cv2.findContours(ab_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     if len(contours) > 0:
@@ -137,35 +125,30 @@ def get_seg_airbag_from_prediction(class_predict, view=None, kept_area=1000):
         else:
             largest_cnt = max(contours, key=lambda x: cv2.contourArea(x))
             contours = [largest_cnt]
-
         cv2.fillPoly(rgb_mask, contours, AIRBAG_COLOR)
 
     mask = rgb_mask[:, :, 0]
     mask[mask > 0] = 255
-
     return mask, rgb_mask, contours
 
 
 def get_seg_ear_from_prediction(class_predict, head_contour):
-
     ear_mask = np.zeros(class_predict.shape, dtype=np.uint8)
     ear_mask[class_predict == EAR] = 255
     mask = np.zeros(class_predict.shape, dtype=np.uint8)
 
     if len(head_contour) > 0:
         contours, _ = cv2.findContours(ear_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
         head_x, head_y = head_contour[0][:, :, 0], head_contour[0][:, :, 1]
         for cnt in contours:
             x0, y0 = np.mean(cnt, axis=0)[0]
             if np.min(head_x) <= x0 <= np.max(head_x) and np.min(head_y) <= y0 <= np.max(head_y):
                 cv2.fillPoly(mask, pts=[cnt], color=[255])
                 return mask
-
     return mask
 
 
-def partition_by_none(path):
+def partition_by_zeros(path):
     """
     get sub paths which are separated by 0
     """
@@ -201,9 +184,7 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
     # model loading
     config_file = 'configs/AB__SwinBase__2_local__no_TTA.py'
     checkpoint = 'checkpoints/config_2_16000iter.pth'
-    dev = 'cuda:0'
-
-    model = init_segmentor(config_file, checkpoint, device=dev)
+    model = init_segmentor(config_file, checkpoint, device='cuda:0')
 
     # section Predict
     if not DEBUG:
@@ -269,24 +250,24 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
         im_name = f"1-{idx}.png"
         _, ab_pixels = frame2ab_info_dict[im_name][:2]
         airbag_detection_results.append(ab_pixels)
-    ranges = partition_by_none(airbag_detection_results)
+    ranges = partition_by_zeros(airbag_detection_results)
 
     res = kmeans1d.cluster(airbag_detection_results, 2)
     centroids = res.centroids
 
     # if the small centroid is very small compared to the large centroid, set the cluster to null predictions
-    if centroids[0] > 0:
-        if len(ranges) > 1 or centroids[1]/centroids[0] >= 5:
-            print("unusual airbag detection, trying to handle")
-            clusters = res.clusters
-            for idx, frame_idx in enumerate(frame_indices):
-                im_name = f"1-{frame_idx}.png"
-                if clusters[idx] == 0:
-                    _, ab_pixels, head_pixels, dist_x, dist_y, head_rot, ab_rot = frame2ab_info_dict[im_name]
-                    if ab_pixels == 0:
-                        continue
-                    frame2ab_info_dict[im_name] = [im_name, 0, head_pixels, dist_x, dist_y, head_rot, ab_rot]
-                    print(f" modifying {im_name}: from {ab_pixels} to {0}, resulting key=", frame2ab_info_dict[im_name][:2])
+    if centroids[0] > 0 and (len(ranges) > 1 or centroids[1]/centroids[0] >= 5):
+        print("unusual airbag detection, trying to handle")
+        clusters = res.clusters
+        for idx, frame_idx in enumerate(frame_indices):
+            im_name = f"1-{frame_idx}.png"
+            if clusters[idx] == 0:
+                _, ab_pixels, head_pixels, dist_x, dist_y, head_rot, ab_rot = frame2ab_info_dict[im_name]
+                if ab_pixels == 0:
+                    continue
+                frame2ab_info_dict[im_name] = [im_name, 0, head_pixels, dist_x, dist_y, head_rot, ab_rot]
+                verbose = f" modifying {im_name}: from {ab_pixels} to {0}, resulting key="
+                print(verbose, frame2ab_info_dict[im_name][:2])
 
     # writing final predictions into files
     assert len(head_masks_info_dict) == len(frame2ab_info_dict)
