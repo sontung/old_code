@@ -40,11 +40,9 @@ make
 ./example
 
 cd ../../../reconstruction/
-python solve_position.py -d True
+python solve_position.py
 
 cd ../visualization
 python main.py
 
-#cd ../
-#python delete_runtime_files.py
 

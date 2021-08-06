@@ -7,6 +7,9 @@ from rec_utils import partition_by_none, grad_diff_compute
 
 
 def take_care_near_nones(cpd_computations):
+    """
+    remove any values which are near None and has big gradient.
+    """
     print("taking care near nones")
     best_solution = cpd_computations[:]
     ranges = partition_by_none(cpd_computations)
@@ -15,7 +18,7 @@ def take_care_near_nones(cpd_computations):
     start, end = ranges[0]
     path = cpd_computations[start:end]
     grad = np.diff(path)
-    if abs(grad[len(path)-2]/grad[len(path)-3]) > 2:
+    if abs(grad[len(path)-2]/grad[len(path)-3]) > 2 and len(path) >= 3:
         print(f" detecting unusual gradient of {round(grad[len(path)-2], 2)}"
               f" which is {round(abs(grad[len(path)-2]/grad[len(path)-3]))} times more"
               f" of prev grad {round(grad[len(path)-3], 2)}")
@@ -26,14 +29,15 @@ def take_care_near_nones(cpd_computations):
     if len(ranges) > 1:
         start, end = ranges[1]
         path = cpd_computations[start:end]
-        grad1 = path[0]-path[1]
-        grad2 = path[1]-path[2]
-        if abs(grad1/grad2) > 2:
-            print(f" detecting unusual gradient of {round(grad1, 2)}"
-                  f" which is {round(abs(grad1/grad2))} times more"
-                  f" of prev grad {round(grad2, 2)}")
-            path[0] = None  # set unusual large gradient to None
-            best_solution[start:end] = path
+        if len(path) >= 3:
+            grad1 = path[0]-path[1]
+            grad2 = path[1]-path[2]
+            if abs(grad1/grad2) > 2:
+                print(f" detecting unusual gradient of {round(grad1, 2)}"
+                      f" which is {round(abs(grad1/grad2))} times more"
+                      f" of prev grad {round(grad2, 2)}")
+                path[0] = None  # set unusual large gradient to None
+                best_solution[start:end] = path
     return best_solution
 
 
@@ -41,7 +45,10 @@ def neutralize_head_rot(cpd_computations, head_mask_computations):
     """
     finding the best solution between head mask rotation and cpd rotation
     """
-    cpd_computations = take_care_near_nones(cpd_computations)
+    try:
+        cpd_computations = take_care_near_nones(cpd_computations)
+    except IndexError:
+        pass
     for idx, val in enumerate(cpd_computations):
         if val is None:
             head_mask_computations[idx] = None
