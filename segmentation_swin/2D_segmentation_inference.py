@@ -227,9 +227,9 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
 
         seg_final = merge_2images(head_rgb_mask, ab_rgb_mask, HEAD_COLOR, AIRBAG_COLOR)
 
-        Image.fromarray(seg_final).save(f"{save_seg_abh}/{img_name}")
+        cv2.imwrite(f"{save_seg_abh}/{img_name}", seg_final)
         blend = cv2.addWeighted(inp_img, 0.3, seg_final, 0.7, 0)
-        Image.fromarray(blend).save(f"{save_seg_abh_vis}/{img_name}")
+        cv2.imwrite(f"{save_seg_abh_vis}/{img_name}", blend)
 
         if view == 1:
             ear_mask = get_seg_ear_from_prediction(pred, head_contour)
