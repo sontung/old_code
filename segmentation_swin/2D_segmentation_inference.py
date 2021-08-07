@@ -181,16 +181,15 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
     os.makedirs(save_ear_vis, exist_ok=True)
     os.makedirs(save_ear_coor, exist_ok=True)
 
+    sys.stdin = open("../data_heavy/frames/info.txt", "r")
+    frame_indices = [line[:-1] for line in sys.stdin.readlines()]
+    file_paths = [f"{input_images}/1-{fi}.png" for fi in frame_indices]
+    file_paths.extend([f"{input_images}/2-{fi}.png" for fi in frame_indices])
+
     # model loading
     config_file = 'configs/AB__SwinBase__2_local__no_TTA.py'
     checkpoint = 'checkpoints/config_2_16000iter.pth'
     model = init_segmentor(config_file, checkpoint, device='cuda:0')
-
-    # section Predict
-    if not DEBUG:
-        file_paths = glob.glob(f"{input_images}/[1|2]-*.png")
-    else:
-        file_paths = glob.glob(f"{input_images}/1-*.png")
 
     frame2ab_info_dict = {}
     head_masks_info_dict = {}

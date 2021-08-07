@@ -32,20 +32,15 @@ def extract_frame(mypath='../data_const/run', output='../data_heavy/frames'):
     """
     extract frames from videos stored in ../data_heavy/run
     """
-    # mypath = "../data_const/run"
     videos = sorted([join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))])
     print("Extracting frames from", videos)
-    # os.makedirs("../data_heavy/frames", exist_ok=True)
     os.makedirs(output, exist_ok=True)
-
-    min_nb_frame = None
-    keep_counts = []
+    keep_counts_list = {}
     for c, v in enumerate(videos):
         cap = cv2.VideoCapture(v)
         count = 0
         frame_idx = 0
         counts = []
-
         while True:
             ret, frame = cap.read()
             if ret:
@@ -60,14 +55,13 @@ def extract_frame(mypath='../data_const/run', output='../data_heavy/frames'):
                     counts.append(frame_idx)
             else:
                 break
-        if min_nb_frame:
-            if min_nb_frame > count:
-                keep_counts = counts
-                min_nb_frame = count
-        else:
-            keep_counts = counts
-            min_nb_frame = count
-    keep_counts = sorted(keep_counts)
+
+        if "1" in v.split("/")[-1]:
+            keep_counts_list["1"] = counts
+        elif "2" in v.split("/")[-1]:
+            keep_counts_list["2"] = counts
+
+    keep_counts = min(keep_counts_list.values(), key=lambda du: len(du))
     with open(join(output, "info.txt"), "w") as text_file:
         for c in keep_counts:
             print(c, file=text_file)

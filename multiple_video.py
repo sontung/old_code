@@ -24,6 +24,18 @@ def clean_stuffs():
     shutil.rmtree('sph_data/mc_solutions_smoothed', ignore_errors=True)
 
 
+class StringColors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='data_const/final_vis',
                debug_mode=DEBUG_MODE):
 
@@ -43,7 +55,9 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
     else:
         command = './run_with_deeplab.sh'
 
-    for folder in tqdm(sub_folders, desc="Running all video"):
+    sub_folders2 = [du for du in sub_folders if du not in sub_out_folders]
+    print(f"skipping {len(sub_folders)-len(sub_folders2)} videos as they are already completed")
+    for folder in tqdm(sub_folders2, desc=f"{StringColors.OKGREEN}Running all video{StringColors.ENDC}"):
 
         # delete all file in data_const/run
         for fd in glob(dst_fd + '/*'):
@@ -59,7 +73,7 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
         # start run
         subprocess.call(command)
 
-        if len(glob(f"{result_df}/*")) < 5:  # if produces less than 5 output files => run failed
+        if len(glob(f"{result_df}/*")) < 5:  # if produced less than 5 output files => run failed
             print(f"{folder} doesn't complete because it produced {len(glob(f'{result_df}/*'))}")
             if debug_mode:
                 return
