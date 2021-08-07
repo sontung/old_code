@@ -124,4 +124,4 @@ if __name__ == '__main__':
         process_cpd_fast(False)
         write_all()
     else:
-        fit_ellipse()
+        edge_detection()

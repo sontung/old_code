@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from numba import jit, njit, prange
 
 
@@ -14,6 +15,13 @@ def fast_exp(p, s):
         for j in prange(p.shape[1]):
             p[i, j] = np.exp(-p[i, j] / (2 * s))
     return p
+
+
+def fast_diag(mat):
+    b = np.zeros((mat.shape[0], mat.shape[1], mat.shape[1]))
+    diag = np.arange(mat.shape[1])
+    b[:, diag, diag] = mat
+    return b
 
 
 def initialize_sigma2(X, Y):
@@ -72,7 +80,9 @@ def register_fast(X, Y, max_iterations=100, threshold=0.1, stop_early=False):
         A = np.dot(np.transpose(X_hat), np.transpose(P))
         A = np.dot(A, Y_hat)
 
-        YPY = np.dot(np.transpose(Y_hat), np.diag(P1))
+        YPY = np.transpose(Y_hat)*P1  # faster version of YPY = np.dot(np.transpose(Y_hat), np.diag(P1))
+        # YPY = np.dot(np.transpose(Y_hat), np.diag(P1))
+
         YPY = np.dot(YPY, Y_hat)
 
         B = np.linalg.solve(np.transpose(YPY), np.transpose(A))

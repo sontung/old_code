@@ -121,7 +121,6 @@ def process_cpd(debug=False):
 
 
 def process_cpd_fast(debug=False):
-
     ear = cv2.imread("../data/ear.png")
     ear = cv2.resize(ear, (ear.shape[1]//4, ear.shape[0]//4))
     all_files = glob.glob("../data_heavy/edge_pixels/*")
@@ -140,11 +139,10 @@ def process_cpd_fast(debug=False):
     y_data = np.loadtxt('../data/ear.txt')
     for afile in tqdm(all_files, desc="Extracting rotation using affine CPD"):
         imn = afile.split("/")[-1]
-        if debug and imn != "1-48.png":
-            continue
         x_data = np.loadtxt(afile)
         y_data_norm = normalize(y_data, x_data)
         y_data_transformed, b, t, error = register_fast(x_data, y_data_norm)
+
         if debug:
             fig = plt.figure()
             fig.add_axes([0, 0, 1, 1])
@@ -156,15 +154,11 @@ def process_cpd_fast(debug=False):
             plt.show()
 
         cv2.imwrite(f"{transform_path}/{imn}", draw_image(y_data_transformed))
-
-        # cv2.imshow("t", draw_image(y_data_transformed))
-        # cv2.waitKey()
-        # cv2.destroyAllWindows()
         if debug:
             cv2.imwrite(f"{debug_path}/{imn}-res.png", draw_image(y_data_transformed))
             cv2.imwrite(f"{debug_path}/{imn}-inp.png", draw_image(x_data))
 
 
 if __name__ == '__main__':
-    process_cpd_fast(True)
+    process_cpd_fast(False)
     # process_cpd_with_vis()
