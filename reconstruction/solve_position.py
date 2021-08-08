@@ -154,7 +154,7 @@ def compute_rotation_accurate():
     # k-means clustering to detect unusual ear detections
     ear_size_filtering = look_for_abnormals_based_on_ear_sizes_tight([0 for _ in lines], return_selections=True)
     last_img = None
-    for idx in tqdm(lines[:], desc="Computing head x-y rotation using rigid CPD"):
+    for idx in tqdm(lines, desc="Computing head x-y rotation using rigid CPD"):
         img = cv2.imread(f"{images_dir}/1-{idx}.png")
         if img is None or np.sum(img) == 0:
             all_angles.append(None)
@@ -168,21 +168,6 @@ def compute_rotation_accurate():
         source_matrix = np.loadtxt('../data/ear.txt')
         source_matrix_norm = normalize(source_matrix, target_matrix)
 
-        # if idx != "86":
-        #     continue
-        #
-        # if idx == "86":
-        #     from functools import partial
-        #     reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=1000)
-        #
-        #     fig = plt.figure()
-        #     fig.add_axes([0, 0, 1, 1])
-        #     callback = partial(visualize_rigid_registration, ax=fig.axes[0])
-        #     y_data_norm, (_, rot_mat, _) = reg.register(callback)
-        #
-        #     plt.show()
-        #     plt.close(fig)
-
         if not ear_size_filtering:
             all_angles.append(None)
             cv2.imwrite(f"../data_heavy/rigid_head_rotation/1-{idx}.png", last_img)
@@ -190,6 +175,7 @@ def compute_rotation_accurate():
 
         reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=500)
         y_data_norm, (_, rot_mat, _) = reg.register()
+
         rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
         all_angles.append(rot_angle)
 

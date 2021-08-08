@@ -61,7 +61,6 @@ class RigidRegistration(EMRegistration):
     def update_transform(self):
         """
         Calculate a new estimate of the rigid transformation.
-
         """
 
         # target point cloud mean
@@ -103,7 +102,6 @@ class RigidRegistration(EMRegistration):
     def transform_point_cloud(self, Y=None):
         """
         Update a point cloud using the new estimate of the rigid transformation.
-
         """
         if Y is None:
             self.TY = self.s * np.dot(self.Y, self.R) + self.t
@@ -115,7 +113,6 @@ class RigidRegistration(EMRegistration):
         """
         Update the variance of the mixture model using the new estimate of the rigid transformation.
         See the update rule for sigma2 in Fig. 2 of of https://arxiv.org/pdf/0905.2635.pdf.
-
         """
         qprev = self.q
 
@@ -132,6 +129,5 @@ class RigidRegistration(EMRegistration):
     def get_registration_parameters(self):
         """
         Return the current estimate of the rigid transformation parameters.
-
         """
         return self.s, self.R, self.t

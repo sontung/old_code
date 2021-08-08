@@ -9,19 +9,12 @@ def fast_sum(x, ty):
     return res
 
 
-@njit(parallel=True)
+@njit("f8[:, :](f8[:, :], f8)", parallel=True)
 def fast_exp(p, s):
     for i in prange(p.shape[0]):
         for j in prange(p.shape[1]):
             p[i, j] = np.exp(-p[i, j] / (2 * s))
     return p
-
-
-def fast_diag(mat):
-    b = np.zeros((mat.shape[0], mat.shape[1], mat.shape[1]))
-    diag = np.arange(mat.shape[1])
-    b[:, diag, diag] = mat
-    return b
 
 
 def initialize_sigma2(X, Y):
@@ -81,7 +74,6 @@ def register_fast(X, Y, max_iterations=100, threshold=0.1, stop_early=False):
         A = np.dot(A, Y_hat)
 
         YPY = np.transpose(Y_hat)*P1  # faster version of YPY = np.dot(np.transpose(Y_hat), np.diag(P1))
-        # YPY = np.dot(np.transpose(Y_hat), np.diag(P1))
 
         YPY = np.dot(YPY, Y_hat)
 

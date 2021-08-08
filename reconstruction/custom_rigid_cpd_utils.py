@@ -25,11 +25,19 @@ def fast_sum(x, ty):
     return res
 
 
-@njit(parallel=True)
+@njit("f8[:, :](f8[:, :], f8)", parallel=True)
 def fast_exp(p, s):
     for i in prange(p.shape[0]):
         for j in prange(p.shape[1]):
             p[i, j] = np.exp(-p[i, j] / (2 * s))
+    return p
+
+
+@njit("f8[:, :](f8[:, :], f8[:, :])", parallel=True)
+def fast_divide(p, s):
+    for i in prange(p.shape[0]):
+        for j in prange(p.shape[1]):
+            p[i, j] = p[i, j] / s[i, j]
     return p
 
 
@@ -195,7 +203,8 @@ class EMRegistration(object):
         den[den == 0] = np.finfo(float).eps
         den += c
 
-        self.P = np.divide(P, den)
+        self.P = fast_divide(P, den)  # fast version of self.P = np.divide(P, den)
+
         self.Pt1 = np.sum(self.P, axis=0)
         self.P1 = np.sum(self.P, axis=1)
         self.Np = np.sum(self.P1)
