@@ -74,10 +74,12 @@ def register_fast(X, Y, max_iterations=100, threshold=0.1, stop_early=False):
         A = np.dot(A, Y_hat)
 
         YPY = np.transpose(Y_hat)*P1  # faster version of YPY = np.dot(np.transpose(Y_hat), np.diag(P1))
-
         YPY = np.dot(YPY, Y_hat)
 
-        B = np.linalg.solve(np.transpose(YPY), np.transpose(A))
+        try:
+            B = np.linalg.solve(np.transpose(YPY), np.transpose(A))
+        except np.linalg.LinAlgError:
+            return None
         t = np.transpose(
             muX) - np.dot(np.transpose(B), np.transpose(muY))
 

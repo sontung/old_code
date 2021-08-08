@@ -164,7 +164,8 @@ def visualize_point_cloud(json_file="data_heavy/sfm_data/reconstruction.json"):
     open3d.visualization.draw_geometries_with_animation_callback([pcd], rotate_view)
 
 
-def normalize(inp, ref):
+def normalize(res, ref):
+    inp = res.copy()
     inp[:, 0] = (np.max(ref[:, 0]) - np.min(ref[:, 0]))*(inp[:, 0] - np.min(inp[:, 0]))/(np.max(inp[:, 0]) - np.min(inp[:, 0])) + np.min(ref[:, 0])
     inp[:, 1] = (np.max(ref[:, 1]) - np.min(ref[:, 1]))*(inp[:, 1] - np.min(inp[:, 1]))/(np.max(inp[:, 1]) - np.min(inp[:, 1])) + np.min(ref[:, 1])
     return inp

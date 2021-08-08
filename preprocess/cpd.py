@@ -23,7 +23,8 @@ def visualize(iteration, error, X, Y, ax):
     plt.savefig(f"test/t{iteration}.png")
 
 
-def normalize(inp, ref):
+def normalize(res, ref):
+    inp = res.copy()
     inp[:, 0] = (np.max(ref[:, 0]) - np.min(ref[:, 0]))*(inp[:, 0] - np.min(inp[:, 0]))/(np.max(inp[:, 0]) - np.min(inp[:, 0])) + np.min(ref[:, 0])
     inp[:, 1] = (np.max(ref[:, 1]) - np.min(ref[:, 1]))*(inp[:, 1] - np.min(inp[:, 1]))/(np.max(inp[:, 1]) - np.min(inp[:, 1])) + np.min(ref[:, 1])
     return inp
@@ -141,9 +142,15 @@ def process_cpd_fast(debug=False):
         imn = afile.split("/")[-1]
         x_data = np.loadtxt(afile)
         y_data_norm = normalize(y_data, x_data)
-        y_data_transformed, b, t, error = register_fast(x_data, y_data_norm)
+        register_results = register_fast(x_data, y_data_norm)
+        if register_results is None:
+            continue
+        else:
+            y_data_transformed, b, t, error = register_results
 
         if debug:
+            print(x_data)
+            print(y_data_norm)
             fig = plt.figure()
             fig.add_axes([0, 0, 1, 1])
             ax = fig.axes[0]
@@ -152,11 +159,12 @@ def process_cpd_fast(debug=False):
             ax.scatter(y_data_transformed[:, 0],  y_data_transformed[:, 1], color='yellow', label='Source norm')
             ax.legend(loc='upper left', fontsize='x-large')
             plt.show()
-
-        cv2.imwrite(f"{transform_path}/{imn}", draw_image(y_data_transformed))
-        if debug:
             cv2.imwrite(f"{debug_path}/{imn}-res.png", draw_image(y_data_transformed))
             cv2.imwrite(f"{debug_path}/{imn}-inp.png", draw_image(x_data))
+        try:
+            cv2.imwrite(f"{transform_path}/{imn}", draw_image(y_data_transformed))
+        except ValueError:
+            pass
 
 
 if __name__ == '__main__':

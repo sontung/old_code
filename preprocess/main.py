@@ -25,8 +25,7 @@ def edge_detection():
     os.makedirs(transform_path, exist_ok=True)
 
     for im_name in tqdm(frames, desc="Extracting edges"):
-        if DEBUG and im_name != "1-48.png":
-            continue
+
         with open(join(pixels_path, im_name), "rb") as fp:
             pixels_list = pickle.load(fp)
         if len(pixels_list) <= 2:
@@ -55,19 +54,14 @@ def edge_detection():
         res = np.zeros((img_ori.shape[0], img_ori.shape[1]))
         res[xmin: xmax, ymin: ymax] = detected_edges
         nonzero_indices = np.nonzero(detected_edges)
+
+        if nonzero_indices[0].shape[0] <= 30:  # the number of ear pixels is too small
+            continue
+
         with open("%s/%s" % (transform_path, im_name), "w") as fp:
             for i in range(nonzero_indices[0].shape[0]):
                 print(nonzero_indices[0][i],
                       nonzero_indices[1][i], file=fp)
-
-        if DEBUG:
-            cv2.imshow("t", img)
-            cv2.imshow("t2", img_ori)
-
-            cv2.waitKey()
-            cv2.destroyAllWindows()
-
-            cv2.imwrite("%s/%s" % (edge_saving_dir, im_name), res)
 
 
 def parametric_ellipse(rcenter, rw, rh, angle, p):
