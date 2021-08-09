@@ -102,6 +102,7 @@ def compute_translation(ab_transx, ab_transy):
             mean = np.mean(np.array(right_pixels_all), axis=0)
         x_traj.append(mean[0])
         y_traj.append(mean[1])
+
     x_traj = look_for_abnormals_based_on_ear_sizes_tight(x_traj)
     y_traj = look_for_abnormals_based_on_ear_sizes_tight(y_traj)
     ranges = partition_by_not_none(x_traj)
@@ -132,7 +133,7 @@ def compute_translation(ab_transx, ab_transy):
     if abs(ab_transx_new) > 180:
         ab_transx_new = ab_transx_new/(abs(ab_transx_new)/180)
 
-    if int(first_disappear[1]) - int(first_disappear[0]) <= 5:
+    if first_disappear is not None and int(first_disappear[1]) - int(first_disappear[0]) <= 5:
         first_disappear = None
     trajectories = check_translation_bound(trajectories, ab_transy_new, ab_transx_new, first_disappear)
 

@@ -60,7 +60,6 @@ def neutralize_head_rot(cpd_computations, head_mask_computations):
     ranges = partition_by_none(cpd_computations)
     prev_smoothed_paths = []
     for start, end in ranges:
-        print(f" from {start} to {end}")
         cpd_path = cpd_computations[start:end]
         head_path = head_mask_computations[start:end]
         if len(cpd_path) <= 1:
@@ -74,7 +73,6 @@ def neutralize_head_rot(cpd_computations, head_mask_computations):
         else:
             best_solution[start:end] = smooth_enforce(cpd_path, head_path)
         prev_smoothed_paths.append((end, best_solution[end-1]))
-        print(best_solution[start:end])
 
     plt.plot(cpd_computations, "r")
     plt.plot(best_solution, "b")
@@ -95,14 +93,18 @@ def smooth_enforce(path1, path2, prev_comp=None):
     Returns:
 
     """
-    assert None not in path1 and None not in path2
     assert len(path2) == len(path1)
     if prev_comp is None:
         solution1 = [path1[0]]
         solution2 = [path2[0]]
 
         for x in range(1, len(path1)):
-            possible_comp = [path1[x], path2[x], path1[x]-90, path2[x]-90, path1[x]+90, path2[x]+90]
+            possible_comp = []
+            if path1[x] is not None:
+                possible_comp.extend([path1[x], path1[x]+90, path1[x]-90])
+            if path2[x] is not None:
+                possible_comp.extend([path2[x], path2[x]+90, path2[x]-90])
+
             solution1.append(min(possible_comp, key=lambda du: abs(du-solution1[x-1])))
             solution2.append(min(possible_comp, key=lambda du: abs(du - solution2[x - 1])))
         grad1 = np.sum(np.abs(np.gradient(solution1)))

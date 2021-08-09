@@ -73,7 +73,7 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
         # start run
         subprocess.call(command)
 
-        if len(glob(f"{result_df}/*")) < 5:  # if produced less than 5 output files => run failed
+        if len(glob(f"{result_df}/*")) < 6:  # if produced less than 5 output files => run failed
             print(f"{folder} doesn't complete because it produced {len(glob(f'{result_df}/*'))}")
             if debug_mode:
                 return
