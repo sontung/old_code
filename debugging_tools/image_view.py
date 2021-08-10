@@ -1,7 +1,6 @@
 import os
-import sys
-
-import cv2
+from animation import videofig
+import skimage.io
 import argparse
 from glob import glob
 
@@ -19,11 +18,18 @@ TIME = args["time"]
 
 
 def main():
+    """
+    escape: skip
+    enter: pause
+    arrows: next/prev
+    """
+
     res_dir = args["dir"]
     sub_folder = os.walk(res_dir).__next__()[1]
 
     for fld in sub_folder:
         img_paths = glob(os.path.join(res_dir, fld) + "/*.png")
+        print(fld)
         if len(img_paths) == 0:
             continue
 
@@ -31,21 +37,19 @@ def main():
         imgs_list = {}
         for path in img_paths:
             akey = int(path.split("/")[-1].split(".")[0])
-            img = cv2.imread(path)
+            img = skimage.io.imread(path)
             imgs_list[akey] = img
 
-        for akey in imgs_list:
-            name = f"{fld} - {akey}.png"
-            cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-            cv2.imshow(name, imgs_list[akey])
-            key = cv2.waitKey(TIME)
-            if key == ord("q"):
-                print("Quit")
-                break
+        def redraw_fn(f, axes):
+            img = imgs_list[f]
+            if not redraw_fn.initialized:
+                redraw_fn.im = axes.imshow(img, animated=True)
+                redraw_fn.initialized = True
+            else:
+                redraw_fn.im.set_array(img)
 
-            cv2.destroyAllWindows()
-
-        cv2.waitKey(TIME * 3)
+        redraw_fn.initialized = False
+        videofig(len(imgs_list), redraw_fn, play_fps=100)
 
     return
 
