@@ -42,7 +42,7 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
     sub_folders = os.walk(folder_input).__next__()[1]
     sub_out_folders = os.walk(folder_output).__next__()[1]
 
-    if len(sub_folders) >= 1:
+    if len(sub_folders) >= 2:
         print("Clean any stuffs you may have")
         clean_stuffs()
 

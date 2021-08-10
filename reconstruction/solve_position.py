@@ -72,6 +72,8 @@ def compute_translation(ab_transx, ab_transy):
     lines = [du[:-1] for du in sys.stdin.readlines()]
     all_pixel_dir = "../data_heavy/frames_ear_coord_only"
 
+    dim_x, dim_y = cv2.imread("../data_heavy/frames/1-1.png").shape[:2]
+
     sys.stdin = open("../data_heavy/frame2ab.txt")
     lines2 = [du[:-1] for du in sys.stdin.readlines()]
     frame2ab = {du.split(" ")[0]: du for du in lines2}
@@ -99,9 +101,11 @@ def compute_translation(ab_transx, ab_transy):
             print(f" did not detect ear in 1-{idx}.png")
             mean = [None, None]
         else:
-            mean = np.mean(np.array(right_pixels_all), axis=0)
-        x_traj.append(mean[0])
-        y_traj.append(mean[1])
+            mean = np.mean(np.array(right_pixels_all), axis=0)  # origin is top left of window
+            mean[0] /= dim_x
+            mean[1] /= dim_y
+        x_traj.append(mean[0])  # up/down
+        y_traj.append(mean[1])  # left/right
 
     x_traj = look_for_abnormals_based_on_ear_sizes_tight(x_traj)
     y_traj = look_for_abnormals_based_on_ear_sizes_tight(y_traj)
@@ -128,16 +132,16 @@ def compute_translation(ab_transx, ab_transy):
             trajectories.append(trans)
         prev_pos = mean
 
-    ab_transx_new = ab_transx-y_traj[0]
-    ab_transy_new = ab_transy-x_traj[0]
-    if abs(ab_transx_new) > 180:
-        ab_transx_new = ab_transx_new/(abs(ab_transx_new)/180)
+    ab_transx_new = ab_transx/dim_y-y_traj[0]
+    ab_transy_new = ab_transy/dim_x-x_traj[0]
 
     if first_disappear is not None and int(first_disappear[1]) - int(first_disappear[0]) <= 5:
         first_disappear = None
-    trajectories = check_translation_bound(trajectories, ab_transy_new, ab_transx_new, first_disappear)
-
-    return trajectories, x_traj, y_traj, ab_transx_new, ab_transy_new
+    trajectories = check_translation_bound(trajectories, ab_transy_new,
+                                           ab_transx_new, first_disappear,
+                                           dim_x_reproject=540, dim_y_reproject=960)
+    
+    return trajectories, x_traj, y_traj, ab_transx_new*960, ab_transy_new*540
 
 
 def compute_rotation_accurate():
@@ -155,52 +159,54 @@ def compute_rotation_accurate():
     # k-means clustering to detect unusual ear detections
     ear_size_filtering = look_for_abnormals_based_on_ear_sizes_tight([0 for _ in lines], return_selections=True)
     last_img = None
-    for idx in tqdm(lines, desc="Computing head x-y rotation using rigid CPD"):
-        img = cv2.imread(f"{images_dir}/1-{idx}.png")
-        if img is None or np.sum(img) == 0:
-            all_angles.append(None)
-            continue
+    if not FAST_MODE:
+        for idx in tqdm(lines, desc="Computing head x-y rotation using rigid CPD"):
+            img = cv2.imread(f"{images_dir}/1-{idx}.png")
+            if img is None or np.sum(img) == 0:
+                all_angles.append(None)
+                continue
 
-        image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        nonzero_indices = np.nonzero(image)
-        target_matrix = np.zeros((nonzero_indices[0].shape[0], 2))
-        for i in range(nonzero_indices[0].shape[0]):
-            target_matrix[i] = [nonzero_indices[0][i], nonzero_indices[1][i]]
-        source_matrix = np.loadtxt('../data/ear.txt')
-        source_matrix_norm = normalize(source_matrix, target_matrix)
+            image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            nonzero_indices = np.nonzero(image)
+            target_matrix = np.zeros((nonzero_indices[0].shape[0], 2))
+            for i in range(nonzero_indices[0].shape[0]):
+                target_matrix[i] = [nonzero_indices[0][i], nonzero_indices[1][i]]
+            source_matrix = np.loadtxt('../data/ear.txt')
+            source_matrix_norm = normalize(source_matrix, target_matrix)
 
-        if not ear_size_filtering:
-            all_angles.append(None)
-            cv2.imwrite(f"../data_heavy/rigid_head_rotation/1-{idx}.png", last_img)
-            continue
+            if not ear_size_filtering:
+                all_angles.append(None)
+                cv2.imwrite(f"../data_heavy/rigid_head_rotation/1-{idx}.png", last_img)
+                continue
 
-        reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=500)
-        y_data_norm, (_, rot_mat, _) = reg.register()
+            reg = RigidRegistration(**{'X': target_matrix, 'Y': source_matrix_norm}, max_iterations=500)
+            y_data_norm, (_, rot_mat, _) = reg.register()
 
-        rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
-        all_angles.append(rot_angle)
+            rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
+            all_angles.append(rot_angle)
 
-        fig = plt.figure()
-        fig.add_axes([0, 0, 1, 1])
-        ax = fig.axes[0]
-        ax.scatter(target_matrix[:, 0],  target_matrix[:, 1], color='red', label='Target')
-        ax.scatter(y_data_norm[:, 0],  y_data_norm[:, 1], color='yellow', label='Source')
-        ax.legend(loc='upper left', fontsize='x-large')
-        plt.savefig(f"../data_heavy/rigid_head_rotation/1-{idx}.png")
-        plt.close(fig)
-        last_img = cv2.imread(f"../data_heavy/rigid_head_rotation/1-{idx}.png")
+            fig = plt.figure()
+            fig.add_axes([0, 0, 1, 1])
+            ax = fig.axes[0]
+            ax.scatter(target_matrix[:, 0],  target_matrix[:, 1], color='red', label='Target')
+            ax.scatter(y_data_norm[:, 0],  y_data_norm[:, 1], color='yellow', label='Source')
+            ax.legend(loc='upper left', fontsize='x-large')
+            plt.savefig(f"../data_heavy/rigid_head_rotation/1-{idx}.png")
+            plt.close(fig)
+            last_img = cv2.imread(f"../data_heavy/rigid_head_rotation/1-{idx}.png")
 
-    ori_angles = all_angles[:]
-    all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
-    cpd_angles = laplacian_fairing(ori_angles)
-    all_angles_before_null = all_angles[:]
-    print("head rotation angles =", all_angles)
-    try:
+        ori_angles = all_angles[:]
+        all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
+        cpd_angles = laplacian_fairing(ori_angles)
+        all_angles_before_null = all_angles[:]
+        print("head rotation angles =", all_angles)
         all_angles = laplacian_fairing(all_angles)
         print("using laplacian =", all_angles)
-    except IndexError:
-        all_angles = b_spline_smooth(all_angles)
-        print("using b-spline =", all_angles)
+    else:
+        all_angles = compute_rotation()[-1]
+        all_angles_before_null = all_angles[:]
+        all_angles = laplacian_fairing(all_angles)
+        cpd_angles = all_angles[:]
 
     for rot_deg_overall in all_angles:
         if prev_pos is not None:
@@ -377,6 +383,7 @@ def visualize(debug_mode=DEBUG_MODE):
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
     pcd = new_model()
+    pcd.translate([0, 0, 0], relative=False)
     pcd.compute_vertex_normals()
     du_outputs, du_outputs2, (ab_transx_ori, ab_transy_ori) = compute_head_ab_areas()
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
@@ -439,6 +446,7 @@ def visualize(debug_mode=DEBUG_MODE):
         ab = None
         if counter >= start_ab-1:
             ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
+            ab.translate([0, 0, 0], relative=False)
             ab.compute_vertex_normals()
             ab.scale(global_ab_scale, ab.get_center())
             ab.translate([0, -ab_transy, -ab_transx])

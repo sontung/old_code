@@ -41,7 +41,7 @@ def laplacian_fairing(angles, name=None, collision_interval=None):
             continue
         else:
             cost += mat_x[angle_idx-2]-4*mat_x[angle_idx-1]+6*mat_x[angle_idx]-4*mat_x[angle_idx+1]+mat_x[angle_idx+2]
-    print(f"laplacian cost={cost}")
+    print(f" laplacian cost={cost}")
     if name is not None:
         plt.plot(mat_x)
         plt.plot(angles, "bo")
@@ -54,7 +54,7 @@ def check(angles):
     """
     check if the input has Nones in two places of its both ends
     """
-    print("final check before laplacian fairing")
+    print(" final check before laplacian fairing")
     if angles[0] is None:
         for i in range(1, len(angles)):
             if angles[i] is not None:

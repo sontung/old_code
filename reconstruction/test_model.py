@@ -22,10 +22,8 @@ def new_model(debugging=False):
     pcd.textures = [o3d.geometry.Image(texture)]
 
     # scale new_model to old_model
-    area1 = pcd.get_surface_area()
     area_scale = 980
     pcd.scale(area_scale, pcd.get_center())
-    print(f"Area of head model: {pcd_old.get_surface_area()}\nArea of new head model: {area1}, new head model after scale: {pcd.get_surface_area()}")
 
     # rotation new model
     rot_mat = rot_mat_compute.from_euler('y', -180, degrees=True).as_matrix()
