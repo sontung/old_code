@@ -23,17 +23,21 @@ def main():
     sub_folder = os.walk(res_dir).__next__()[1]
 
     for fld in sub_folder:
-        img_list = glob(os.path.join(res_dir, fld) + "/*.png")
-        if len(img_list) == 0:
+        img_paths = glob(os.path.join(res_dir, fld) + "/*.png")
+        if len(img_paths) == 0:
             continue
 
-        img_list = sorted(img_list, key=lambda x: int(x.split("/")[-1].split(".")[0]))
-
-        for path in img_list:
+        img_paths = sorted(img_paths, key=lambda x: int(x.split("/")[-1].split(".")[0]))
+        imgs_list = {}
+        for path in img_paths:
+            akey = int(path.split("/")[-1].split(".")[0])
             img = cv2.imread(path)
-            name = f"{fld} - {path.split('/')[-1]}"
+            imgs_list[akey] = img
+
+        for akey in imgs_list:
+            name = f"{fld} - {akey}.png"
             cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-            cv2.imshow(name, img)
+            cv2.imshow(name, imgs_list[akey])
             key = cv2.waitKey(TIME)
             if key == ord("q"):
                 print("Quit")
