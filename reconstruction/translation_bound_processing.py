@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from solve_airbag import compute_ab_frames
 
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval,
@@ -78,13 +78,15 @@ def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval,
         plt.subplot(211)
         plt.plot(new_head_x_pos)
         if special_interval is not None:
-            plt.plot(special_interval, [new_head_x_pos[du] for du in special_interval], "bo")
+            s, e = special_interval
+            plt.plot([s, e-1], [new_head_x_pos[du] for du in [s, e-1]], "bo")
         plt.plot([-ab_transx*dim_x_reproject]*len(new_head_y_pos))
 
         plt.subplot(212)
         plt.plot(new_head_y_pos)
         if special_interval is not None:
-            plt.plot(special_interval, [new_head_y_pos[du] for du in special_interval], "bo")
+            s, e = special_interval
+            plt.plot([s, e-1], [new_head_y_pos[du] for du in [s, e-1]], "bo")
         plt.plot([-ab_transy*dim_y_reproject]*len(new_head_y_pos))
 
         plt.savefig("trans_bound.png")
