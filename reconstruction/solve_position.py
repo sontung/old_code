@@ -277,13 +277,14 @@ def compute_head_ab_areas():
     pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
     ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
 
-    # scale the AB to match the scale head/ab in image space
+    # this is just some inaccurate scaling for getting the sizes of both head and ab equal
     global_scale_ab_list = []
     for ab_dir in glob.glob(f"{ab_mesh_dir}/*"):
         ab = o3d.io.read_triangle_mesh(ab_dir)
         scale1 = pcd.get_surface_area() / ab.get_surface_area()
         global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
     global_scale_ab = np.mean(global_scale_ab_list)
+
     trajectory, ne_trans_x_traj, ne_trans_y_traj, ab_transx2, ab_transy2 = compute_translation(ab_transx, ab_transy)
 
     rotated_trajectory_z, _, _ = compute_rotation(view=2)
@@ -400,7 +401,7 @@ def visualize(debug_mode=DEBUG_MODE):
 
     img_ab_area, img_head_area = compute_head_ab_areas_image_space()
 
-    # scale both head and ab to match image space
+    # this is just some inaccurate scaling for getting the sizes of both head and ab equal
     global_scale_ab_list = []
     for ab_dir in glob.glob(f"{ab_mesh_dir}/*"):
         ab = o3d.io.read_triangle_mesh(ab_dir)
@@ -408,6 +409,7 @@ def visualize(debug_mode=DEBUG_MODE):
         global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
     global_ab_scale = np.mean(global_scale_ab_list)
 
+    # scale both head and ab to match image space
     global_head_scale = np.sqrt(img_head_area/sim_head_area)
     global_ab_scale *= np.sqrt(img_ab_area/sim_ab_area)
 
