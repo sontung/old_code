@@ -16,7 +16,7 @@ from anomaly_detetion import neutralize_head_rot
 from anomaly_detetion import look_for_abnormals_based_on_ear_sizes_tight
 from custom_rigid_cpd import RigidRegistration
 from laplacian_fairing_1d import laplacian_fairing
-from rec_utils import b_spline_smooth, normalize, draw_text_to_image, partition_by_not_none
+from rec_utils import normalize, draw_text_to_image, partition_by_not_none
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from translation_bound_processing import check_translation_bound
 from test_model import new_model
