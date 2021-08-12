@@ -362,6 +362,11 @@ def compute_head_ab_areas():
         im = cv2.imread(name, cv2.IMREAD_GRAYSCALE)
         arr.append(np.sum(im != 255))
     ab_area = np.max(arr)
+
+    # rescale to ensure head is not too small compared to ab
+    if ab_area/head_area > 0.8:
+        ab_area = head_area*0.8
+
     results = {"head area": head_area,
                "ab area": ab_area,
                "trajectory": trajectory,
@@ -371,7 +376,7 @@ def compute_head_ab_areas():
                "all angles before null": all_angles_before_null,
                "cpd angles": cpd_angles,
                "ear size filter": ear_size_filtering}
-    results2 = [ab_scale, ab_transx2, ab_transy2, ab_rot, ab_area, head_area]
+    results2 = [ab_scale, ab_transx2, ab_transy2, ab_rot]
     os.makedirs("../data_const/final_vis", exist_ok=True)
     with open("../data_const/final_vis/trajectory.pkl", "wb") as pickle_file:
         pickle.dump(results, pickle_file)
@@ -387,7 +392,7 @@ def visualize(debug_mode=DEBUG_MODE):
     pcd.translate([0, 0, 0], relative=False)
     pcd.compute_vertex_normals()
     du_outputs, du_outputs2, (ab_transx_ori, ab_transy_ori) = compute_head_ab_areas()
-    ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = du_outputs2
+    ab_scale, ab_transx, ab_transy, ab_rot = du_outputs2
 
     sim_head_area = du_outputs["head area"]
     sim_ab_area = du_outputs["ab area"]
