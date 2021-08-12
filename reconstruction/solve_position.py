@@ -364,8 +364,9 @@ def compute_head_ab_areas():
     ab_area = np.max(arr)
 
     # rescale to ensure head is not too small compared to ab
-    if ab_area/head_area > 0.8:
-        ab_area = head_area*0.8
+    if ab_area/head_area > 2.0:
+        print(f"ab/head = {ab_area/head_area} => too big")
+        ab_area = ab_area*0.9
 
     results = {"head area": head_area,
                "ab area": ab_area,
