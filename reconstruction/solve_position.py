@@ -140,7 +140,7 @@ def compute_translation(ab_transx, ab_transy):
     trajectories = check_translation_bound(trajectories, ab_transy_new,
                                            ab_transx_new, first_disappear,
                                            dim_x_reproject=540, dim_y_reproject=960)
-    
+    # sys.exit()
     return trajectories, x_traj, y_traj, ab_transx_new*960, ab_transy_new*540
 
 
@@ -503,6 +503,9 @@ def visualize(debug_mode=DEBUG_MODE):
             line_img = cv2.imread("%s/1-%s.png" % (images_dir, ind))
             ear_img = cv2.imread("%s/1-%s.png" % (ear_dir, ind))
             rigid_img = cv2.imread("%s/1-%s.png" % (rigid_dir, ind))
+            if rigid_img is None:
+                rigid_img = np.zeros_like(ear_img)
+
             arr = np.nonzero(ear_img)
 
             if len(arr[0]) > 0:
