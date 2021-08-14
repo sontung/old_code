@@ -379,10 +379,6 @@ def compute_head_ab_areas():
                "ear size filter": ear_size_filtering}
     results2 = [ab_scale, ab_transx2, ab_transy2, ab_rot]
     os.makedirs("../data_const/final_vis", exist_ok=True)
-    with open("../data_const/final_vis/trajectory.pkl", "wb") as pickle_file:
-        pickle.dump(results, pickle_file)
-    with open("../data_const/final_vis/ab_trans.pkl", "wb") as pickle_file:
-        pickle.dump([ab_transx2, ab_transy2], pickle_file)
     return results, results2, (ab_transx, ab_transy)
 
 
@@ -400,10 +396,6 @@ def visualize(debug_mode=DEBUG_MODE):
     trajectory = du_outputs["trajectory"]
     rotated_trajectory = du_outputs["rot trajectory"]
     rotated_trajectory_z = du_outputs["rot trajectory z"]
-    ne_rot_traj = du_outputs["ne rot traj"]
-    all_angles_before_null = du_outputs["all angles before null"]
-    cpd_angles = du_outputs["cpd angles"]
-    ear_size_filtering = du_outputs["ear size filter"]
 
     img_ab_area, img_head_area = compute_head_ab_areas_image_space()
 
@@ -429,6 +421,16 @@ def visualize(debug_mode=DEBUG_MODE):
     vis.add_geometry(pcd)
     vis.get_view_control().set_zoom(1.5)
 
+    # write computations to disk
+    results_to_disk = [global_head_scale, global_ab_scale,
+                       trajectory, rotated_trajectory, rotated_trajectory_z,
+                       ab_transx, ab_transy, ab_rot,
+                       start_ab]
+    os.makedirs("../data_const/final_vis", exist_ok=True)
+    with open("../data_const/final_vis/everything_you_need.pkl", "wb") as pickle_file:
+        pickle.dump(results_to_disk, pickle_file)
+
+    # start writing visualizations
     trans_actual_traj = []
     rot_actual_traj = []
     pcd.scale(global_head_scale, pcd.get_center())
@@ -478,6 +480,10 @@ def visualize(debug_mode=DEBUG_MODE):
     vis.destroy_window()
 
     if debug_mode:
+        ne_rot_traj = du_outputs["ne rot traj"]
+        all_angles_before_null = du_outputs["all angles before null"]
+        cpd_angles = du_outputs["cpd angles"]
+        ear_size_filtering = du_outputs["ear size filter"]
 
         sys.stdin = open("../data_heavy/head_masks.txt")
         lines2 = [du[:-1] for du in sys.stdin.readlines()]

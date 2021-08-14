@@ -74,8 +74,6 @@ def compute_ab_frames():
         if np.all([traj[idx+du] > 0 for du in range(5)]):
             os.makedirs("../data_const/final_vis", exist_ok=True)
             results = idx, len(traj)-idx
-            with open("../data_const/final_vis/ab_frames.pkl", "wb") as pickle_file:
-                pickle.dump(results, pickle_file)
             return results
     raise RuntimeError
 
@@ -119,9 +117,6 @@ def compute_head_ab_areas_image_space():
         ab_area, head_area = map(float, [ab_area, head_area])
         head_area_all.append(head_area)
     results = [np.max(ab_area_all), np.max(head_area_all)]
-    os.makedirs("../data_const/final_vis", exist_ok=True)
-    with open("../data_const/final_vis/ab_areas.pkl", "wb") as pickle_file:
-        pickle.dump(results, pickle_file)
     return results
 
 
@@ -171,9 +166,6 @@ def compute_ab_pose():
     abam1, ham1 = np.mean(ab_area_all), np.mean(head_area_all)
     results = [ham1/abam1, np.mean(dist_all_x), np.mean(dist_all_y), np.mean(rot_all), abam1, ham1]
 
-    os.makedirs("../data_const/final_vis", exist_ok=True)
-    with open("../data_const/final_vis/ab_poses.pkl", "wb") as pickle_file:
-        pickle.dump(results, pickle_file)
     return results
 
 

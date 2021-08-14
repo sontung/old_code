@@ -1,9 +1,6 @@
 import os
-import time
 import cv2
 import open3d as o3d
-import math
-import glob
 import numpy as np
 import pickle
 import sys
@@ -16,11 +13,7 @@ parser.add_argument('-d', '--dir', type=str, default=False, help='directory', re
 
 args = vars(parser.parse_args())
 RESULTS_DIR = args['dir']
-TRAJECTORY_DIR = f"{RESULTS_DIR}/trajectory.pkl"
-AB_POSES_DIR = f"{RESULTS_DIR}/ab_poses.pkl"
-AB_AREAS_DIR = f"{RESULTS_DIR}/ab_areas.pkl"
-AB_FRAMES_DIR = f"{RESULTS_DIR}/ab_frames.pkl"
-AB_TRANS_DIR = f"{RESULTS_DIR}/ab_trans.pkl"
+COMPUTATIONS_DIR = f"{RESULTS_DIR}/everything_you_need.pkl"
 
 RENDER_MODE = 0
 NEXT = False
@@ -92,42 +85,21 @@ def new_model(debugging=False):
 def visualize():
     global NEXT, PREV
 
-    with open(TRAJECTORY_DIR, "rb") as pickle_file:
-        du_outputs = pickle.load(pickle_file)
-    with open(AB_POSES_DIR, "rb") as pickle_file:
-        du_outputs2 = pickle.load(pickle_file)
-    with open(AB_AREAS_DIR, "rb") as pickle_file:
-        du_outputs3 = pickle.load(pickle_file)
-    with open(AB_FRAMES_DIR, "rb") as pickle_file:
-        du_outputs4 = pickle.load(pickle_file)
-    with open(AB_TRANS_DIR, "rb") as pickle_file:
-        ab_transx, ab_transy = pickle.load(pickle_file)
     ab_mesh_dir = f"{RESULTS_DIR}/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
     pcd = new_model()
+    pcd.translate([0, 0, 0], relative=False)
     pcd.compute_vertex_normals()
 
-    ab_scale, _, _, ab_rot, ab_area, head_area = du_outputs2
-    sim_head_area, sim_ab_area, trajectory, rotated_trajectory, \
-    rotated_trajectory_z, ne_rot_traj, ne_trans_x_traj, ne_trans_y_traj,\
-    all_angles_before_null, _, _ = du_outputs
-    img_ab_area, img_head_area = du_outputs3
+    with open(COMPUTATIONS_DIR, "rb") as pickle_file:
+        all_computations = pickle.load(pickle_file)
 
-    # scale both head and ab to match image space
-    global_scale_ab_list = []
-    for ab_dir in glob.glob(f"{ab_mesh_dir}/*"):
-        ab = o3d.io.read_triangle_mesh(ab_dir)
-        scale1 = pcd.get_surface_area() / ab.get_surface_area()
-        global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
-    global_ab_scale = np.mean(global_scale_ab_list)
-
-    global_head_scale = np.sqrt(img_head_area/sim_head_area)
-    global_ab_scale *= np.sqrt(img_ab_area/sim_ab_area)
+    global_head_scale, global_ab_scale, trajectory, rotated_trajectory,\
+    rotated_trajectory_z, ab_transx, ab_transy, ab_rot, start_ab = all_computations
 
     print(f"Airbag pose: translation=({ab_transx}, {ab_transy}), rotation="
           f"{ab_rot}, ab scale={global_ab_scale},"
           f" head scale = {global_head_scale}")
-    start_ab, _ = du_outputs4
     ab_counter = 0
     vis = o3d.visualization.VisualizerWithKeyCallback()
     vis.create_window(visible=True)
