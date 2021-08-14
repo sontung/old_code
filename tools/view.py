@@ -3,9 +3,7 @@ import cv2
 import open3d as o3d
 import numpy as np
 import pickle
-import sys
 import argparse
-sys.path.append("../reconstruction")
 from scipy.spatial.transform import Rotation as rot_mat_compute
 
 parser = argparse.ArgumentParser()
