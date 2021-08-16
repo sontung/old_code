@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from solve_airbag import compute_ab_frames
 
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 
 def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval,
@@ -38,7 +38,6 @@ def check_translation_bound(head_traj, ab_transx, ab_transy, special_interval,
         head_y_pos.append(pcd.get_center()[2])
 
     if special_interval is not None:
-        print(" scaling specifically using an interval")
         start, end = map(int, special_interval)
         mi = np.min(head_x_pos[start:end])
         head_x_pos = [du - ab_transx-mi for du in head_x_pos]

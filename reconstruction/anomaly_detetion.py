@@ -5,6 +5,8 @@ import pickle
 from matplotlib import pyplot as plt
 from rec_utils import partition_by_none, grad_diff_compute
 
+DEBUG = False
+
 
 def take_care_near_nones(cpd_computations):
     """
@@ -73,13 +75,13 @@ def neutralize_head_rot(cpd_computations, head_mask_computations):
         else:
             best_solution[start:end] = smooth_enforce(cpd_path, head_path)
         prev_smoothed_paths.append((end, best_solution[end-1]))
-
-    plt.plot(cpd_computations, "r")
-    plt.plot(best_solution, "b")
-    plt.plot(head_mask_computations, "g")
-    plt.legend(["cpd", "best", "head mask"])
-    plt.savefig("neutral.png")
-    plt.close()
+    if DEBUG:
+        plt.plot(cpd_computations, "r")
+        plt.plot(best_solution, "b")
+        plt.plot(head_mask_computations, "g")
+        plt.legend(["cpd", "best", "head mask"])
+        plt.savefig("neutral.png")
+        plt.close()
     return best_solution
 
 
@@ -129,17 +131,12 @@ def look_for_abnormals(rot_computation):
     iterate over the input, check if any values has unusual large gradient due to miscalculate the axis of the bounding
     box, then re-compute for the smoother solutions.
     """
-    total_grad1 = 0
-    total_grad2 = 0
-    ori_comp = rot_computation[:]
     ranges = partition_by_none(rot_computation)
-    changed = False
     for start, end in ranges:
         if end-start < 2:
             continue
         path = rot_computation[start: end]
         ori_path = path[:]
-        total_grad1 += np.sum(np.abs(np.gradient(np.gradient(path))))
         grad2 = np.abs(np.diff(path))
         avg_grad = []
         for idx in range(len(path[:-1])):
@@ -156,17 +153,8 @@ def look_for_abnormals(rot_computation):
                 new_grad_diff = grad_diff_compute(new_path, idx)
                 if new_grad_diff < grad_diff:
                     path[idx + 1] = path[idx + 1] - 90
-                    changed = True
             avg_grad.append(grad2[idx])
-        total_grad2 += np.sum(np.abs(np.gradient(np.gradient(path))))
         rot_computation[start: end] = path
-    if changed:
-        print(f"reducing grad from {total_grad1} to {total_grad2}")
-        plt.plot(ori_comp)
-        plt.plot(rot_computation)
-        plt.legend(["ori", "new"])
-        plt.savefig("abnormal_head.png")
-        plt.close()
     return rot_computation
 
 

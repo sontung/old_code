@@ -34,8 +34,8 @@ FAST_MODE = args['fast']
 FRAMES_INFO_DIR = "../data_heavy/frames/info.txt"
 
 if DEBUG_MODE:
-    shutil.rmtree("test", ignore_errors=True)
-    shutil.rmtree("test2", ignore_errors=True)
+    # shutil.rmtree("test", ignore_errors=True)
+    # shutil.rmtree("test2", ignore_errors=True)
     os.makedirs("test", exist_ok=True)
     os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
@@ -98,7 +98,6 @@ def compute_translation(ab_transx, ab_transy):
         with open("%s/1-%s.png" % (all_pixel_dir, idx), "rb") as fp:
             right_pixels_all = pickle.load(fp)
         if len(right_pixels_all) == 0:
-            print(f" did not detect ear in 1-{idx}.png")
             mean = [None, None]
         else:
             mean = np.mean(np.array(right_pixels_all), axis=0)  # origin is top left of window
@@ -110,15 +109,20 @@ def compute_translation(ab_transx, ab_transy):
     x_traj = look_for_abnormals_based_on_ear_sizes_tight(x_traj)
     y_traj = look_for_abnormals_based_on_ear_sizes_tight(y_traj)
     ranges = partition_by_not_none(x_traj)
-    longest = -1
-    for start, end in ranges:
-        if end-start > longest:
-            first_disappear = [start, end]
-            longest = end-start
+    longer_ranges = [(s, e) for s, e in ranges if e-s >= 5]
+    if len(longer_ranges) == 0:
+        longest = -1
+        for start, end in ranges:
+            if end-start > longest:
+                first_disappear = [start, end]
+                longest = end-start
+    else:
+        start, end = longer_ranges[0]
+        first_disappear = [start, end]
     print("detecting head into airbag between", first_disappear)
 
-    x_traj = laplacian_fairing(x_traj, "lapx.png", first_disappear)
-    y_traj = laplacian_fairing(y_traj, "lapy.png", first_disappear)
+    x_traj = laplacian_fairing(x_traj, collision_interval=first_disappear)
+    y_traj = laplacian_fairing(y_traj, collision_interval=first_disappear)
 
     # main
     prev_pos = None
@@ -132,16 +136,17 @@ def compute_translation(ab_transx, ab_transy):
             trajectories.append(trans)
         prev_pos = mean
 
-    ab_transx_new = ab_transx/dim_y-y_traj[0]
-    ab_transy_new = ab_transy/dim_x-x_traj[0]
+    ab_transx_new = ab_transx/dim_x-x_traj[0]
+    ab_transy_new = ab_transy/dim_y-y_traj[0]
 
     if first_disappear is not None and int(first_disappear[1]) - int(first_disappear[0]) <= 5:
         first_disappear = None
-    trajectories = check_translation_bound(trajectories, ab_transy_new,
-                                           ab_transx_new, first_disappear,
+    trajectories = check_translation_bound(trajectories, ab_transx_new,
+                                           ab_transy_new, first_disappear,
                                            dim_x_reproject=540, dim_y_reproject=960)
     # sys.exit()
-    return trajectories, x_traj, y_traj, ab_transx_new*960, ab_transy_new*540
+    print(f"from {ab_transx_new, ab_transy_new} to {ab_transx_new*540, ab_transy_new*960}")
+    return trajectories, x_traj, y_traj, ab_transx_new*540, ab_transy_new*960
 
 
 def compute_rotation_accurate():
@@ -199,9 +204,7 @@ def compute_rotation_accurate():
         all_angles = neutralize_head_rot(ori_angles, compute_rotation()[-1])
         cpd_angles = laplacian_fairing(ori_angles)
         all_angles_before_null = all_angles[:]
-        print("head rotation angles =", all_angles)
         all_angles = laplacian_fairing(all_angles)
-        print("using laplacian =", all_angles)
     else:
         all_angles = compute_rotation()[-1]
         all_angles_before_null = all_angles[:]
@@ -274,8 +277,9 @@ def compute_head_ab_areas():
     """
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/area_compute/", exist_ok=True)
-    pcd = o3d.io.read_triangle_mesh("../data/max-planck.obj")
-    ab_scale, ab_transx, ab_transy, ab_rot, ab_area, head_area = compute_ab_pose()
+    pcd = new_model()
+    pcd.translate([0, 0, 0], relative=False)
+    ab_scale, ab_transy, ab_transx, ab_rot, ab_area, head_area = compute_ab_pose()
 
     # this is just some inaccurate scaling for getting the sizes of both head and ab equal
     global_scale_ab_list = []
@@ -311,6 +315,8 @@ def compute_head_ab_areas():
     vis.get_view_control().set_zoom(1.5)
     arr = []
 
+    print(f"First sim - airbag pose: translation=({ab_transx2}, {ab_transy2}), rotation={ab_rot}")
+
     for counter in tqdm(range(len(trajectory)), desc="Prior sim to compute view areas"):
         ab_added = False
         pcd.translate(trajectory[counter % len(trajectory)])
@@ -332,7 +338,7 @@ def compute_head_ab_areas():
             ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
             arr.append(f"{ab_mesh_dir}/new_particles_{ab_counter}.obj")
             ab.scale(global_scale_ab, ab.get_center())
-            ab.translate([0, -ab_transy, -ab_transx])
+            ab.translate([0, -ab_transx2, -ab_transy2])
             ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
             ab.rotate(rot_mat_compute.from_euler("x", -90+ab_rot, degrees=True).as_matrix())
             ab_added = True
@@ -411,7 +417,7 @@ def visualize(debug_mode=DEBUG_MODE):
     global_head_scale = np.sqrt(img_head_area/sim_head_area)
     global_ab_scale *= np.sqrt(img_ab_area/sim_ab_area)
 
-    print(f"Airbag pose: translation=({ab_transx}, {ab_transy}), rotation="
+    print(f"Second sim - airbag pose: translation=({ab_transx}, {ab_transy}), rotation="
           f"{ab_rot}, ab scale={global_ab_scale},"
           f" head scale = {global_head_scale}")
     start_ab, _ = compute_ab_frames()
@@ -458,8 +464,9 @@ def visualize(debug_mode=DEBUG_MODE):
             ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
             ab.translate([0, 0, 0], relative=False)
             ab.compute_vertex_normals()
+            ab.compute_vertex_normals()
             ab.scale(global_ab_scale, ab.get_center())
-            ab.translate([0, -ab_transy, -ab_transx])
+            ab.translate([0, -ab_transx, -ab_transy])
             ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
             ab.rotate(rot_mat_compute.from_euler("x", -90+ab_rot, degrees=True).as_matrix())
             ab_added = True
@@ -517,12 +524,15 @@ def visualize(debug_mode=DEBUG_MODE):
             if len(arr[0]) > 0:
                 ear_img = ear_img[np.min(arr[0]):np.max(arr[0]), np.min(arr[1]): np.max(arr[1])]
                 if ear_img.shape[0] > 0 and ear_img.shape[1] > 0:
-                    img_size = max([ear_img, line_img, rigid_img], key=lambda x: x.shape[0]*x.shape[1])
-                    ear_img = cv2.resize(ear_img, (img_size.shape[1], img_size.shape[0]))
-                    line_img = cv2.resize(line_img, (img_size.shape[1], img_size.shape[0]))
-                    rigid_img = cv2.resize(rigid_img, (img_size.shape[1], img_size.shape[0]))
-
-                    cv2.imwrite(f"test/ear-{ind}.png", np.hstack([ear_img, line_img, rigid_img]))
+                    try:
+                        img_size = max([ear_img, line_img, rigid_img], key=lambda x: x.shape[0]*x.shape[1])
+                        ear_img = cv2.resize(ear_img, (img_size.shape[1], img_size.shape[0]))
+                        line_img = cv2.resize(line_img, (img_size.shape[1], img_size.shape[0]))
+                        rigid_img = cv2.resize(rigid_img, (img_size.shape[1], img_size.shape[0]))
+    
+                        cv2.imwrite(f"test/ear-{ind}.png", np.hstack([ear_img, line_img, rigid_img]))
+                    except AttributeError:
+                        pass
 
             im1 = cv2.imread("../data_heavy/saved/v1-%s.png" % counter)
             seg_im1 = cv2.imread('../data_heavy/frames_seg_abh_vis/1-%s.png' % ind)
@@ -532,7 +542,7 @@ def visualize(debug_mode=DEBUG_MODE):
             ear_im1[ear[:, 0], ear[:, 1]] = [125, 60, 80]
             seg_im1 = cv2.addWeighted(seg_im1, 0.3, ear_im1, 0.7, 0)
             x1, y1, x2, y2 = map(int, frame2head_rect[f"1-{ind}.png"].split(" ")[1:])
-            cv2.circle(seg_im1, (int(ab_transx_ori), int(ab_transy_ori)), 5, (255, 128, 255), -1)
+            cv2.circle(seg_im1, (int(ab_transy_ori), int(ab_transx_ori)), 5, (255, 128, 255), -1)
             cv2.line(seg_im1, (x1, y1), (x2, y2), (255, 255, 255), 5)
             cv2.imwrite(f"../data_heavy/frames_seg_abh/1-{ind}.png", seg_im1)
 

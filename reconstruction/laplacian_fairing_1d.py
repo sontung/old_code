@@ -41,7 +41,6 @@ def laplacian_fairing(angles, name=None, collision_interval=None):
             continue
         else:
             cost += mat_x[angle_idx-2]-4*mat_x[angle_idx-1]+6*mat_x[angle_idx]-4*mat_x[angle_idx+1]+mat_x[angle_idx+2]
-    print(f" laplacian cost={cost}")
     if name is not None:
         plt.plot(mat_x)
         plt.plot(angles, "bo")
@@ -54,29 +53,24 @@ def check(angles):
     """
     check if the input has Nones in two places of its both ends
     """
-    print(" final check before laplacian fairing")
     if angles[0] is None:
         for i in range(1, len(angles)):
             if angles[i] is not None:
                 angles[0] = angles[i]
-                print(f" sub 0-th index by {i}-th index of value {angles[i]}")
                 break
     if angles[1] is None:
         for i in range(2, len(angles)):
             if angles[i] is not None:
                 angles[1] = angles[i]
-                print(f" sub 1-th index by {i}-th index of value {angles[i]}")
                 break
     if angles[len(angles)-1] is None:
         for i in range(len(angles)-2, 0, -1):
             if angles[i] is not None:
                 angles[len(angles)-1] = angles[i]
-                print(f" sub {len(angles)-1}-th index by {i}-th index of value {angles[i]}")
                 break
     if angles[len(angles)-2] is None:
         for i in range(len(angles)-3, 0, -1):
             if angles[i] is not None:
                 angles[len(angles)-2] = angles[i]
-                print(f" sub {len(angles)-2}-th index by {i}-th index of value {angles[i]}")
                 break
     return angles
