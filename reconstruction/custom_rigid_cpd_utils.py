@@ -25,6 +25,14 @@ def fast_sum(x, ty):
     return res
 
 
+@njit("f8[:, :](f8[:, :], f8[:, :])", parallel=True)
+def fast_sum_parallel(x, ty):
+    res = np.zeros((ty.shape[0], x.shape[0]))
+    for i in prange(ty.shape[0]):
+        res[i] = np.sum((x-ty[i])**2, axis=-1)
+    return res
+
+
 @njit("f8[:, :](f8[:, :], f8)", parallel=True)
 def fast_exp(p, s):
     for i in prange(p.shape[0]):
@@ -190,7 +198,8 @@ class EMRegistration(object):
         self.iteration += 1
 
     def expectation(self):
-        P = fast_sum(self.X[None, :, :], self.TY[:, None, :])
+        # P = fast_sum(self.X[None, :, :], self.TY[:, None, :])
+        P = fast_sum_parallel(self.X, self.TY)
 
         c = (2 * np.pi * self.sigma2) ** (self.D / 2)
         c = c * self.w / (1 - self.w)
@@ -199,11 +208,15 @@ class EMRegistration(object):
         P = fast_exp(P, self.sigma2)
 
         den = np.sum(P, axis=0)
-        den = np.tile(den, (self.M, 1))
+
+        # den = np.tile(den, (self.M, 1))
+        # den[den == 0] = np.finfo(float).eps
+        # den += c
+        # self.P = fast_divide(P, den)  # fast version of self.P = np.divide(P, den)
+
         den[den == 0] = np.finfo(float).eps
         den += c
-
-        self.P = fast_divide(P, den)  # fast version of self.P = np.divide(P, den)
+        self.P = P / den[None, :]
 
         self.Pt1 = np.sum(self.P, axis=0)
         self.P1 = np.sum(self.P, axis=1)

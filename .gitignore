@@ -24,3 +24,6 @@ misc/
 segmentation_swin/checkpoints
 data/sph_solutions
 
+preprocess/test.py
+reconstruction/rigid_cpd_optimized.py
+

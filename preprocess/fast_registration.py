@@ -1,11 +1,18 @@
 import numpy as np
-import torch
-from numba import jit, njit, prange
+from numba import njit, prange
 
 
-@jit("f8[:, :](f8[:, :, :], f8[:, :, :])", nopython=True)
+@njit("f8[:, :](f8[:, :, :], f8[:, :, :])")
 def fast_sum(x, ty):
     res = np.sum((x - ty) ** 2, axis=2)
+    return res
+
+
+@njit("f8[:, :](f8[:, :], f8[:, :])", parallel=True)
+def fast_sum_parallel(x, ty):
+    res = np.zeros((ty.shape[0], x.shape[0]))
+    for i in prange(ty.shape[0]):
+        res[i] = np.sum((x-ty[i])**2, axis=-1)
     return res
 
 
@@ -25,6 +32,7 @@ def initialize_sigma2(X, Y):
     return np.sum(err) / (D * M * N)
 
 
+# @profile
 def register_fast(X, Y, max_iterations=100, threshold=0.1, stop_early=False):
     """
     fast affine registration by coherent point drift algorithm
@@ -44,7 +52,7 @@ def register_fast(X, Y, max_iterations=100, threshold=0.1, stop_early=False):
         iteration += 1
 
         # expectation
-        P = fast_sum(X[None, :, :], TY[:, None, :])
+        P = fast_sum_parallel(X, TY)
 
         c = (2 * np.pi * sigma2) ** (D / 2)
         c = c * w / (1 - w)
@@ -53,11 +61,10 @@ def register_fast(X, Y, max_iterations=100, threshold=0.1, stop_early=False):
         P = fast_exp(P, sigma2)
 
         den = np.sum(P, axis=0)
-        den = np.tile(den, (M, 1))
         den[den == 0] = np.finfo(float).eps
         den += c
+        P = P / den[None, :]
 
-        P = np.divide(P, den)
         Pt1 = np.sum(P, axis=0)
         P1 = np.sum(P, axis=1)
         Np = np.sum(P1)
