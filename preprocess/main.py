@@ -106,7 +106,7 @@ def fit_ellipse():
 def write_all():
     saved_dir = "../data_heavy/line_images"
     os.makedirs(saved_dir, exist_ok=True)
-    for afile in tqdm(glob('../data_heavy/head_rotations/*.png'), desc="Removing ellipse pixels"):
+    for afile in glob('../data_heavy/head_rotations/*.png'):
         image = cv2.imread(afile)
         imn = afile.split("/")[-1]
         cv2.imwrite("%s/%s" % (saved_dir, imn), image)

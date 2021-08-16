@@ -193,7 +193,7 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
 
     frame2ab_info_dict = {}
     head_masks_info_dict = {}
-    for path in tqdm(file_paths, desc='2D Segmentation:'):
+    for path in tqdm(file_paths, desc='2D Segmentation'):
         img_name = os.path.basename(path)
         view = int(img_name.split('-')[0])
 

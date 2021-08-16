@@ -126,6 +126,7 @@ def process_cpd_fast(debug=False):
     ear = cv2.resize(ear, (ear.shape[1]//4, ear.shape[0]//4))
     all_files = glob.glob("../data_heavy/edge_pixels/*")
     transform_path = "../data_heavy/head_rotations"
+
     os.makedirs(transform_path, exist_ok=True)
     debug_path = "../data_heavy/head_rotations_debug"
     if debug:
@@ -147,7 +148,6 @@ def process_cpd_fast(debug=False):
             continue
         else:
             y_data_transformed, b, t, error = register_results
-
         if debug:
             print(x_data)
             print(y_data_norm)

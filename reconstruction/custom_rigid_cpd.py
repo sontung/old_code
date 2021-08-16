@@ -98,7 +98,8 @@ class RigidRegistration(EMRegistration):
 
         rot_angle = np.rad2deg(np.arctan2(self.R[1, 0], self.R[0, 0]))
 
-        if abs(rot_angle - self.old_angle) < 0.001 and self.iteration > 100:
+        if abs(rot_angle - self.old_angle) < 0.001 and self.iteration > 70:
+            self.last_iter = self.iteration
             self.iteration = self.max_iterations
         # print(rot_angle, abs(rot_angle - self.old_angle), self.iteration)
         self.old_angle = rot_angle

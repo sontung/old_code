@@ -58,7 +58,6 @@ def neutralize_head_rot(cpd_computations, head_mask_computations):
     head_mask_computations = look_for_abnormals(head_mask_computations)
 
     best_solution = cpd_computations[:]
-    print("begin to enforce smoothness")
     ranges = partition_by_none(cpd_computations)
     prev_smoothed_paths = []
     for start, end in ranges:
@@ -112,13 +111,10 @@ def smooth_enforce(path1, path2, prev_comp=None):
         grad1 = np.sum(np.abs(np.gradient(solution1)))
         grad2 = np.sum(np.abs(np.gradient(solution2)))
         if grad1 < grad2:
-            print(f" solution1: using cpd, from {grad1} and {grad2}, we select {grad1}")
             return solution1
         else:
-            print(f" solution2: using head mask, from {grad1} and {grad2}, we select {grad2}")
             return solution2
     else:
-        print(f" solution: enforcing piecewise smooth as instructed")
         solution = [min([path1[0], path2[0]], key=lambda du: abs(du-prev_comp))]
         for x in range(1, len(path1)):
             possible_comp = [path1[x], path2[x], path1[x]-90, path2[x]-90, path1[x]+90, path2[x]+90]

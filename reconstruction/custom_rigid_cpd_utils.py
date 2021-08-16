@@ -164,6 +164,7 @@ class EMRegistration(object):
         self.Pt1 = np.zeros((self.N, ))
         self.P1 = np.zeros((self.M, ))
         self.Np = 0
+        self.last_iter = 0
 
     def register(self, callback=lambda **kwargs: None):
         self.transform_point_cloud()
@@ -174,23 +175,7 @@ class EMRegistration(object):
                           'error': self.q, 'X': self.X, 'Y': self.TY}
                 callback(**kwargs)
 
-        return self.TY, self.get_registration_parameters()
-
-    def get_registration_parameters(self):
-        raise NotImplementedError(
-            "Registration parameters should be defined in child classes.")
-
-    def update_transform(self):
-        raise NotImplementedError(
-            "Updating transform parameters should be defined in child classes.")
-
-    def transform_point_cloud(self):
-        raise NotImplementedError(
-            "Updating the source point cloud should be defined in child classes.")
-
-    def update_variance(self):
-        raise NotImplementedError(
-            "Updating the Gaussian variance for the mixture model should be defined in child classes.")
+        return self.TY, self.get_registration_parameters(), self.last_iter
 
     def iterate(self):
         self.expectation()

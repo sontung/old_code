@@ -32,6 +32,11 @@ def initialize_sigma2(X, Y):
     return np.sum(err) / (D * M * N)
 
 
+@njit("f8[:](f8[:, :])")
+def fast_sum_axis0(x):
+    return np.sum(x, axis=0)
+
+
 # @profile
 def register_fast(X, Y, max_iterations=100, threshold=0.1, stop_early=False):
     """
@@ -70,12 +75,15 @@ def register_fast(X, Y, max_iterations=100, threshold=0.1, stop_early=False):
         Np = np.sum(P1)
 
         # update transform
-        muX = np.divide(np.sum(np.dot(P, X), axis=0), Np)
-        muY = np.divide(
-            np.sum(np.dot(np.transpose(P), Y), axis=0), Np)
+        # muX = np.divide(np.sum(np.dot(P, X), axis=0), Np)
+        # muY = np.divide(np.sum(np.dot(np.transpose(P), Y), axis=0), Np)
+        # X_hat = X - np.tile(muX, (N, 1))
+        # Y_hat = Y - np.tile(muY, (M, 1))
 
-        X_hat = X - np.tile(muX, (N, 1))
-        Y_hat = Y - np.tile(muY, (M, 1))
+        muX = np.divide(fast_sum_axis0(np.dot(P, X)), Np)
+        muY = np.divide(fast_sum_axis0(np.dot(np.transpose(P), Y)), Np)
+        X_hat = X - muX[None, :]
+        Y_hat = Y - muY[None, :]
 
         A = np.dot(np.transpose(X_hat), np.transpose(P))
         A = np.dot(A, Y_hat)
