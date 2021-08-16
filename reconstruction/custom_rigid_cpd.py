@@ -1,8 +1,14 @@
 import numpy as np
 from builtins import super
 import numbers
+from numba import njit
 from custom_rigid_cpd_utils import EMRegistration
 from custom_rigid_cpd_utils import is_positive_semi_definite
+
+
+@njit("f8[:](f8[:, :])")
+def fast_sum_axis0(x):
+    return np.sum(x, axis=0)
 
 
 class RigidRegistration(EMRegistration):
@@ -64,15 +70,13 @@ class RigidRegistration(EMRegistration):
         """
 
         # target point cloud mean
-        muX = np.divide(np.sum(np.dot(self.P, self.X), axis=0),
-                        self.Np)
+        muX = np.divide(fast_sum_axis0(np.dot(self.P, self.X)), self.Np)
         # source point cloud mean
-        muY = np.divide(
-            np.sum(np.dot(np.transpose(self.P), self.Y), axis=0), self.Np)
+        muY = np.divide(fast_sum_axis0(np.dot(np.transpose(self.P), self.Y)), self.Np)
 
-        self.X_hat = self.X - np.tile(muX, (self.N, 1))
+        self.X_hat = self.X - muX[None, :]
         # centered source point cloud
-        Y_hat = self.Y - np.tile(muY, (self.M, 1))
+        Y_hat = self.Y - muY[None, :]
         self.YPY = np.dot(np.transpose(self.P1), np.sum(
             np.multiply(Y_hat, Y_hat), axis=1))
 

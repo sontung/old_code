@@ -92,8 +92,8 @@ def visualize():
     with open(COMPUTATIONS_DIR, "rb") as pickle_file:
         all_computations = pickle.load(pickle_file)
 
-    global_head_scale, global_ab_scale, trajectory, rotated_trajectory,\
-    rotated_trajectory_z, ab_transx, ab_transy, ab_rot, start_ab = all_computations
+    global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
+    ab_transx, ab_transy, ab_rot, start_ab = all_computations
 
     print(f"Airbag pose: translation=({ab_transx}, {ab_transy}), rotation="
           f"{ab_rot}, ab scale={global_ab_scale},"
@@ -140,15 +140,11 @@ def visualize():
                 trans_actual_traj.append(trajectory[counter % len(trajectory)])
                 rot_actual_traj.append(rotated_trajectory[counter % len(trajectory)])
 
-                rot_mat_z = rot_mat_compute.from_euler('z', rotated_trajectory_z[counter % len(trajectory)],
-                                                       degrees=True).as_matrix()
-                pcd.rotate(rot_mat_z, pcd.get_center())
-
                 if counter >= start_ab - 1:
                     ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
                     ab.compute_vertex_normals()
                     ab.scale(global_ab_scale, ab.get_center())
-                    ab.translate([0, -ab_transy, -ab_transx])
+                    ab.translate([0, -ab_transx, -ab_transy])
                     ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
                     ab.rotate(rot_mat_compute.from_euler("x", -90 + ab_rot, degrees=True).as_matrix())
                     vis.add_geometry(ab, reset_bounding_box=False)
@@ -159,7 +155,7 @@ def visualize():
                 vis.update_renderer()
                 prev_renders.append([-trajectory[counter % len(trajectory)],
                                      -rotated_trajectory[counter % len(trajectory)],
-                                     -rotated_trajectory_z[counter % len(trajectory)]])
+                                     0])
 
             elif PREV and len(prev_renders) > 0:
                 counter -= 1
@@ -207,16 +203,11 @@ def visualize():
             trans_actual_traj.append(trajectory[counter % len(trajectory)])
             rot_actual_traj.append(rotated_trajectory[counter % len(trajectory)])
 
-            if rotated_trajectory_z is not None:
-                rot_mat_z = rot_mat_compute.from_euler('z', rotated_trajectory_z[counter % len(trajectory)],
-                                                       degrees=True).as_matrix()
-                pcd.rotate(rot_mat_z, pcd.get_center())
-
             if counter >= start_ab-1:
                 ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
                 ab.compute_vertex_normals()
                 ab.scale(global_ab_scale, ab.get_center())
-                ab.translate([0, -ab_transy, -ab_transx])
+                ab.translate([0, -ab_transx, -ab_transy])
                 ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
                 ab.rotate(rot_mat_compute.from_euler("x", -90+ab_rot, degrees=True).as_matrix())
                 ab_added_mode1 = True

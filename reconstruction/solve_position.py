@@ -291,7 +291,6 @@ def compute_head_ab_areas():
 
     trajectory, ne_trans_x_traj, ne_trans_y_traj, ab_transx2, ab_transy2 = compute_translation(ab_transx, ab_transy)
 
-    # rotated_trajectory_z, _, _ = compute_rotation(view=2)
     computations = compute_rotation_accurate()
 
     rotated_trajectory = computations["trajectories"]
@@ -300,10 +299,7 @@ def compute_head_ab_areas():
     cpd_angles = computations["cpd_angles"]
     ear_size_filtering = computations["ear_size_filtering"]
 
-    # if rotated_trajectory_z is not None:
-    #     assert len(trajectory) == len(rotated_trajectory) == len(rotated_trajectory_z)
-    # else:
-    #     assert len(trajectory) == len(rotated_trajectory)
+    assert len(trajectory) == len(rotated_trajectory)
 
     start_ab, _ = compute_ab_frames()
     mesh_files = glob.glob("%s/*" % ab_mesh_dir)
@@ -323,11 +319,6 @@ def compute_head_ab_areas():
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter],
                                              degrees=True).as_matrix()
         pcd.rotate(rot_mat, pcd.get_center())
-
-        # if rotated_trajectory_z is not None:
-        #     rot_mat_z = rot_mat_compute.from_euler('z', rotated_trajectory_z[counter],
-        #                                            degrees=True).as_matrix()
-        #     pcd.rotate(rot_mat_z, pcd.get_center())
 
         vis.update_geometry(pcd)
 
@@ -378,7 +369,6 @@ def compute_head_ab_areas():
                "ab area": ab_area,
                "trajectory": trajectory,
                "rot trajectory": rotated_trajectory,
-               # "rot trajectory z": rotated_trajectory_z,
                "ne rot traj": ne_rot_traj,
                "all angles before null": all_angles_before_null,
                "cpd angles": cpd_angles,
@@ -401,7 +391,6 @@ def visualize(debug_mode=DEBUG_MODE):
     sim_ab_area = du_outputs["ab area"]
     trajectory = du_outputs["trajectory"]
     rotated_trajectory = du_outputs["rot trajectory"]
-    # rotated_trajectory_z = du_outputs["rot trajectory z"]
 
     img_ab_area, img_head_area = compute_head_ab_areas_image_space()
 
@@ -429,7 +418,7 @@ def visualize(debug_mode=DEBUG_MODE):
 
     # write computations to disk
     results_to_disk = [global_head_scale, global_ab_scale,
-                       trajectory, rotated_trajectory, #rotated_trajectory_z,
+                       trajectory, rotated_trajectory,
                        ab_transx, ab_transy, ab_rot,
                        start_ab]
     os.makedirs("../data_const/final_vis", exist_ok=True)
