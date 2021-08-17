@@ -107,13 +107,21 @@ def compute_translation(ab_transx, ab_transy):
 
     x_traj = look_for_abnormals_based_on_ear_sizes_tight(x_traj)
     y_traj = look_for_abnormals_based_on_ear_sizes_tight(y_traj)
-
-    first_disappear_by_head_masks = list(map(int, first_disappear))
-    s0, e0 = first_disappear_by_head_masks
-    ranges = [(s, e, abs(s-s0)+abs(e-e0)+abs(e-s-e0+s0)) for s, e in partition_by_not_none(x_traj)]
-    first_disappear = min(ranges, key=lambda du: du[-1])
-    print(f"from {ranges}, selecting {first_disappear} as closest from {first_disappear_by_head_masks}")
-    first_disappear = first_disappear[:2]
+    
+    if first_disappear is not None:
+        first_disappear_by_head_masks = list(map(int, first_disappear))
+        s0, e0 = first_disappear_by_head_masks
+        ranges = [(s, e, abs(s-s0)+abs(e-e0)+abs(e-s-e0+s0)) for s, e in partition_by_not_none(x_traj)]
+        first_disappear = min(ranges, key=lambda du: du[-1])
+        print(f"from {ranges}, selecting {first_disappear} as closest from {first_disappear_by_head_masks}")
+        first_disappear = first_disappear[:2]
+    else:
+        ranges = partition_by_not_none(x_traj)
+        longest = -1
+        for start, end in ranges:
+            if end - start > longest:
+                first_disappear = [start, end]
+                longest = end - start
     print(" detecting head into airbag between", first_disappear)
 
     x_traj = laplacian_fairing(x_traj, collision_interval=first_disappear)
