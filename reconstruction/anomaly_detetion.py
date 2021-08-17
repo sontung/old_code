@@ -171,6 +171,7 @@ def look_for_abnormals_based_on_ear_sizes_tight(comp, return_selections=False):
             ear_sizes.append(len(right_pixels_all))
 
     res = kmeans1d.cluster(ear_sizes, 2)
+
     selection = [True for _ in lines]
     if sum(res.clusters)/len(res.clusters) >= 0.5 and abs(res.centroids[1]/res.centroids[0]) >= 2:
         print(f"removing bad ear predictions with ear size diff = {res.centroids[1]/res.centroids[0]}")
@@ -179,7 +180,7 @@ def look_for_abnormals_based_on_ear_sizes_tight(comp, return_selections=False):
                 continue
             cluster_idx = kmeans2frame[idx+1]
             if res.clusters[cluster_idx] == 0:
-                print(" ", idx+1, comp[idx], "removed")
+                print(" ", idx+1, ear_sizes[cluster_idx], "removed")
                 comp[idx] = None
                 selection[idx] = False
     if return_selections:

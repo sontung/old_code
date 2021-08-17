@@ -4,7 +4,6 @@ import math
 import os
 import pickle
 import sys
-import shutil
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,7 +18,7 @@ from laplacian_fairing_1d import laplacian_fairing
 from rec_utils import normalize, draw_text_to_image, partition_by_not_none
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from translation_bound_processing import check_translation_bound
-from test_model import new_model
+from test_model import new_model, new_model_no_normal
 
 
 parser = argparse.ArgumentParser()
@@ -108,18 +107,14 @@ def compute_translation(ab_transx, ab_transy):
 
     x_traj = look_for_abnormals_based_on_ear_sizes_tight(x_traj)
     y_traj = look_for_abnormals_based_on_ear_sizes_tight(y_traj)
-    ranges = partition_by_not_none(x_traj)
-    longer_ranges = [(s, e) for s, e in ranges if e-s >= 5]
-    if len(longer_ranges) == 0:
-        longest = -1
-        for start, end in ranges:
-            if end-start > longest:
-                first_disappear = [start, end]
-                longest = end-start
-    else:
-        start, end = longer_ranges[0]
-        first_disappear = [start, end]
-    print("detecting head into airbag between", first_disappear)
+
+    first_disappear_by_head_masks = list(map(int, first_disappear))
+    s0, e0 = first_disappear_by_head_masks
+    ranges = [(s, e, abs(s-s0)+abs(e-e0)+abs(e-s-e0+s0)) for s, e in partition_by_not_none(x_traj)]
+    first_disappear = min(ranges, key=lambda du: du[-1])
+    print(f"from {ranges}, selecting {first_disappear} as closest from {first_disappear_by_head_masks}")
+    first_disappear = first_disappear[:2]
+    print(" detecting head into airbag between", first_disappear)
 
     x_traj = laplacian_fairing(x_traj, collision_interval=first_disappear)
     y_traj = laplacian_fairing(y_traj, collision_interval=first_disappear)
@@ -149,7 +144,7 @@ def compute_translation(ab_transx, ab_transy):
     return trajectories, x_traj, y_traj, ab_transx_new*540, ab_transy_new*960
 
 
-def rigid_cpd_process(ear_size_filtering):
+def rigid_cpd_process(ear_size_filtering, debug=False):
     sys.stdin = open(FRAMES_INFO_DIR)
     lines = [du[:-1] for du in sys.stdin.readlines()]
     images_dir = "../data_heavy/line_images"
@@ -179,7 +174,7 @@ def rigid_cpd_process(ear_size_filtering):
         rot_angle = np.rad2deg(np.arctan2(rot_mat[1, 0], rot_mat[0, 0]))
         all_angles.append(rot_angle)
 
-        if DEBUG_MODE:
+        if debug:
             fig = plt.figure()
             fig.add_axes([0, 0, 1, 1])
             ax = fig.axes[0]
@@ -275,13 +270,10 @@ def compute_rotation(view=1):
     return trajectories, all_angles, all_angles_before_null
 
 
-def compute_head_ab_areas():
-    """
-    prior simulation to compute head/ab scale ratio
-    """
+def sim_prior_view(trajectory, rotated_trajectory, ab_transx2, ab_transy2, head_scaling_additional=None):
     ab_mesh_dir = "../sph_data/mc_solutions_smoothed"
     os.makedirs("../data_heavy/area_compute/", exist_ok=True)
-    pcd = new_model()
+    pcd = new_model_no_normal()
     pcd.translate([0, 0, 0], relative=False)
     ab_scale, ab_transy, ab_transx, ab_rot, ab_area, head_area = compute_ab_pose()
 
@@ -293,18 +285,6 @@ def compute_head_ab_areas():
         global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
     global_scale_ab = np.mean(global_scale_ab_list)
 
-    trajectory, ne_trans_x_traj, ne_trans_y_traj, ab_transx2, ab_transy2 = compute_translation(ab_transx, ab_transy)
-
-    computations = compute_rotation_accurate()
-
-    rotated_trajectory = computations["trajectories"]
-    ne_rot_traj = computations["all_angles"]
-    all_angles_before_null = computations["all_angles_before_null"]
-    cpd_angles = computations["cpd_angles"]
-    ear_size_filtering = computations["ear_size_filtering"]
-
-    assert len(trajectory) == len(rotated_trajectory)
-
     start_ab, _ = compute_ab_frames()
     ab_counter = 0
     vis = o3d.visualization.Visualizer()
@@ -313,9 +293,12 @@ def compute_head_ab_areas():
     vis.get_view_control().set_zoom(1.5)
     arr = []
 
-    print(f"First sim - airbag pose: translation=({ab_transx2}, {ab_transy2}), rotation={ab_rot}")
+    if head_scaling_additional is not None:
+        pcd.scale(head_scaling_additional, pcd.get_center())
+    else:
+        print(f"First sim - airbag pose: translation=({ab_transx2}, {ab_transy2}), rotation={ab_rot}")
 
-    for counter in tqdm(range(len(trajectory)), desc="Prior sim to compute view areas"):
+    for counter in range(len(trajectory)):
         ab_added = False
         pcd.translate(trajectory[counter % len(trajectory)])
         rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter],
@@ -361,13 +344,39 @@ def compute_head_ab_areas():
         im = cv2.imread(name, cv2.IMREAD_GRAYSCALE)
         arr.append(np.sum(im != 255))
     ab_area = np.max(arr)
+    return head_area, ab_area
 
-    # rescale to ensure head is not too small compared to ab
-    if ab_area/head_area > 2.0:
-        print(f"ab/head = {ab_area/head_area} => too big")
 
-    results = {"head area": head_area,
-               "ab area": ab_area,
+def compute_head_ab_areas():
+    """
+    prior simulation to compute head/ab scale ratio
+    """
+    ab_scale, ab_transy, ab_transx, ab_rot, ab_area, head_area = compute_ab_pose()
+    trajectory, ne_trans_x_traj, ne_trans_y_traj, ab_transx2, ab_transy2 = compute_translation(ab_transx, ab_transy)
+    computations = compute_rotation_accurate()
+
+    rotated_trajectory = computations["trajectories"]
+    ne_rot_traj = computations["all_angles"]
+    all_angles_before_null = computations["all_angles_before_null"]
+    cpd_angles = computations["cpd_angles"]
+    ear_size_filtering = computations["ear_size_filtering"]
+
+    assert len(trajectory) == len(rotated_trajectory)
+
+    head_area, ab_area = sim_prior_view(trajectory, rotated_trajectory, ab_transx2, ab_transy2)
+
+    scale1 = head_area/ab_area
+    print(f" first pass: head/ab = {scale1} (ref. = {ab_scale})")
+    if ab_scale >= 0.27:
+        head_scale = np.sqrt(0.27/scale1)
+    else:
+        head_scale = np.sqrt(ab_scale/scale1)
+
+    head_area, ab_area = sim_prior_view(trajectory, rotated_trajectory, ab_transx2, ab_transy2,
+                                        head_scaling_additional=head_scale)
+    print(f" second pass: head/ab = {head_area / ab_area} (ref. = {ab_scale})")
+
+    results = {"head scale": head_scale,
                "trajectory": trajectory,
                "rot trajectory": rotated_trajectory,
                "ne rot traj": ne_rot_traj,
@@ -388,12 +397,9 @@ def visualize(debug_mode=DEBUG_MODE):
     du_outputs, du_outputs2, (ab_transx_ori, ab_transy_ori) = compute_head_ab_areas()
     ab_scale, ab_transx, ab_transy, ab_rot = du_outputs2
 
-    sim_head_area = du_outputs["head area"]
-    sim_ab_area = du_outputs["ab area"]
     trajectory = du_outputs["trajectory"]
     rotated_trajectory = du_outputs["rot trajectory"]
-
-    img_ab_area, img_head_area = compute_head_ab_areas_image_space()
+    global_head_scale = du_outputs["head scale"]
 
     # this is just some inaccurate scaling for getting the sizes of both head and ab equal
     global_scale_ab_list = []
@@ -402,10 +408,6 @@ def visualize(debug_mode=DEBUG_MODE):
         scale1 = pcd.get_surface_area() / ab.get_surface_area()
         global_scale_ab_list.append(math.sqrt(scale1 / ab_scale))
     global_ab_scale = np.mean(global_scale_ab_list)
-
-    # scale both head and ab to match image space
-    global_head_scale = np.sqrt(img_head_area/sim_head_area)
-    global_ab_scale *= np.sqrt(img_ab_area/sim_ab_area)
 
     print(f"Second sim - airbag pose: translation=({ab_transx}, {ab_transy}), rotation="
           f"{ab_rot}, ab scale={global_ab_scale},"
