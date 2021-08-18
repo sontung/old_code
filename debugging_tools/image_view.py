@@ -27,9 +27,9 @@ def main():
     res_dir = args["dir"]
     sub_folder = os.walk(res_dir).__next__()[1]
 
-    for fld in sub_folder:
+    for count, fld in enumerate(sub_folder):
         img_paths = glob(os.path.join(res_dir, fld) + "/*.png")
-        print(fld)
+        print(count, fld)
         if len(img_paths) == 0:
             continue
 

@@ -8,14 +8,15 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d as o3d
-
+import kmeans1d
+import shutil
 from scipy.spatial.transform import Rotation as rot_mat_compute
 from tqdm import tqdm
 from anomaly_detetion import neutralize_head_rot
 from anomaly_detetion import look_for_abnormals_based_on_ear_sizes_tight
 from custom_rigid_cpd import RigidRegistration
 from laplacian_fairing_1d import laplacian_fairing
-from rec_utils import normalize, draw_text_to_image, partition_by_not_none
+from rec_utils import normalize, draw_text_to_image, partition_by_not_none, partition_by_none
 from solve_airbag import compute_ab_pose, compute_ab_frames, compute_head_ab_areas_image_space
 from translation_bound_processing import check_translation_bound
 from test_model import new_model, new_model_no_normal
@@ -33,8 +34,8 @@ FAST_MODE = args['fast']
 FRAMES_INFO_DIR = "../data_heavy/frames/info.txt"
 
 if DEBUG_MODE:
-    # shutil.rmtree("test", ignore_errors=True)
-    # shutil.rmtree("test2", ignore_errors=True)
+    shutil.rmtree("test", ignore_errors=True)
+    shutil.rmtree("test2", ignore_errors=True)
     os.makedirs("test", exist_ok=True)
     os.makedirs("test2", exist_ok=True)
     print("running in debug mode")
@@ -51,6 +52,42 @@ def visualize_rigid_registration(iteration, error, x, y, ax):
     ax.legend(loc='upper left', fontsize='x-large')
     plt.draw()
     plt.pause(0.001)
+
+
+def detect_collision_interval(first_disappear, x_traj, all_head_pixels):
+    interval = None
+    if first_disappear is not None:
+        first_disappear_by_head_masks = list(map(int, first_disappear))
+        s0, e0 = first_disappear_by_head_masks
+        ranges = [(s, e, abs(s-s0)+abs(e-e0)+abs(e-s-e0+s0)) for s, e in partition_by_not_none(x_traj)]
+        first_disappear = min(ranges, key=lambda du: du[-1])
+        print(f"from {ranges}, selecting {first_disappear} as closest from {first_disappear_by_head_masks}")
+        interval = first_disappear[:2]
+    else:
+        res = kmeans1d.cluster(all_head_pixels, 2)
+        k_means_assigns = [du if du == 0 else None for du in res.clusters]
+        ranges = partition_by_none(k_means_assigns)
+        longest = -1
+        for start, end in ranges:
+            if end - start > longest:
+                interval = [start, end]
+                longest = end - start
+    return interval
+
+
+def compute_translation_trajectory(x_traj, y_traj):
+    trajectories = []
+    prev_pos = None
+    for idx in range(len(x_traj)):
+        mean = np.array([x_traj[idx], y_traj[idx]])
+        if prev_pos is not None:
+            trans = np.zeros((3, 1))
+            move = mean - prev_pos
+            trans[2] = -move[1]
+            trans[1] = -move[0]
+            trajectories.append(trans)
+        prev_pos = mean
+    return trajectories
 
 
 def compute_translation(ab_transx, ab_transy):
@@ -77,15 +114,15 @@ def compute_translation(ab_transx, ab_transy):
     lines2 = [du[:-1] for du in sys.stdin.readlines()]
     frame2ab = {du.split(" ")[0]: du for du in lines2}
 
-    trajectories = []
     x_traj = []
     y_traj = []
     first_disappear = None
     start_counting = False
+    all_head_pixels = []
     for idx in lines:
         _, _, head_pixels = frame2ab[f"1-{idx}.png"].split(" ")[:3]
         head_pixels = int(head_pixels)
-
+        all_head_pixels.append(head_pixels)
         if head_pixels <= 2 and first_disappear is None:
             first_disappear = [idx, idx]
             start_counting = True
@@ -105,40 +142,17 @@ def compute_translation(ab_transx, ab_transy):
         x_traj.append(mean[0])  # up/down
         y_traj.append(mean[1])  # left/right
 
-    x_traj = look_for_abnormals_based_on_ear_sizes_tight(x_traj)
-    y_traj = look_for_abnormals_based_on_ear_sizes_tight(y_traj)
+    x_traj = look_for_abnormals_based_on_ear_sizes_tight(x_traj, verbose=False)
+    y_traj = look_for_abnormals_based_on_ear_sizes_tight(y_traj, verbose=False)
 
-    if first_disappear is not None:
-        first_disappear_by_head_masks = list(map(int, first_disappear))
-        s0, e0 = first_disappear_by_head_masks
-        ranges = [(s, e, abs(s-s0)+abs(e-e0)+abs(e-s-e0+s0)) for s, e in partition_by_not_none(x_traj)]
-        first_disappear = min(ranges, key=lambda du: du[-1])
-        print(f"from {ranges}, selecting {first_disappear} as closest from {first_disappear_by_head_masks}")
-        first_disappear = first_disappear[:2]
-    else:
-        ranges = partition_by_not_none(x_traj)
-        longest = -1
-        for start, end in ranges:
-            if end - start > longest:
-                first_disappear = [start, end]
-                longest = end - start
+    first_disappear = detect_collision_interval(first_disappear, x_traj, all_head_pixels)
     print(" detecting head into airbag between", first_disappear)
 
     x_traj = laplacian_fairing(x_traj, collision_interval=first_disappear)
     y_traj = laplacian_fairing(y_traj, collision_interval=first_disappear)
 
     # main
-    prev_pos = None
-    for idx in range(len(x_traj)):
-        mean = np.array([x_traj[idx], y_traj[idx]])
-        if prev_pos is not None:
-            trans = np.zeros((3, 1))
-            move = mean - prev_pos
-            trans[2] = -move[1]
-            trans[1] = -move[0]
-            trajectories.append(trans)
-        prev_pos = mean
-
+    trajectories = compute_translation_trajectory(x_traj, y_traj)
     ab_transx_new = ab_transx/dim_x-x_traj[0]
     ab_transy_new = ab_transy/dim_y-y_traj[0]
 
