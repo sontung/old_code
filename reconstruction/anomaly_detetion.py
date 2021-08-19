@@ -154,7 +154,7 @@ def look_for_abnormals(rot_computation):
     return rot_computation
 
 
-def look_for_abnormals_based_on_ear_sizes_tight(comp, return_selections=False, verbose=True):
+def look_for_abnormals_based_on_ear_sizes_tight(comp, return_selections=False, verbose=False):
     sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]
     all_pixel_dir = "../data_heavy/frames_ear_coord_only"

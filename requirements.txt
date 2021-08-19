@@ -11,6 +11,7 @@ pykdtree
 numba
 kmeans1d
 icecream
+icc-rt
 
 numpy==1.20.2
 tqdm
