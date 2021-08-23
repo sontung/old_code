@@ -3,7 +3,7 @@
 1. Download - Recommend.
    
    ```
-   https://drive.google.com/drive/folders/1syaZzwI2_kxOdF-_1aG1VDq4S0vML1ND?usp=sharing
+   https://drive.google.com/file/d/1l61oV6xRmWqJ5h7VvvxtHuuFVnNl3PE_/view?usp=sharing
    ```
 
 2. Git cloning.   
