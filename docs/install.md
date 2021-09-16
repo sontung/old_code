@@ -3,7 +3,7 @@
 1. Download - Recommend.
    
    ```
-   https://drive.google.com/drive/folders/1syaZzwI2_kxOdF-_1aG1VDq4S0vML1ND?usp=sharing
+   https://drive.google.com/drive/folders/1d07dMDiwZOlL47Zwx9iiYDAMUj0r2VYu?usp=sharing
    ```
 
 2. Git cloning.   
@@ -146,13 +146,22 @@
    
    Extract then move the 02 files into `data_const`.
 
-3. Download Swin-transformer checkpoint.
+   Your `data_const` should look like:
+   ```
+   3d-air-bag-p2
+   |---data_const
+   |---|---run
+   |---|---ear.pth
+   |---|---model_best.pth.tar
+   ```
+
+4. Download Swin-transformer checkpoint.
    
    ```
    https://drive.google.com/file/d/1RZQOussrDXTAIwCJ4VsyIBMXKggbwLmZ/view?usp=sharing
    ```
    
-   Do not extract. Just move the file with extension of`*.pth` into `segmentation_swin/checkpoints`
+   Do not extract. Just move the file with extension of`*.pth` into `3d-air-bag-p2/segmentation_swin/checkpoints`
 
 # Step 6: Prepare videos to analyze
 
