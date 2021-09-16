@@ -5,6 +5,10 @@ from matplotlib import pyplot as plt
 def laplacian_fairing(angles, name=None, collision_interval=None):
     """
     solve for missing values by minimizing the second derivative
+    angles: np.array
+    name: string
+    collision_interval: tuple
+    mat_x: np.array
     """
 
     # fill in values in collision period
@@ -18,15 +22,17 @@ def laplacian_fairing(angles, name=None, collision_interval=None):
                 path = np.linspace(angles[start-1], angles[end], len(path))
             angles[start: end] = path
 
-    angles = check(angles)
+    angles = check(angles)  # if two ends of the list are nones, modify
     mat_a = np.zeros((len(angles), len(angles))).astype(np.float64)
     mat_b = np.zeros((len(angles), 1)).astype(np.float64)
 
+    # create matrix A
     for angle_idx, angle in enumerate(angles):
         if angle is not None:
             mat_a[angle_idx][angle_idx] = 1
             mat_b[angle_idx] = angle
         else:
+            # neighboring coefficients for fxx = 0
             mat_b[angle_idx] = 0
             mat_a[angle_idx][angle_idx-2] = 1
             mat_a[angle_idx][angle_idx-1] = -4
@@ -35,12 +41,6 @@ def laplacian_fairing(angles, name=None, collision_interval=None):
             mat_a[angle_idx][angle_idx+2] = 1
 
     mat_x = np.linalg.solve(mat_a, mat_b).reshape((-1,))
-    cost = 0
-    for angle_idx, angle in enumerate(angles):
-        if angle is not None:
-            continue
-        else:
-            cost += mat_x[angle_idx-2]-4*mat_x[angle_idx-1]+6*mat_x[angle_idx]-4*mat_x[angle_idx+1]+mat_x[angle_idx+2]
     if name is not None:
         plt.plot(mat_x)
         plt.plot(angles, "bo")

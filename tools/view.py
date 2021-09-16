@@ -1,5 +1,7 @@
 import os
 import cv2
+import sys
+import rewrite_images
 import open3d as o3d
 import numpy as np
 import pickle
@@ -16,6 +18,7 @@ COMPUTATIONS_DIR = f"{RESULTS_DIR}/everything_you_need.pkl"
 RENDER_MODE = 0
 NEXT = False
 PREV = False
+MODIFIED_MODE = False
 
 
 def key_cb(u):
@@ -80,6 +83,21 @@ def new_model(debugging=False):
     return pcd
 
 
+def modify_computed_data():
+    with open(COMPUTATIONS_DIR, "rb") as pickle_file:
+        all_computations = pickle.load(pickle_file)
+
+    global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
+    ab_transx, ab_transy, ab_rot, start_ab = all_computations
+
+    global_ab_scale *= 1.5  # ab bigger
+    for traj in trajectory:  # head goes further (x-axis)
+        traj[2] -= 0.2
+
+    return global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
+    ab_transx, ab_transy, ab_rot, start_ab
+
+
 def visualize():
     global NEXT, PREV
 
@@ -88,12 +106,17 @@ def visualize():
     pcd = new_model()
     pcd.translate([0, 0, 0], relative=False)
     pcd.compute_vertex_normals()
+    if MODIFIED_MODE:
+        new_data = modify_computed_data()
+        rewrite_images.visualize(new_data, pcd)
+        global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
+        ab_transx, ab_transy, ab_rot, start_ab = new_data
+    else:
+        with open(COMPUTATIONS_DIR, "rb") as pickle_file:
+            all_computations = pickle.load(pickle_file)
 
-    with open(COMPUTATIONS_DIR, "rb") as pickle_file:
-        all_computations = pickle.load(pickle_file)
-
-    global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
-    ab_transx, ab_transy, ab_rot, start_ab = all_computations
+        global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
+        ab_transx, ab_transy, ab_rot, start_ab = all_computations
 
     print(f"Airbag pose: translation=({ab_transx}, {ab_transy}), rotation="
           f"{ab_rot}, ab scale={global_ab_scale},"
@@ -179,7 +202,7 @@ def visualize():
                     ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
                     ab.compute_vertex_normals()
                     ab.scale(global_ab_scale, ab.get_center())
-                    ab.translate([0, -ab_transy, -ab_transx])
+                    ab.translate([0, -ab_transx, -ab_transy])
                     ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
                     ab.rotate(rot_mat_compute.from_euler("x", -90 + ab_rot, degrees=True).as_matrix())
                     vis.add_geometry(ab, reset_bounding_box=False)

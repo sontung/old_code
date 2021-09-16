@@ -87,8 +87,9 @@ def move_video(folder_input, folder_output, dst_fd='data_const/run', result_df='
         copy_tree("sph_data/mc_solutions_smoothed", f"{save_result}/mc_solutions_smoothed")
 
         # clean
-        shutil.rmtree("data_const/final_vis", ignore_errors=True)
-        clean_stuffs()
+        if not debug_mode:
+            shutil.rmtree("data_const/final_vis", ignore_errors=True)
+            clean_stuffs()
 
 
 if __name__ == '__main__':
