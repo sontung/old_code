@@ -224,7 +224,7 @@ def visualize():
         elif RENDER_MODE == 1:
             counter += 1
             vis.poll_events()
-            if ab_added_mode1:
+            if ab_added_mode1 or ab_added_mode0:
                 ab_added_mode1 = False
                 vis.remove_geometry(ab, reset_bounding_box=False)
             pcd.translate(trajectory[counter % len(trajectory)])

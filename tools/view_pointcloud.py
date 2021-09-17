@@ -132,8 +132,6 @@ def visualize():
     vis.register_key_callback(ord("N"), key_sw)
     vis.register_key_callback(ord("P"), key_sw2)
 
-    trans_actual_traj = []
-    rot_actual_traj = []
     pcd.scale(global_head_scale, pcd.get_center())
     head_centers = []
     ab_centers = []
@@ -245,7 +243,7 @@ def visualize():
         elif RENDER_MODE == 1:
             counter += 1
             vis.poll_events()
-            if ab_added_mode1:
+            if ab_added_mode1 or ab_added_mode0:
                 ab_added_mode1 = False
                 vis.remove_geometry(ab, reset_bounding_box=False)
             pcd.translate(trajectory[counter % len(trajectory)])
