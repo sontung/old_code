@@ -18,7 +18,7 @@ COMPUTATIONS_DIR = f"{RESULTS_DIR}/everything_you_need.pkl"
 RENDER_MODE = 0
 NEXT = False
 PREV = False
-MODIFIED_MODE = False
+NICE_MODE = False
 
 
 def key_cb(u):
@@ -44,7 +44,7 @@ def key_sw2(u):
 def mesh2pointcloud(mesh, color):
     num_point = len(np.asarray(mesh.vertices))
     if num_point < 2000:
-        pcd = mesh.sample_points_uniformly(number_of_points=20000)
+        pcd = mesh.sample_points_uniformly(number_of_points=10000)
         pcd.paint_uniform_color(np.array(color))
         return pcd
 
@@ -55,7 +55,7 @@ def mesh2pointcloud(mesh, color):
     return pcd
 
 
-def new_pointcloud_model(debugging=False):
+def new_model(debugging=False):
     texture = cv2.imread("data/model/textures/Head_albedo.jpg")
     texture = cv2.cvtColor(texture, cv2.COLOR_BGR2RGB)
 
@@ -99,38 +99,23 @@ def new_pointcloud_model(debugging=False):
     return pcd
 
 
-def modify_computed_data():
-    with open(COMPUTATIONS_DIR, "rb") as pickle_file:
-        all_computations = pickle.load(pickle_file)
-
-    global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
-    ab_transx, ab_transy, ab_rot, start_ab = all_computations
-
-    global_ab_scale *= 1.5  # ab bigger
-    for traj in trajectory:  # head goes further (x-axis)
-        traj[2] -= 0.2
-
-    return global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
-    ab_transx, ab_transy, ab_rot, start_ab
-
-
 def visualize():
     global NEXT, PREV
 
     ab_mesh_dir = f"{RESULTS_DIR}/mc_solutions_smoothed"
     os.makedirs("../data_heavy/saved/", exist_ok=True)
-    pcd = new_pointcloud_model()
+    pcd = new_model()
     pcd.translate([0, 0, 0], relative=False)
-    # pcd.compute_vertex_normals()
-    if MODIFIED_MODE:
-        new_data = modify_computed_data()
-        rewrite_images.visualize(new_data, pcd)
-        global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
-        ab_transx, ab_transy, ab_rot, start_ab = new_data
-    else:
-        with open(COMPUTATIONS_DIR, "rb") as pickle_file:
-            all_computations = pickle.load(pickle_file)
 
+    with open(COMPUTATIONS_DIR, "rb") as pickle_file:
+        all_computations = pickle.load(pickle_file)
+
+    if len(all_computations) > 8:
+        global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
+        ab_transx, ab_transy, ab_rot, start_ab, rotated_trajectory_y, rotated_trajectory_z = all_computations
+        global NICE_MODE
+        NICE_MODE = True
+    else:
         global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
         ab_transx, ab_transy, ab_rot, start_ab = all_computations
 
@@ -176,16 +161,22 @@ def visualize():
                 rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
                                                      degrees=True).as_matrix()
                 pcd.rotate(rot_mat, pcd.get_center())
-                trans_actual_traj.append(trajectory[counter % len(trajectory)])
-                rot_actual_traj.append(rotated_trajectory[counter % len(trajectory)])
+
+                if NICE_MODE:
+                    rot_mat_z = rot_mat_compute.from_euler('z',
+                                                           -rotated_trajectory_z[counter % len(trajectory)],
+                                                           degrees=True).as_matrix()
+                    pcd.rotate(rot_mat_z, pcd.get_center())
+                    rot_mat_y = rot_mat_compute.from_euler('y',
+                                                           -rotated_trajectory_y[counter % len(trajectory)],
+                                                           degrees=True).as_matrix()
+                    pcd.rotate(rot_mat_y, pcd.get_center())
 
                 if counter >= start_ab - 1:
                     ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
                     ab.compute_vertex_normals()
 
                     ab = mesh2pointcloud(ab, (0, 0, 0))
-                    # o3d.visualization.draw_geometries([ab])
-                    # sys.exit()
 
                     ab.scale(global_ab_scale, ab.get_center())
                     ab.translate([0, -ab_transx, -ab_transy])
@@ -197,14 +188,25 @@ def visualize():
 
                 vis.update_geometry(pcd)
                 vis.update_renderer()
-                prev_renders.append([-trajectory[counter % len(trajectory)],
-                                     -rotated_trajectory[counter % len(trajectory)],
-                                     0])
+                if NICE_MODE:
+                    prev_renders.append([-trajectory[counter % len(trajectory)],
+                                         -rotated_trajectory[counter % len(trajectory)],
+                                         rotated_trajectory_y[counter % len(trajectory)],
+                                         rotated_trajectory_z[counter % len(trajectory)],
+                                         ])
+                else:
+                    prev_renders.append([-trajectory[counter % len(trajectory)],
+                                         -rotated_trajectory[counter % len(trajectory)]
+                                         ])
 
             elif PREV and len(prev_renders) > 0:
                 counter -= 1
                 PREV = False
-                trans, rot, rot_z = prev_renders.pop()
+                if not NICE_MODE:
+                    trans, rot = prev_renders.pop()
+                else:
+                    trans, rot, rot_y, rot_z = prev_renders.pop()
+
                 if ab_added_mode0:
                     vis.remove_geometry(ab, reset_bounding_box=False)
                     ab_added_mode0 = False
@@ -212,16 +214,22 @@ def visualize():
                 pcd.translate(trans)
                 rot_mat = rot_mat_compute.from_euler('x', rot, degrees=True).as_matrix()
                 pcd.rotate(rot_mat, pcd.get_center())
-                trans_actual_traj.append(trajectory[counter % len(trajectory)])
-                rot_actual_traj.append(rotated_trajectory[counter % len(trajectory)])
 
-                rot_mat_z = rot_mat_compute.from_euler('z', rot_z, degrees=True).as_matrix()
-                pcd.rotate(rot_mat_z, pcd.get_center())
+                if NICE_MODE:
+                    rot_mat_z = rot_mat_compute.from_euler('z', rot_z,
+                                                           degrees=True).as_matrix()
+                    pcd.rotate(rot_mat_z, pcd.get_center())
+                    rot_mat_y = rot_mat_compute.from_euler('y', rot_y,
+                                                           degrees=True).as_matrix()
+                    pcd.rotate(rot_mat_y, pcd.get_center())
 
                 if counter >= start_ab - 1:
                     ab_counter -= 2
                     ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
                     ab.compute_vertex_normals()
+
+                    ab = mesh2pointcloud(ab, (0, 0, 0))
+
                     ab.scale(global_ab_scale, ab.get_center())
                     ab.translate([0, -ab_transx, -ab_transy])
                     ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
@@ -244,12 +252,20 @@ def visualize():
             rot_mat = rot_mat_compute.from_euler('x', rotated_trajectory[counter % len(trajectory)],
                                                  degrees=True).as_matrix()
             pcd.rotate(rot_mat, pcd.get_center())
-            trans_actual_traj.append(trajectory[counter % len(trajectory)])
-            rot_actual_traj.append(rotated_trajectory[counter % len(trajectory)])
+            if NICE_MODE:
+                rot_mat_z = rot_mat_compute.from_euler('z', -rotated_trajectory_z[counter % len(trajectory)],
+                                                       degrees=True).as_matrix()
+                pcd.rotate(rot_mat_z, pcd.get_center())
+                rot_mat_y = rot_mat_compute.from_euler('y', -rotated_trajectory_y[counter % len(trajectory)],
+                                                       degrees=True).as_matrix()
+                pcd.rotate(rot_mat_y, pcd.get_center())
 
             if counter >= start_ab-1:
                 ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
                 ab.compute_vertex_normals()
+
+                ab = mesh2pointcloud(ab, (0, 0, 0))
+
                 ab.scale(global_ab_scale, ab.get_center())
                 ab.translate([0, -ab_transx, -ab_transy])
                 ab.rotate(rot_mat_compute.from_euler("y", 90, degrees=True).as_matrix())
