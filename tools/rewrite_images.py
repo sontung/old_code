@@ -71,15 +71,22 @@ def modify_computed_data():
     global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
     ab_transx, ab_transy, ab_rot, start_ab = all_computations
 
-    global_ab_scale *= 1.5  # ab bigger
+    global_ab_scale *= 1.25  # ab bigger
     for traj in trajectory:  # head goes further (x-axis)
         traj[2] -= 0.2
+
+    # additional
+    rot_y, rot_z, trans_z = additional_trajectories()
+    for ind, traj in enumerate(trajectory):
+        traj[0] = trans_z[ind]
+    rot_y = rot_y[len(rot_y)-len(rotated_trajectory):]
+    rot_z = rot_z[len(rot_z)-len(rotated_trajectory):]
 
     # rewrite pick file
     results_to_disk = [global_head_scale, global_ab_scale,
                        trajectory, rotated_trajectory,
                        ab_transx, ab_transy, ab_rot,
-                       start_ab]
+                       start_ab, rot_y, rot_z]
     with open(f"{NEW_DIR}/everything_you_need.pkl", "wb") as pickle_file:
         pickle.dump(results_to_disk, pickle_file)
 
@@ -93,44 +100,205 @@ def make_trajectory(values):
     return res
 
 
-def make_rotations(size):
-    roty = [0]*size
-    roty[39] = 1
-    roty[40] = 1
-    roty[41] = 1
-    roty[42] = 1
-    roty[43] = 1
-    roty[44] = 1
-    roty[45] = 1
-    roty[46] = 1
-    roty[47] = 1
-    roty[48] = 1
-    roty[49] = 1
-    roty[50] = 10
-    roty[51] = 10
-    roty[52] = 10
-    roty[53] = 10
-    roty[54] = 9
-    roty[55] = 6
-    roty[56] = 5
-    roty[57] = 4
-    roty[58] = 3
-    roty[59] = 2
-    roty[60] = 1
-    roty[61] = 1
-    roty[62] = 1
-    roty[63] = 1
-    roty[64] = 1
-    roty[65] = 1
-    roty[66] = 1
-    roty[67] = 1
-    roty[68] = 1
-    roty[69] = 1
+def additional_trajectories():
+    roty = [0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            5,
+            4,
+            4,
+            4,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            2,
+            2,
+            1,
+            1,
+            0,
+            1,
+            1,
+            2,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15]
+    rotz = [0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15]
+    transz = [0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+              0, 0, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0,
+              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+              10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-
-
-    rotz = [0]*size
-    return make_trajectory(roty), make_trajectory(rotz)
+    return make_trajectory(roty), make_trajectory(rotz), transz
 
 
 def visualize(data, pcd):
@@ -148,9 +316,7 @@ def visualize(data, pcd):
 
     # write computations to disk
     global_head_scale, global_ab_scale, trajectory, rotated_trajectory, \
-    ab_transx, ab_transy, ab_rot, start_ab = data
-
-    rotated_trajectory_y,  rotated_trajectory_z = make_rotations(len(rotated_trajectory))
+    ab_transx, ab_transy, ab_rot, start_ab, rotated_trajectory_y, rotated_trajectory_z = data
 
     # start writing visualizations
     trans_actual_traj = []
@@ -181,7 +347,6 @@ def visualize(data, pcd):
         if counter >= start_ab-1:
             ab = o3d.io.read_triangle_mesh(f"{ab_mesh_dir}/new_particles_%d.obj" % ab_counter)
             ab.translate([0, 0, 0], relative=False)
-            ab.compute_vertex_normals()
             ab.compute_vertex_normals()
             ab.scale(global_ab_scale, ab.get_center())
             ab.translate([0, -ab_transx, -ab_transy])
