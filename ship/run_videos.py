@@ -5,12 +5,9 @@ import numpy as np
 import os
 import open3d as o3d
 import pickle
+import kmeans1d
 from os import listdir
 from os.path import isfile, join
-import skimage.filters
-from sklearn.cluster import KMeans
-from sklearn.utils import shuffle
-from tqdm import tqdm
 from solve_position import visualize, visualize_wo_ab
 from test_model import new_model
 from scipy.spatial.transform import Rotation as rot_mat_compute
@@ -264,14 +261,32 @@ def process_3d(comp):
     return im1, im2
 
 
-def process(mypath='data_video/all_video', output='../data_heavy/frames'):
+def process(mypath='all_video'):
     """
     extract frames from videos stored in ../data_heavy/run
     """
     show_img = True
     all_folders = [f for f in listdir(mypath)]
+
+    # check noise
+    pixels = []
     for count, folder in enumerate(all_folders):
-        # if count != 0:
+        all_files = [join(join(mypath, folder), f) for f in listdir(join(mypath, folder))]
+        for video in all_files:
+            name = "%s-%s.png" % (folder, video.split('/')[-1])
+            json_name = "%s-%s.json" % (folder, video.split('/')[-1])
+            img = cv2.imread(f"images/{name}")
+            computation = read_json(f"images/{json_name}", img)
+            view = name.split(".mp4.png")[0].split("-")[-1]
+            if len(computation) == 0:
+                continue
+            if view == "1":
+                pixels.append(computation["head pixels"])
+    u = kmeans1d.cluster(pixels, 2)
+    head_pixels_lower_bound = u.centroids[0]
+
+    for count, folder in enumerate(all_folders):
+        # if count != 3:
         #     continue
         all_files = [join(join(mypath, folder), f) for f in listdir(join(mypath, folder))]
         res = {}
@@ -288,9 +303,12 @@ def process(mypath='data_video/all_video', output='../data_heavy/frames'):
                     computation["head pixels"] = computation["ab pixels"]
                     computation["head center"] = computation["ab center"]
                     computation["head rot"] = computation["ab rot"]
+                if computation["head pixels"] <= head_pixels_lower_bound:
+                    computation["head pixels"] = computation["ab pixels"]
+                    computation["head center"] = computation["ab center"]
 
             res[view] = [computation, img]
-        print(count, all_files, [u[0] for u in res.values()])
+        print(count, folder)
         if len([u[0] for u in res.values()]) == 0:
             continue
         # check if airbag exists
@@ -308,16 +326,17 @@ def process(mypath='data_video/all_video', output='../data_heavy/frames'):
                 cv2.imshow("", np.vstack([img_ori, im3]))
                 cv2.waitKey()
                 cv2.destroyAllWindows()
-            continue
+        else:
+            img_ori = np.hstack([res["1"][1], res["2"][1]])
+            im1, im2 = visualize(res["1"][0], res["2"][0])
+            im3 = np.hstack([im1, im2])
+            im3 = cv2.resize(im3, (im3.shape[1] // 2, im3.shape[0] // 2))
+            if show_img:
+                cv2.imshow("", np.vstack([img_ori, im3]))
+                cv2.waitKey()
+                cv2.destroyAllWindows()
 
-        img_ori = np.hstack([res["1"][1], res["2"][1]])
-        im1, im2 = visualize(res["1"][0], res["2"][0])
-        im3 = np.hstack([im1, im2])
-        im3 = cv2.resize(im3, (im3.shape[1] // 2, im3.shape[0] // 2))
-        if show_img:
-            cv2.imshow("", np.vstack([img_ori, im3]))
-            cv2.waitKey()
-            cv2.destroyAllWindows()
+        cv2.imwrite(f"all_video/{folder}/res.png", np.vstack([img_ori, im3]))
 
 
 if __name__ == '__main__':

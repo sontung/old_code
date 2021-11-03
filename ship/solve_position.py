@@ -244,13 +244,15 @@ def visualize(comp1, comp2):
                                                       degrees=True).as_matrix()
             ab.rotate(rot_mat2, ab.get_center())
 
+            # view 2
             rot2 = comp2["ab rot"]
             rot_mat = rot_mat_compute.from_euler('z', rot2 - 90,
                                                  degrees=True).as_matrix()
             ab.rotate(rot_mat, ab.get_center())
-            
+
             trans = comp2["ab center"] - comp2["head center"]
-            ab.translate([trans[1], trans[0], 0])
+            # print("view 2 trans", trans, comp2["ab center"], comp2["head center"])
+            ab.translate([trans[0], trans[1], 0])
 
             vis.add_geometry(ab, reset_bounding_box=False)
             ab_counter += 1
@@ -264,7 +266,6 @@ def visualize(comp1, comp2):
             vis.remove_geometry(ab, reset_bounding_box=False)
     vis.destroy_window()
     return cv2.imread("v1.png"), cv2.imread("v2.png")
-
 
 
 if __name__ == '__main__':
