@@ -1,4 +1,8 @@
 *.zip
+ship/*.png
+*.png
+ship/all_video/*
+images/*
 data_heavy/
 data_const/
 data_video/

@@ -5,12 +5,58 @@ import numpy as np
 import os
 import open3d as o3d
 import pickle
-import kmeans1d
 from os import listdir
 from os.path import isfile, join
-from solve_position import visualize, visualize_wo_ab
-from test_model import new_model
+import skimage.filters
+from sklearn.cluster import KMeans
+from sklearn.utils import shuffle
+from tqdm import tqdm
 from scipy.spatial.transform import Rotation as rot_mat_compute
+
+
+def new_model(debugging=False):
+    texture = cv2.imread("data/model/textures/Head_albedo.jpg")
+    texture = cv2.cvtColor(texture, cv2.COLOR_BGR2RGB)
+
+    pcd_old = o3d.io.read_triangle_mesh("data/max-planck.obj")
+    pcd_old.compute_vertex_normals()
+    pcd_old.translate([0, 0, 0])
+
+    pcd = o3d.io.read_triangle_mesh("data/model/model.obj")
+    pcd.compute_vertex_normals()
+
+    triangle_uvs = np.asarray(pcd.triangle_uvs)
+    triangle_uvs[:, 1] = 1 - triangle_uvs[:, 1]
+
+    pcd.textures = [o3d.geometry.Image(texture)]
+
+    # scale new_model to old_model
+    area_scale = 980
+    pcd.scale(area_scale, pcd.get_center())
+
+    # rotation new model
+    rot_mat = rot_mat_compute.from_euler('y', -180, degrees=True).as_matrix()
+    pcd.rotate(rot_mat, pcd.get_center())
+
+    # sync center of 2 model
+    pcd.translate(pcd_old.get_center(), relative=False)
+
+    if debugging:
+
+        vis = o3d.visualization.Visualizer()
+        vis.create_window()
+        vis.get_view_control().set_zoom(1.5)
+
+        vis.add_geometry(pcd)
+        vis.add_geometry(pcd_old)
+
+        t = 0
+        while t < 200:
+            vis.poll_events()
+            vis.update_renderer()
+            t += 1
+
+    return pcd
 
 
 def keep_one_biggest_contour(img):
@@ -180,17 +226,18 @@ def read_json(name, img):
     ab_pixels, ab_center, ab_rot, _, _, _, _ = compute_position_and_rotation(
         ab_mask, ab_rgb_mask, ab_contours)
 
-    res["head center"] = head_center
-    res["ab center"] = ab_center
-    if res["ab center"] is not None:
-        res["ab center"] = np.array(ab_center)
-    if res["head center"] is not None:
-        res["head center"] = np.array(head_center)
+    dist_x = -1
+    dist_y = -1
+    if ab_center is not None:
+        dist_x = ab_center[0]
+        dist_y = ab_center[1]
+    res["head center"] = np.array(head_center)
     res["head rot"] = head_rot
     res["ab rot"] = ab_rot
     res["ab center"] = np.array(ab_center)
     res["head pixels"] = head_pixels
     res["ab pixels"] = ab_pixels
+
 
     return res
 
@@ -261,33 +308,13 @@ def process_3d(comp):
     return im1, im2
 
 
-def process(mypath='all_video'):
+def process(mypath='data_video/all_video', output='../data_heavy/frames'):
     """
     extract frames from videos stored in ../data_heavy/run
     """
-    show_img = True
+
     all_folders = [f for f in listdir(mypath)]
-
-    # check noise
-    pixels = []
-    for count, folder in enumerate(all_folders):
-        all_files = [join(join(mypath, folder), f) for f in listdir(join(mypath, folder))]
-        for video in all_files:
-            name = "%s-%s.png" % (folder, video.split('/')[-1])
-            json_name = "%s-%s.json" % (folder, video.split('/')[-1])
-            img = cv2.imread(f"images/{name}")
-            computation = read_json(f"images/{json_name}", img)
-            view = name.split(".mp4.png")[0].split("-")[-1]
-            if len(computation) == 0:
-                continue
-            if view == "1":
-                pixels.append(computation["head pixels"])
-    u = kmeans1d.cluster(pixels, 2)
-    head_pixels_lower_bound = u.centroids[0]
-
-    for count, folder in enumerate(all_folders):
-        # if count != 3:
-        #     continue
+    for folder in all_folders[1:]:
         all_files = [join(join(mypath, folder), f) for f in listdir(join(mypath, folder))]
         res = {}
         for video in all_files:
@@ -298,45 +325,17 @@ def process(mypath='all_video'):
             view = name.split(".mp4.png")[0].split("-")[-1]
             if len(computation) == 0:
                 continue
-            if view == "1":
-                if computation["head center"] is None:
-                    computation["head pixels"] = computation["ab pixels"]
-                    computation["head center"] = computation["ab center"]
-                    computation["head rot"] = computation["ab rot"]
-                if computation["head pixels"] <= head_pixels_lower_bound:
-                    computation["head pixels"] = computation["ab pixels"]
-                    computation["head center"] = computation["ab center"]
-
             res[view] = [computation, img]
-        print(count, folder)
-        if len([u[0] for u in res.values()]) == 0:
-            continue
-        # check if airbag exists
-        if sum([u[0]["ab pixels"] for u in res.values()]) == 0:
-            airbag = False
-        else:
-            airbag = True
+            print(view, computation)
+        img_ori = np.hstack([res["1"][1], res["2"][1]])
+        im1, im2 = process_3d(res)
+        im3 = np.hstack([im1, im2])
+        im3 = cv2.resize(im3, (im3.shape[1]//2, im3.shape[0]//2))
+        cv2.imshow("", np.vstack([img_ori, im3]))
+        cv2.waitKey()
+        cv2.destroyAllWindows()
 
-        if not airbag:
-            img_ori = np.hstack([res["1"][1], res["2"][1]])
-            im1, im2 = visualize_wo_ab(res["1"][0], res["2"][0])
-            im3 = np.hstack([im1, im2])
-            im3 = cv2.resize(im3, (im3.shape[1]//2, im3.shape[0]//2))
-            if show_img:
-                cv2.imshow("", np.vstack([img_ori, im3]))
-                cv2.waitKey()
-                cv2.destroyAllWindows()
-        else:
-            img_ori = np.hstack([res["1"][1], res["2"][1]])
-            im1, im2 = visualize(res["1"][0], res["2"][0])
-            im3 = np.hstack([im1, im2])
-            im3 = cv2.resize(im3, (im3.shape[1] // 2, im3.shape[0] // 2))
-            if show_img:
-                cv2.imshow("", np.vstack([img_ori, im3]))
-                cv2.waitKey()
-                cv2.destroyAllWindows()
-
-        cv2.imwrite(f"all_video/{folder}/res.png", np.vstack([img_ori, im3]))
+        sys.exit()
 
 
 if __name__ == '__main__':

@@ -94,32 +94,6 @@ def write_to_pcd(particles_matrix, save_folder='../data_heavy/sph_solutions/new_
             f.close()
 
 
-def compute_head_ab_areas_image_space():
-    """
-    compute head area and ab area in the image space (using masks)
-    """
-    sys.stdin = open("../data_heavy/frames/info.txt")
-    lines = [du[:-1] for du in sys.stdin.readlines()]
-    sys.stdin = open("../data_heavy/frame2ab.txt")
-    lines2 = [du[:-1] for du in sys.stdin.readlines()]
-    frame2ab = {du.split(" ")[0]: du for du in lines2}
-    ab_area_all = []
-    head_area_all = []
-
-    for frn in lines:
-        akey = "1-%s.png" % frn
-        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
-        ab_area, head_area = map(float, [ab_area, head_area])
-        ab_area_all.append(ab_area)
-    for frn in lines[:10]:
-        akey = "1-%s.png" % frn
-        _, ab_area, head_area, dist_x, dist_y, _, rot = frame2ab[akey].split(" ")
-        ab_area, head_area = map(float, [ab_area, head_area])
-        head_area_all.append(head_area)
-    results = [np.max(ab_area_all), np.max(head_area_all)]
-    return results
-
-
 def compute_ab_trans():
     sys.stdin = open("../data_heavy/frames/info.txt")
     lines = [du[:-1] for du in sys.stdin.readlines()]

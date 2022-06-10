@@ -41,7 +41,7 @@ def sph_simulation():
 
     root_path = pathlib.Path(__file__).parent.absolute()
     scene_file_path = os.path.join(root_path, 'EmitterModel_option_1.json')
-    base.init(sceneFile=scene_file_path, outputDir=output_dir, useGui=False)
+    base.init(sceneFile=scene_file_path, outputDir=output_dir, useGui=True)
     base.setValueFloat(base.STOP_AT, 25.0)  # Important to have the dot to denote a float
     base.setValueFloat(base.DATA_EXPORT_FPS, 5)
     base.run()

@@ -201,6 +201,9 @@ def main(frame2ab_info='../data_heavy/frame2ab.txt',
         result = inference_segmentor(model, inp_img)
         pred = result[0]
 
+        print(pred.shape, np.unique(pred))
+        sys.exit()
+
         head_mask, head_rgb_mask, head_contour = get_seg_head_from_prediction(pred)
         ab_mask, ab_rgb_mask, ab_contours = get_seg_airbag_from_prediction(pred, view=view)
 
